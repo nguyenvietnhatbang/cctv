@@ -1,0 +1,197 @@
+create extension if not exists pgcrypto;
+
+create type app_role as enum ('admin', 'dispatcher', 'technician', 'accountant');
+create type user_status as enum ('active', 'inactive');
+create type technician_status as enum ('available', 'traveling', 'working', 'off');
+create type work_order_type as enum ('warranty', 'maintenance', 'installation', 'other');
+create type work_order_priority as enum ('normal', 'urgent');
+create type work_order_status as enum (
+  'pending_assignment',
+  'assigned',
+  'accepted',
+  'traveling',
+  'working',
+  'awaiting_acceptance',
+  'completed',
+  'awaiting_payment',
+  'paid',
+  'debt',
+  'cancelled'
+);
+create type payment_status as enum ('unpaid', 'paid', 'debt');
+create type payment_method as enum ('cash', 'bank_transfer', 'debt');
+create type work_order_file_purpose as enum ('initial', 'before', 'after', 'signature');
+
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null,
+  email text unique,
+  phone text unique,
+  password_hash text not null,
+  role app_role not null,
+  status user_status not null default 'active',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint users_login_identifier_required check (email is not null or phone is not null)
+);
+
+create table customers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  phone text not null,
+  address text not null,
+  address_note text,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index customers_phone_idx on customers(phone);
+
+create table technicians (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references users(id) on delete cascade,
+  service_area text,
+  status technician_status not null default 'available',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table work_orders (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  customer_id uuid not null references customers(id),
+  type work_order_type not null,
+  priority work_order_priority not null default 'normal',
+  status work_order_status not null default 'pending_assignment',
+  description text not null,
+  appointment_at timestamptz,
+  internal_note text,
+  labor_cost numeric(12, 2) not null default 0,
+  vat_rate numeric(5, 2) not null default 0,
+  cancellation_reason text,
+  check_in_at timestamptz,
+  check_in_lat numeric(10, 7),
+  check_in_lng numeric(10, 7),
+  completion_note text,
+  acceptance_name text,
+  acceptance_phone text,
+  accepted_at timestamptz,
+  created_by uuid references users(id) on delete set null,
+  updated_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index work_orders_status_idx on work_orders(status);
+create index work_orders_customer_idx on work_orders(customer_id);
+create index work_orders_appointment_idx on work_orders(appointment_at);
+
+create table work_order_assignments (
+  id uuid primary key default gen_random_uuid(),
+  work_order_id uuid not null references work_orders(id) on delete cascade,
+  technician_id uuid not null references technicians(id),
+  assigned_by uuid references users(id) on delete set null,
+  assigned_at timestamptz not null default now(),
+  unassigned_at timestamptz,
+  note text
+);
+
+create unique index work_order_active_assignment_idx
+  on work_order_assignments(work_order_id)
+  where unassigned_at is null;
+
+create table work_order_status_history (
+  id uuid primary key default gen_random_uuid(),
+  work_order_id uuid not null references work_orders(id) on delete cascade,
+  from_status work_order_status,
+  to_status work_order_status not null,
+  changed_by uuid references users(id) on delete set null,
+  changed_at timestamptz not null default now(),
+  note text
+);
+
+create index work_order_status_history_order_idx on work_order_status_history(work_order_id, changed_at desc);
+
+create table work_order_materials (
+  id uuid primary key default gen_random_uuid(),
+  work_order_id uuid not null references work_orders(id) on delete cascade,
+  name text not null,
+  quantity numeric(12, 2) not null check (quantity > 0),
+  unit_price numeric(12, 2) not null default 0 check (unit_price >= 0),
+  line_total numeric(12, 2) generated always as (quantity * unit_price) stored,
+  created_by uuid references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table work_order_files (
+  id uuid primary key default gen_random_uuid(),
+  work_order_id uuid not null references work_orders(id) on delete cascade,
+  bucket text not null,
+  path text not null,
+  original_name text not null,
+  mime_type text not null,
+  size_bytes bigint not null,
+  purpose work_order_file_purpose not null,
+  uploaded_by uuid references users(id) on delete set null,
+  uploaded_at timestamptz not null default now(),
+  unique(bucket, path)
+);
+
+create table payments (
+  id uuid primary key default gen_random_uuid(),
+  work_order_id uuid not null unique references work_orders(id) on delete cascade,
+  labor_amount numeric(12, 2) not null default 0,
+  material_amount numeric(12, 2) not null default 0,
+  vat_amount numeric(12, 2) not null default 0,
+  total_amount numeric(12, 2) not null default 0,
+  status payment_status not null default 'unpaid',
+  method payment_method,
+  transaction_ref text,
+  debt_due_date date,
+  note text,
+  confirmed_by uuid references users(id) on delete set null,
+  confirmed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint paid_requires_method check (status <> 'paid' or method is not null),
+  constraint debt_requires_note_or_due_date check (status <> 'debt' or note is not null or debt_due_date is not null)
+);
+
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  work_order_id uuid references work_orders(id) on delete cascade,
+  title text not null,
+  body text not null,
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create or replace function touch_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger users_touch_updated_at
+before update on users
+for each row execute function touch_updated_at();
+
+create trigger customers_touch_updated_at
+before update on customers
+for each row execute function touch_updated_at();
+
+create trigger technicians_touch_updated_at
+before update on technicians
+for each row execute function touch_updated_at();
+
+create trigger work_orders_touch_updated_at
+before update on work_orders
+for each row execute function touch_updated_at();
+
+create trigger payments_touch_updated_at
+before update on payments
+for each row execute function touch_updated_at();

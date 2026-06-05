@@ -1,0 +1,131 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { X } from "lucide-react";
+import {
+  WORK_ORDER_STATUS_LABELS,
+  WORK_ORDER_STATUS_TONE,
+  type WorkOrderStatus,
+} from "@/lib/types";
+
+export function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="grid gap-1.5 text-sm font-medium text-zinc-700">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+export function StatusBadge({ status }: { status: WorkOrderStatus }) {
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${WORK_ORDER_STATUS_TONE[status]}`}>
+      {WORK_ORDER_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function Modal({
+  title,
+  size = "md",
+  children,
+  onClose,
+}: {
+  title: string;
+  size?: "sm" | "md" | "lg" | "xl";
+  children: ReactNode;
+  onClose: () => void;
+}) {
+  const width = {
+    sm: "max-w-md",
+    md: "max-w-2xl",
+    lg: "max-w-4xl",
+    xl: "max-w-6xl",
+  }[size];
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/45 p-3">
+      <section className={`max-h-[92vh] w-full ${width} overflow-hidden rounded-lg bg-white shadow-xl`}>
+        <header className="flex items-center justify-between gap-4 border-b border-zinc-200 px-4 py-3">
+          <h2 className="text-base font-bold text-zinc-950">{title}</h2>
+          <button className="icon-button" onClick={onClose} type="button" aria-label="Đóng">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="max-h-[calc(92vh-3.5rem)] overflow-auto p-4">{children}</div>
+      </section>
+    </div>
+  );
+}
+
+export function ConfirmModal({
+  title,
+  body,
+  confirmLabel = "Xóa",
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  body: string;
+  confirmLabel?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal title={title} size="sm" onClose={onCancel}>
+      <p className="text-sm leading-6 text-zinc-600">{body}</p>
+      <div className="mt-5 flex justify-end gap-2">
+        <button className="btn-secondary h-10" onClick={onCancel} type="button">
+          Hủy
+        </button>
+        <button className="btn-danger h-10" onClick={onConfirm} type="button">
+          {confirmLabel}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+export function Toolbar({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section className="panel">
+      <div className="panel-heading">
+        <div>
+          <h2>{title}</h2>
+          {subtitle ? <p className="mt-1 text-sm text-zinc-500">{subtitle}</p> : null}
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+export function EmptyState({ children }: { children: ReactNode }) {
+  return (
+    <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500">
+      {children}
+    </div>
+  );
+}
+
+export function TableShell({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return <div className="table-shell">{children}</div>;
+}
