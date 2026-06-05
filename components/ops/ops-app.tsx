@@ -167,7 +167,7 @@ export function OpsApp() {
     return payload.user;
   }, []);
 
-  const loadDataForUser = useCallback(async (currentUser: SessionUser) => {
+  const workOrderQueryString = useCallback(() => {
     const params = new URLSearchParams();
     if (filters.q) params.set("q", filters.q);
     if (filters.status) params.set("status", filters.status);
@@ -176,13 +176,76 @@ export function OpsApp() {
     if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
 
+    return params.toString();
+  }, [filters.dateFrom, filters.dateTo, filters.q, filters.status, filters.technicianId, filters.type]);
+
+  const loadDetail = useCallback(async (id: string) => {
+    const payload = await apiFetch<WorkOrderDetail>(`/api/work-orders/${id}`);
+    setDetail(payload);
+    return payload;
+  }, []);
+
+  const refreshDashboard = useCallback(async () => {
+    const payload = await apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard");
+    setData((current) => ({ ...current, metrics: payload.metrics }));
+    return payload.metrics;
+  }, []);
+
+  const refreshOrders = useCallback(async () => {
+    const payload = await apiFetch<{ workOrders: AppData["orders"] }>(`/api/work-orders?${workOrderQueryString()}`);
+    setData((current) => ({ ...current, orders: payload.workOrders }));
+    return payload.workOrders;
+  }, [workOrderQueryString]);
+
+  const refreshNotifications = useCallback(async () => {
+    const payload = await apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications");
+    setData((current) => ({ ...current, notifications: payload.notifications }));
+    return payload.notifications;
+  }, []);
+
+  const refreshTechnicians = useCallback(async () => {
+    const payload = await apiFetch<{ technicians: Technician[] }>("/api/technicians");
+    setData((current) => ({ ...current, technicians: payload.technicians }));
+    return payload.technicians;
+  }, []);
+
+  const refreshCustomers = useCallback(async () => {
+    const payload = await apiFetch<{ customers: Customer[] }>("/api/customers");
+    setData((current) => ({ ...current, customers: payload.customers }));
+    return payload.customers;
+  }, []);
+
+  const refreshUsers = useCallback(async () => {
+    const payload = await apiFetch<{ users: AppUser[] }>("/api/users");
+    setData((current) => ({ ...current, users: payload.users }));
+    return payload.users;
+  }, []);
+
+  const refreshOpenDetail = useCallback(async () => {
+    const currentId = detail?.workOrder.id;
+    if (!currentId) return null;
+    return loadDetail(currentId);
+  }, [detail?.workOrder.id, loadDetail]);
+
+  const refreshOrderContext = useCallback(async () => {
+    const canManageOps = ["admin", "dispatcher"].includes(user?.role ?? "");
+    await Promise.all([
+      refreshOrders(),
+      refreshDashboard(),
+      canManageOps ? refreshTechnicians() : Promise.resolve(null),
+      refreshOpenDetail(),
+    ]);
+  }, [refreshDashboard, refreshOpenDetail, refreshOrders, refreshTechnicians, user?.role]);
+
+  const loadDataForUser = useCallback(async (currentUser: SessionUser) => {
+    const params = workOrderQueryString();
     const canManageOps = ["admin", "dispatcher"].includes(currentUser.role);
     const canBackOffice = ["admin", "dispatcher", "accountant"].includes(currentUser.role);
     const today = todayInVietnam();
 
     const [dashboard, orders, notifications, technicians, customers, report, users] = await Promise.all([
       apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard"),
-      apiFetch<{ workOrders: AppData["orders"] }>(`/api/work-orders?${params.toString()}`),
+      apiFetch<{ workOrders: AppData["orders"] }>(`/api/work-orders?${params}`),
       apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications"),
       canManageOps ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
       canBackOffice ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
@@ -199,19 +262,13 @@ export function OpsApp() {
       report,
       users: users?.users ?? [],
     });
-  }, [filters.dateFrom, filters.dateTo, filters.q, filters.status, filters.technicianId, filters.type]);
+  }, [workOrderQueryString]);
 
   const loadData = useCallback(async (nextUser?: SessionUser | null) => {
     const currentUser = nextUser ?? user;
     if (!currentUser) return;
     await loadDataForUser(currentUser);
   }, [loadDataForUser, user]);
-
-  const loadDetail = useCallback(async (id: string) => {
-    const payload = await apiFetch<WorkOrderDetail>(`/api/work-orders/${id}`);
-    setDetail(payload);
-    return payload;
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -270,7 +327,14 @@ export function OpsApp() {
   }, [loadDetail, modal?.type, routedOrderId, searchParams, user]);
 
   async function openOrder(id: string, type: "order-detail" | "order-edit" = "order-detail") {
-    router.push(`/orders/${id}${type === "order-edit" ? "?mode=edit" : ""}`);
+    try {
+      setError(null);
+      setDetail(null);
+      await loadDetail(id);
+      setModal({ type, id });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không tải được chi tiết phiếu");
+    }
   }
 
   async function openDispatchModal(id: string, type: "dispatch-detail" | "dispatch-assignment") {
@@ -296,8 +360,7 @@ export function OpsApp() {
   }
 
   async function afterMutation() {
-    await loadData();
-    if (detail) await loadDetail(detail.workOrder.id);
+    await refreshOrderContext();
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -358,7 +421,12 @@ export function OpsApp() {
       }),
     });
     event.currentTarget.reset();
-    await loadData();
+    await Promise.all([
+      refreshOrders(),
+      refreshDashboard(),
+      ["admin", "dispatcher"].includes(user?.role ?? "") ? refreshTechnicians() : Promise.resolve(null),
+      customerId ? Promise.resolve(null) : refreshCustomers(),
+    ]);
   }
 
   async function handleCreateCustomer(event: FormEvent<HTMLFormElement>) {
@@ -374,7 +442,7 @@ export function OpsApp() {
       }),
     });
     event.currentTarget.reset();
-    await loadData();
+    await refreshCustomers();
   }
 
   async function handleCreateUser(event: FormEvent<HTMLFormElement>) {
@@ -393,7 +461,10 @@ export function OpsApp() {
       }),
     });
     event.currentTarget.reset();
-    await loadData();
+    await Promise.all([
+      refreshUsers(),
+      role === "technician" ? refreshTechnicians() : Promise.resolve(null),
+    ]);
   }
 
   async function submitWorkOrderPatch(event: FormEvent<HTMLFormElement>) {
@@ -416,11 +487,11 @@ export function OpsApp() {
     await afterMutation();
   }
 
-  async function deleteResource(path: string) {
+  async function deleteResource(path: string, onDeleted?: () => Promise<void>) {
     await apiFetch(path, { method: "DELETE" });
     setModal(null);
     setDetail(null);
-    await loadData();
+    await onDeleted?.();
   }
 
   function updateOrderFilters(nextFilters: Filters) {
@@ -431,7 +502,13 @@ export function OpsApp() {
     if (nextFilters.technicianId) params.set("technicianId", nextFilters.technicianId);
     if (nextFilters.dateFrom) params.set("dateFrom", nextFilters.dateFrom);
     if (nextFilters.dateTo) params.set("dateTo", nextFilters.dateTo);
-    router.push(`/orders${params.toString() ? `?${params.toString()}` : ""}`);
+    const nextUrl = `/orders${params.toString() ? `?${params.toString()}` : ""}`;
+    if (section === "orders") {
+      setFilters(nextFilters);
+      window.history.replaceState(null, "", nextUrl);
+      return;
+    }
+    router.push(nextUrl);
   }
 
   function closeOrderModal() {
@@ -584,7 +661,7 @@ export function OpsApp() {
             const report = await apiFetch<ReportData>(`/api/reports?from=${from}&to=${to}`);
             setData((current) => ({ ...current, report }));
           }} /> : null}
-          {section === "notifications" ? <NotificationsScreen notifications={data.notifications} onOpen={(id) => openOrder(id)} onRead={async (id) => { await apiFetch(`/api/notifications/${id}`, { method: "PATCH", body: JSON.stringify({ read: true }) }); await loadData(); }} /> : null}
+          {section === "notifications" ? <NotificationsScreen notifications={data.notifications} onOpen={(id) => openOrder(id)} onRead={async (id) => { await apiFetch(`/api/notifications/${id}`, { method: "PATCH", body: JSON.stringify({ read: true }) }); await refreshNotifications(); }} /> : null}
           {section === "users" ? <UsersScreen users={data.users} onCreate={handleCreateUser} onEdit={(item) => setModal({ type: "user-edit", item })} onDelete={(item) => setModal({ type: "user-delete", item })} /> : null}
         </section>
       </div>
@@ -659,8 +736,7 @@ export function OpsApp() {
                 body: JSON.stringify({ status: "cancelled", note: formData.get("note") }),
               });
               setModal(null);
-              await loadData();
-              router.push("/orders");
+              await refreshOrderContext();
             }}
             className="grid gap-3"
           >
@@ -673,13 +749,13 @@ export function OpsApp() {
           </form>
         </Modal>
       ) : null}
-      {modal?.type === "customer-edit" ? <CustomerEditModal item={modal.item} onClose={() => setModal(null)} onSubmit={async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/customers/${modal.item.id}`, { method: "PATCH", body: JSON.stringify({ name: formData.get("name"), phone: formData.get("phone"), address: formData.get("address"), addressNote: formData.get("addressNote") || null }) }); setModal(null); await loadData(); }} /> : null}
+      {modal?.type === "customer-edit" ? <CustomerEditModal item={modal.item} onClose={() => setModal(null)} onSubmit={async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/customers/${modal.item.id}`, { method: "PATCH", body: JSON.stringify({ name: formData.get("name"), phone: formData.get("phone"), address: formData.get("address"), addressNote: formData.get("addressNote") || null }) }); setModal(null); await Promise.all([refreshCustomers(), refreshOrders()]); }} /> : null}
       {modal?.type === "customer-detail" ? <CustomerDetailModal item={modal.item} orders={data.orders} onClose={() => setModal(null)} /> : null}
-      {modal?.type === "customer-delete" ? <ConfirmModal title="Xóa khách hàng" body={`Xóa khách hàng ${modal.item.name}? Nếu đã có phiếu, hệ thống sẽ từ chối.`} onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/customers/${modal.item.id}`)} /> : null}
-      {modal?.type === "user-edit" ? <UserEditModal item={modal.item} onClose={() => setModal(null)} onSubmit={async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/users/${modal.item.id}`, { method: "PATCH", body: JSON.stringify({ fullName: formData.get("fullName"), email: formData.get("email") || null, phone: formData.get("phone") || null, role: formData.get("role"), status: formData.get("status") }) }); setModal(null); await loadData(); }} /> : null}
-      {modal?.type === "user-delete" ? <ConfirmModal title="Ngưng nhân viên" body={`Chuyển ${modal.item.full_name} sang trạng thái ngưng hoạt động?`} confirmLabel="Ngưng" onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/users/${modal.item.id}`)} /> : null}
-      {modal?.type === "technician-edit" ? <TechnicianEditModal item={modal.item} onClose={() => setModal(null)} onSubmit={async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/technicians/${modal.item.id}`, { method: "PATCH", body: JSON.stringify({ serviceArea: formData.get("serviceArea") || null, status: formData.get("status") }) }); setModal(null); await loadData(); }} /> : null}
-      {modal?.type === "technician-delete" ? <ConfirmModal title="Xóa kỹ thuật viên" body={`Xóa hồ sơ kỹ thuật viên ${modal.item.full_name}?`} onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/technicians/${modal.item.id}`)} /> : null}
+      {modal?.type === "customer-delete" ? <ConfirmModal title="Xóa khách hàng" body={`Xóa khách hàng ${modal.item.name}? Nếu đã có phiếu, hệ thống sẽ từ chối.`} onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/customers/${modal.item.id}`, async () => { await Promise.all([refreshCustomers(), refreshOrders()]); })} /> : null}
+      {modal?.type === "user-edit" ? <UserEditModal item={modal.item} onClose={() => setModal(null)} onSubmit={async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/users/${modal.item.id}`, { method: "PATCH", body: JSON.stringify({ fullName: formData.get("fullName"), email: formData.get("email") || null, phone: formData.get("phone") || null, role: formData.get("role"), status: formData.get("status") }) }); setModal(null); await Promise.all([refreshUsers(), refreshTechnicians(), refreshOrders()]); }} /> : null}
+      {modal?.type === "user-delete" ? <ConfirmModal title="Ngưng nhân viên" body={`Chuyển ${modal.item.full_name} sang trạng thái ngưng hoạt động?`} confirmLabel="Ngưng" onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/users/${modal.item.id}`, async () => { await Promise.all([refreshUsers(), refreshTechnicians(), refreshOrders()]); })} /> : null}
+      {modal?.type === "technician-edit" ? <TechnicianEditModal item={modal.item} onClose={() => setModal(null)} onSubmit={async (event) => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/technicians/${modal.item.id}`, { method: "PATCH", body: JSON.stringify({ serviceArea: formData.get("serviceArea") || null, status: formData.get("status") }) }); setModal(null); await refreshTechnicians(); }} /> : null}
+      {modal?.type === "technician-delete" ? <ConfirmModal title="Xóa kỹ thuật viên" body={`Xóa hồ sơ kỹ thuật viên ${modal.item.full_name}?`} onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/technicians/${modal.item.id}`, async () => { await Promise.all([refreshTechnicians(), refreshOrders()]); })} /> : null}
     </main>
   );
 }
