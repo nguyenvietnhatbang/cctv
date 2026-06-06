@@ -3,14 +3,17 @@
 import { FormEvent, useRef, useState } from "react";
 import { CheckCircle2, Eraser } from "lucide-react";
 import { money } from "@/components/ops/format";
+import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
 
 export function SignatureAcceptanceForm({
   detail,
   onAcceptance,
+  isSubmitting = false,
 }: {
   detail: WorkOrderDetail;
-  onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void;
+  onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
+  isSubmitting?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [drawing, setDrawing] = useState(false);
@@ -54,12 +57,12 @@ export function SignatureAcceptanceForm({
     setHasSignature(false);
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas || !hasSignature) return;
     const formData = new FormData(event.currentTarget);
-    onAcceptance({
+    await onAcceptance({
       acceptanceName: String(formData.get("acceptanceName") ?? ""),
       acceptancePhone: String(formData.get("acceptancePhone") || "") || null,
       signatureDataUrl: canvas.toDataURL("image/png"),
@@ -67,7 +70,7 @@ export function SignatureAcceptanceForm({
   }
 
   return (
-    <form onSubmit={submit} className="rounded-md border border-zinc-200 p-4">
+    <ValidatedForm onSubmit={submit} aria-busy={isSubmitting} className="rounded-md border border-zinc-200 p-4">
       <h3 className="section-title">Nghiệm thu</h3>
       <div className="mt-3 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
         <p className="font-semibold">{detail.workOrder.customer_name}</p>
@@ -75,8 +78,8 @@ export function SignatureAcceptanceForm({
         <p className="mt-2">Tổng tiền: <strong>{money(detail.workOrder.total_amount)}</strong></p>
       </div>
       <div className="mt-3 grid gap-2">
-        <input name="acceptanceName" className="input" defaultValue={detail.workOrder.acceptance_name ?? detail.workOrder.customer_name} required />
-        <input name="acceptancePhone" className="input" defaultValue={detail.workOrder.acceptance_phone ?? ""} placeholder="SĐT người ký nếu khác" />
+        <input name="acceptanceName" className="input" defaultValue={detail.workOrder.acceptance_name ?? detail.workOrder.customer_name} placeholder="Tên người nghiệm thu" required disabled={isSubmitting} />
+        <input name="acceptancePhone" className="input" defaultValue={detail.workOrder.acceptance_phone ?? ""} placeholder="SĐT người ký nếu khác" disabled={isSubmitting} />
         <canvas
           ref={canvasRef}
           width={720}
@@ -88,14 +91,14 @@ export function SignatureAcceptanceForm({
           onPointerCancel={() => setDrawing(false)}
         />
         <label className="flex items-start gap-2 text-sm text-zinc-700">
-          <input type="checkbox" className="mt-1" required />
+          <input type="checkbox" className="mt-1" required aria-label="đồng ý nghiệm thu" />
           <span>Khách đã xem tóm tắt công việc, vật tư và tổng tiền, đồng ý nghiệm thu.</span>
         </label>
         <div className="grid grid-cols-2 gap-2">
-          <button onClick={clear} className="btn-secondary h-10" type="button"><Eraser size={15} />Ký lại</button>
-          <button className="btn-primary h-10" type="submit" disabled={!hasSignature}><CheckCircle2 size={15} />Lưu</button>
+          <button onClick={clear} className="btn-secondary h-10" type="button" disabled={isSubmitting}><Eraser size={15} />Ký lại</button>
+          <PendingButton className="btn-primary h-10" type="submit" disabled={!hasSignature} pending={isSubmitting} pendingLabel="Đang lưu..."><CheckCircle2 size={15} />Lưu</PendingButton>
         </div>
       </div>
-    </form>
+    </ValidatedForm>
   );
 }

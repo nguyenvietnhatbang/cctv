@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
 import { NEXT_STATUS_ACTIONS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
-import { Modal, StatusBadge } from "@/components/ops/ui";
+import { Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { Material, Role, Technician, WorkFile, WorkOrderDetail, WorkOrderStatus } from "@/components/ops/types";
 import { AssignmentForm } from "@/components/ops/modals/assignment-form";
 import { CostNoteForm } from "@/components/ops/modals/cost-note-form";
@@ -56,24 +56,31 @@ export function WorkOrderEditModal({
   onFileDelete,
   onPayment,
   onAcceptance,
+  pendingAction = null,
+  materialPendingAction = null,
+  deletingFileId = null,
 }: {
   detail: WorkOrderDetail;
   role: Role;
   technicians: Technician[];
   onClose: () => void;
-  onStatus: (status: WorkOrderStatus, checkIn?: { checkInLat?: number; checkInLng?: number }) => void;
-  onCancel: (event: FormEvent<HTMLFormElement>) => void;
-  onAssign: (event: FormEvent<HTMLFormElement>) => void;
-  onUpdate: (event: FormEvent<HTMLFormElement>) => void;
-  onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void;
-  onMaterialUpdate: (material: Material, event: FormEvent<HTMLFormElement>) => void;
-  onMaterialDelete: (material: Material) => void;
-  onUpload: (event: FormEvent<HTMLFormElement>) => void;
-  onFileDelete: (file: WorkFile) => void;
-  onPayment: (event: FormEvent<HTMLFormElement>) => void;
-  onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void;
+  onStatus: (status: WorkOrderStatus, checkIn?: { checkInLat?: number; checkInLng?: number }) => void | Promise<void>;
+  onCancel: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onAssign: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialUpdate: (material: Material, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialDelete: (material: Material) => void | Promise<void>;
+  onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onFileDelete: (file: WorkFile) => void | Promise<void>;
+  onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
+  pendingAction?: string | null;
+  materialPendingAction?: { type: "create" } | { type: "update" | "delete"; id: string } | null;
+  deletingFileId?: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<EditTab>("basic");
+  const [preparingStatus, setPreparingStatus] = useState(false);
   const nextAction = NEXT_STATUS_ACTIONS[detail.workOrder.status] ?? null;
   const canNext = nextAction?.roles.includes(role) ?? false;
   const canAssign = ["admin", "dispatcher"].includes(role);
@@ -85,8 +92,14 @@ export function WorkOrderEditModal({
 
   async function handleNextStatus() {
     if (!nextAction) return;
-    const checkIn = nextAction.status === "working" ? await getCurrentPosition() : null;
-    onStatus(nextAction.status, checkIn ?? undefined);
+    setPreparingStatus(true);
+    try {
+      const checkIn = nextAction.status === "working" ? await getCurrentPosition() : null;
+      setPreparingStatus(false);
+      await onStatus(nextAction.status, checkIn ?? undefined);
+    } finally {
+      setPreparingStatus(false);
+    }
   }
 
   return (
@@ -119,19 +132,21 @@ export function WorkOrderEditModal({
         </nav>
 
         {activeTab === "basic" ? (
-          <form onSubmit={onUpdate} className="grid gap-4 rounded-md border border-zinc-200 p-4">
+          <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="grid gap-4 rounded-md border border-zinc-200 p-4">
             <h3 className="section-title">Thông tin cơ bản</h3>
-            <div className="grid gap-3 md:grid-cols-2">
-              <textarea name="description" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.description} placeholder="Mô tả" required />
-              <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
-              <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" />
-              <textarea name="completionNote" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary h-10" onClick={onClose} type="button">Đóng</button>
-              <button className="btn-primary h-10" type="submit">Lưu thông tin</button>
-            </div>
-          </form>
+            <fieldset disabled={pendingAction === "update"} className="contents">
+              <div className="grid gap-3 md:grid-cols-2">
+                <textarea name="description" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.description} placeholder="Mô tả" required />
+                <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
+                <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" />
+                <textarea name="completionNote" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="btn-secondary h-10" onClick={onClose} type="button">Đóng</button>
+                <PendingButton className="btn-primary h-10" type="submit" pending={pendingAction === "update"} pendingLabel="Đang lưu...">Lưu thông tin</PendingButton>
+              </div>
+            </fieldset>
+          </ValidatedForm>
         ) : null}
 
         {activeTab === "workflow" ? (
@@ -140,46 +155,47 @@ export function WorkOrderEditModal({
               <div className="rounded-md border border-zinc-200 p-4">
                 <h3 className="section-title">Chuyển trạng thái</h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-600">Thao tác tiếp theo theo đúng luồng xử lý của phiếu.</p>
-                <button className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button">
+                <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>
                   <CheckCircle2 size={15} />{nextAction.label}
-                </button>
+                </PendingButton>
               </div>
             ) : null}
-            {canAssign ? <AssignmentForm detail={detail} technicians={technicians} onSubmit={onAssign} /> : null}
+            {canAssign ? <AssignmentForm detail={detail} technicians={technicians} onSubmit={onAssign} isSubmitting={pendingAction === "assign"} /> : null}
             {canCancel ? (
-              <form onSubmit={onCancel} className="rounded-md border border-red-200 bg-red-50 p-4 lg:col-span-2">
+              <ValidatedForm onSubmit={onCancel} aria-busy={pendingAction === "cancel"} className="rounded-md border border-red-200 bg-red-50 p-4 lg:col-span-2">
                 <h3 className="section-title text-red-900">Hủy phiếu</h3>
                 <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                  <input name="note" className="input" placeholder="Lý do hủy phiếu" required />
-                  <button className="btn-danger h-11" type="submit"><XCircle size={15} />Hủy phiếu</button>
+                  <input name="note" className="input" placeholder="Lý do hủy phiếu" required disabled={pendingAction === "cancel"} />
+                  <PendingButton className="btn-danger h-11" type="submit" pending={pendingAction === "cancel"} pendingLabel="Đang hủy..."><XCircle size={15} />Hủy phiếu</PendingButton>
                 </div>
-              </form>
+              </ValidatedForm>
             ) : null}
           </section>
         ) : null}
 
         {activeTab === "costs" ? (
-          <CostNoteForm detail={detail} financialLocked={financialLocked} onSubmit={onUpdate} />
+          <CostNoteForm detail={detail} financialLocked={financialLocked} onSubmit={onUpdate} isSubmitting={pendingAction === "update"} />
         ) : null}
 
         {activeTab === "resources" ? (
           <section className="grid gap-4 lg:grid-cols-2">
-            <FileUploadForm detail={detail} locked={financialLocked} onSubmit={onUpload} onDelete={onFileDelete} />
+            <FileUploadForm detail={detail} locked={financialLocked} onSubmit={onUpload} onDelete={onFileDelete} isUploading={pendingAction === "upload"} deletingFileId={deletingFileId} />
             <MaterialsForm
               detail={detail}
               locked={financialLocked}
               onCreate={onMaterialCreate}
               onUpdate={onMaterialUpdate}
               onDelete={onMaterialDelete}
+              pendingAction={materialPendingAction}
             />
           </section>
         ) : null}
 
         {activeTab === "payment" ? (
           <section className="grid gap-4 lg:grid-cols-2">
-            {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} /> : null}
+            {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} /> : null}
             {detail.workOrder.status === "awaiting_acceptance" ? (
-              <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} />
+              <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
             ) : detail.workOrder.accepted_at ? (
               <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                 <p className="font-semibold">Đã nghiệm thu: {dateTime(detail.workOrder.accepted_at)}</p>

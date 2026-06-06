@@ -60,6 +60,40 @@ a {
   box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.16);
 }
 
+.input:invalid:not(:placeholder-shown) {
+  border-color: #fca5a5;
+}
+
+.button-spinner,
+.loading-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border-style: solid;
+  border-color: currentColor;
+  border-right-color: transparent;
+  animation: spin 800ms linear infinite;
+}
+
+.button-spinner {
+  height: 1rem;
+  width: 1rem;
+  border-width: 2px;
+}
+
+.loading-spinner {
+  height: 2rem;
+  width: 2rem;
+  border-width: 3px;
+  color: #0f766e;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .btn-primary:focus-visible,
 .btn-secondary:focus-visible,
 .btn-danger:focus-visible,

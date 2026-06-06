@@ -2,7 +2,7 @@
 
 import { Edit, Trash2 } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
-import { EmptyState, TableShell, Toolbar } from "@/components/ops/ui";
+import { EmptyState, PendingButton, TableShell, Toolbar, ValidatedForm } from "@/components/ops/ui";
 import type { AppUser } from "@/components/ops/types";
 
 export function UsersScreen({
@@ -20,8 +20,8 @@ export function UsersScreen({
 }) {
   return (
     <>
-      <Toolbar title="Nhân viên" subtitle="Quản lý tài khoản nội bộ, không dùng Supabase Auth">
-        <form onSubmit={onCreate} aria-busy={isCreating} className="grid gap-3 md:grid-cols-3 xl:grid-cols-[1fr_1fr_160px_160px_160px_1fr_auto]">
+      <Toolbar title="Nhân viên" subtitle="Quản lý tài khoản nội bộ">
+        <ValidatedForm onSubmit={onCreate} aria-busy={isCreating} className="grid gap-3 md:grid-cols-3 xl:grid-cols-[1fr_1fr_160px_160px_160px_1fr_auto]">
           <fieldset disabled={isCreating} className="contents">
             <input name="fullName" className="input" placeholder="Họ tên" required />
             <input name="email" type="email" className="input" placeholder="Email" />
@@ -31,9 +31,9 @@ export function UsersScreen({
               {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
             </select>
             <input name="serviceArea" className="input" placeholder="Khu vực nếu là kỹ thuật" />
-            <button className="btn-primary h-11" type="submit">{isCreating ? "Đang tạo..." : "Tạo"}</button>
+            <PendingButton className="btn-primary h-11" type="submit" pending={isCreating} pendingLabel="Đang tạo...">Tạo</PendingButton>
           </fieldset>
-        </form>
+        </ValidatedForm>
       </Toolbar>
       <TableShell>
         {users.length === 0 ? <EmptyState>Chưa có nhân viên.</EmptyState> : (

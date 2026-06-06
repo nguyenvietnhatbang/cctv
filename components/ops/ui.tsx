@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ButtonHTMLAttributes, type FormHTMLAttributes, type ReactNode } from "react";
 import { X } from "lucide-react";
 import {
   WORK_ORDER_STATUS_LABELS,
@@ -20,6 +20,88 @@ export function Field({
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+function fieldLabel(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
+  const explicitLabel = element.getAttribute("aria-label");
+  if (explicitLabel) return explicitLabel.toLowerCase();
+  const placeholder = element.getAttribute("placeholder");
+  if (placeholder) return placeholder.toLowerCase();
+  const name = element.getAttribute("name");
+  return name ? `trường ${name}` : "trường này";
+}
+
+function vietnameseValidationMessage(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) {
+  const label = fieldLabel(element);
+  const validity = element.validity;
+  if (validity.valueMissing) return `Vui lòng nhập ${label}.`;
+  if (validity.typeMismatch && element instanceof HTMLInputElement && element.type === "email") return "Email chưa đúng định dạng.";
+  if (validity.tooShort && element instanceof HTMLInputElement) return `${label} cần ít nhất ${element.minLength} ký tự.`;
+  if (validity.rangeUnderflow && element instanceof HTMLInputElement) return `${label} không được nhỏ hơn ${element.min}.`;
+  if (validity.rangeOverflow && element instanceof HTMLInputElement) return `${label} không được lớn hơn ${element.max}.`;
+  if (validity.stepMismatch) return `${label} chưa đúng bước nhập cho phép.`;
+  if (validity.badInput) return `Giá trị của ${label} chưa hợp lệ.`;
+  return `Vui lòng kiểm tra lại ${label}.`;
+}
+
+export function ValidatedForm({
+  children,
+  onInvalidCapture,
+  onInputCapture,
+  ...props
+}: FormHTMLAttributes<HTMLFormElement>) {
+  return (
+    <form
+      {...props}
+      noValidate={false}
+      onInvalidCapture={(event) => {
+        const target = event.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
+          target.setCustomValidity(vietnameseValidationMessage(target));
+        }
+        onInvalidCapture?.(event);
+      }}
+      onInputCapture={(event) => {
+        const target = event.target;
+        if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
+          target.setCustomValidity("");
+        }
+        onInputCapture?.(event);
+      }}
+    >
+      {children}
+    </form>
+  );
+}
+
+export function PendingButton({
+  pending,
+  pendingLabel = "Đang xử lý...",
+  children,
+  disabled,
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  pending?: boolean;
+  pendingLabel?: string;
+}) {
+  return (
+    <button {...props} className={className} disabled={disabled || pending} aria-busy={pending || undefined}>
+      {pending ? <span className="button-spinner" aria-hidden="true" /> : null}
+      {pending ? pendingLabel : children}
+    </button>
+  );
+}
+
+export function LoadingScreen({ label = "Đang tải dữ liệu..." }: { label?: string }) {
+  return (
+    <div className="grid min-h-screen place-items-center bg-zinc-100 px-4 text-zinc-700">
+      <div className="grid justify-items-center gap-3 rounded-lg border border-zinc-200 bg-white px-6 py-5 shadow-sm">
+        <span className="loading-spinner" aria-hidden="true" />
+        <p className="text-sm font-semibold">{label}</p>
+      </div>
+    </div>
   );
 }
 
@@ -75,18 +157,31 @@ export function ConfirmModal({
   body: string;
   confirmLabel?: string;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }) {
+  const [confirming, setConfirming] = useState(false);
+
+  async function confirm() {
+    setConfirming(true);
+    try {
+      await onConfirm();
+    } catch {
+      // The caller owns user-facing error state.
+    } finally {
+      setConfirming(false);
+    }
+  }
+
   return (
     <Modal title={title} size="sm" onClose={onCancel}>
       <p className="text-sm leading-6 text-zinc-600">{body}</p>
       <div className="mt-5 flex justify-end gap-2">
-        <button className="btn-secondary h-10" onClick={onCancel} type="button">
+        <button className="btn-secondary h-10" onClick={onCancel} type="button" disabled={confirming}>
           Hủy
         </button>
-        <button className="btn-danger h-10" onClick={onConfirm} type="button">
+        <PendingButton className="btn-danger h-10" onClick={confirm} type="button" pending={confirming} pendingLabel="Đang xử lý...">
           {confirmLabel}
-        </button>
+        </PendingButton>
       </div>
     </Modal>
   );

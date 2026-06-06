@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { CreditCard, FileText, MapPinned, Phone, UserRound, type LucideIcon } from "lucide-react";
 import { ROLE_LABELS, TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { Modal, StatusBadge } from "@/components/ops/ui";
+import { Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { AppUser, Customer, Technician, WorkOrderListItem } from "@/components/ops/types";
 
 type CustomerTab = "info" | "orders" | "payments";
@@ -150,23 +150,27 @@ export function CustomerEditModal({
   item,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: {
   item: Customer;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting?: boolean;
 }) {
   return (
     <Modal title="Sửa khách hàng" onClose={onClose}>
-      <form onSubmit={onSubmit} className="grid gap-3">
-        <input name="name" className="input" defaultValue={item.name} required />
-        <input name="phone" className="input" defaultValue={item.phone} required />
-        <input name="address" className="input" defaultValue={item.address} required />
-        <input name="addressNote" className="input" defaultValue={item.address_note ?? ""} />
-        <div className="flex justify-end gap-2">
-          <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
-          <button className="btn-primary h-10" type="submit">Lưu</button>
-        </div>
-      </form>
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="grid gap-3">
+        <fieldset disabled={isSubmitting} className="contents">
+          <input name="name" className="input" defaultValue={item.name} placeholder="Tên khách" required />
+          <input name="phone" className="input" defaultValue={item.phone} placeholder="Số điện thoại" required />
+          <input name="address" className="input" defaultValue={item.address} placeholder="Địa chỉ" required />
+          <input name="addressNote" className="input" defaultValue={item.address_note ?? ""} placeholder="Ghi chú địa chỉ" />
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
+            <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang lưu...">Lưu</PendingButton>
+          </div>
+        </fieldset>
+      </ValidatedForm>
     </Modal>
   );
 }
@@ -175,29 +179,33 @@ export function UserEditModal({
   item,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: {
   item: AppUser;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting?: boolean;
 }) {
   return (
     <Modal title="Sửa nhân viên" onClose={onClose}>
-      <form onSubmit={onSubmit} className="grid gap-3">
-        <input name="fullName" className="input" defaultValue={item.full_name} required />
-        <input name="email" type="email" className="input" defaultValue={item.email ?? ""} />
-        <input name="phone" className="input" defaultValue={item.phone ?? ""} />
-        <select name="role" className="input" defaultValue={item.role}>
-          {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
-        </select>
-        <select name="status" className="input" defaultValue={item.status}>
-          <option value="active">Hoạt động</option>
-          <option value="inactive">Ngưng</option>
-        </select>
-        <div className="flex justify-end gap-2">
-          <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
-          <button className="btn-primary h-10" type="submit">Lưu</button>
-        </div>
-      </form>
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="grid gap-3">
+        <fieldset disabled={isSubmitting} className="contents">
+          <input name="fullName" className="input" defaultValue={item.full_name} placeholder="Họ tên" required />
+          <input name="email" type="email" className="input" defaultValue={item.email ?? ""} placeholder="Email" />
+          <input name="phone" className="input" defaultValue={item.phone ?? ""} placeholder="Số điện thoại" />
+          <select name="role" className="input" defaultValue={item.role}>
+            {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
+          </select>
+          <select name="status" className="input" defaultValue={item.status}>
+            <option value="active">Hoạt động</option>
+            <option value="inactive">Ngưng</option>
+          </select>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
+            <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang lưu...">Lưu</PendingButton>
+          </div>
+        </fieldset>
+      </ValidatedForm>
     </Modal>
   );
 }
@@ -206,24 +214,28 @@ export function TechnicianEditModal({
   item,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: {
   item: Technician;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting?: boolean;
 }) {
   return (
     <Modal title="Sửa kỹ thuật viên" onClose={onClose}>
-      <form onSubmit={onSubmit} className="grid gap-3">
-        <input className="input" value={item.full_name} disabled />
-        <input name="serviceArea" className="input" defaultValue={item.service_area ?? ""} placeholder="Khu vực phụ trách" />
-        <select name="status" className="input" defaultValue={item.status}>
-          {Object.entries(TECHNICIAN_STATUS_LABELS).map(([status, label]) => <option key={status} value={status}>{label}</option>)}
-        </select>
-        <div className="flex justify-end gap-2">
-          <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
-          <button className="btn-primary h-10" type="submit">Lưu</button>
-        </div>
-      </form>
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="grid gap-3">
+        <fieldset disabled={isSubmitting} className="contents">
+          <input className="input" value={item.full_name} disabled />
+          <input name="serviceArea" className="input" defaultValue={item.service_area ?? ""} placeholder="Khu vực phụ trách" />
+          <select name="status" className="input" defaultValue={item.status}>
+            {Object.entries(TECHNICIAN_STATUS_LABELS).map(([status, label]) => <option key={status} value={status}>{label}</option>)}
+          </select>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
+            <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang lưu...">Lưu</PendingButton>
+          </div>
+        </fieldset>
+      </ValidatedForm>
     </Modal>
   );
 }

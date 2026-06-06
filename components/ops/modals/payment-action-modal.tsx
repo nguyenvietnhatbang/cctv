@@ -9,14 +9,16 @@ export function PaymentActionModal({
   detail,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: {
   detail: WorkOrderDetail;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting?: boolean;
 }) {
   return (
     <Modal title={`Xử lý thanh toán ${detail.workOrder.code}`} size="lg" onClose={onClose}>
-      <PaymentForm detail={detail} onSubmit={onSubmit} />
+      <PaymentForm detail={detail} onSubmit={onSubmit} isSubmitting={isSubmitting} />
     </Modal>
   );
 }

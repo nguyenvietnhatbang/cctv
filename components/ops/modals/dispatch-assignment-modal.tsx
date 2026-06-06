@@ -13,11 +13,13 @@ export function DispatchAssignmentModal({
   technicians,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: {
   detail: WorkOrderDetail;
   technicians: Technician[];
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting?: boolean;
 }) {
   return (
     <Modal title={`Phân công ${detail.workOrder.code}`} size="lg" onClose={onClose}>
@@ -37,7 +39,7 @@ export function DispatchAssignmentModal({
             </div>
           </div>
 
-          <AssignmentForm detail={detail} technicians={technicians} onSubmit={onSubmit} />
+          <AssignmentForm detail={detail} technicians={technicians} onSubmit={onSubmit} isSubmitting={isSubmitting} />
         </section>
 
         <aside className="rounded-md border border-zinc-200 p-4">

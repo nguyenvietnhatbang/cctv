@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { BarChart3 } from "lucide-react";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
 import { money, todayInVietnam } from "@/components/ops/format";
-import { StatusBadge } from "@/components/ops/ui";
+import { PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { ReportData } from "@/components/ops/types";
 
 export function ReportsScreen({
@@ -11,9 +12,19 @@ export function ReportsScreen({
   onSubmit,
 }: {
   report: ReportData | null;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
 }) {
   const today = todayInVietnam();
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    setSubmitting(true);
+    try {
+      await onSubmit(event);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <>
@@ -22,11 +33,11 @@ export function ReportsScreen({
           <h2>Báo cáo cơ bản</h2>
           <span>Lọc theo ngày</span>
         </div>
-        <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-[180px_180px_auto]">
-          <input name="from" type="date" className="input" defaultValue={report?.range.from ?? today} />
-          <input name="to" type="date" className="input" defaultValue={report?.range.to ?? today} />
-          <button className="btn-primary h-11" type="submit"><BarChart3 size={16} />Xem báo cáo</button>
-        </form>
+        <ValidatedForm onSubmit={submit} aria-busy={submitting} className="grid gap-3 md:grid-cols-[180px_180px_auto]">
+          <input name="from" type="date" className="input" defaultValue={report?.range.from ?? today} disabled={submitting} />
+          <input name="to" type="date" className="input" defaultValue={report?.range.to ?? today} disabled={submitting} />
+          <PendingButton className="btn-primary h-11" type="submit" pending={submitting} pendingLabel="Đang tải..."><BarChart3 size={16} />Xem báo cáo</PendingButton>
+        </ValidatedForm>
       </section>
       {report ? (
         <>

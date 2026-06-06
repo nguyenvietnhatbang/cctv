@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES } from "@/lib/types";
-import { Modal } from "@/components/ops/ui";
+import { Modal, PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { Customer, Technician } from "@/components/ops/types";
 
 export function WorkOrderCreateModal({
@@ -36,7 +36,7 @@ export function WorkOrderCreateModal({
 
   return (
     <Modal title="Tạo phiếu mới" size="lg" onClose={onClose}>
-      <form onSubmit={handleSubmit} aria-busy={isSubmitting} className="grid gap-4">
+      <ValidatedForm onSubmit={handleSubmit} aria-busy={isSubmitting} className="grid gap-4">
         <fieldset disabled={isSubmitting} className="contents">
           <div className="grid gap-3 md:grid-cols-2">
             <select name="customerId" className="input md:col-span-2" value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)}>
@@ -78,10 +78,10 @@ export function WorkOrderCreateModal({
           <input name="internalNote" className="input" placeholder="Ghi chú nội bộ" />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
-            <button className="btn-primary h-10" type="submit">{isSubmitting ? "Đang tạo..." : "Tạo phiếu"}</button>
+            <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang tạo...">Tạo phiếu</PendingButton>
           </div>
         </fieldset>
-      </form>
+      </ValidatedForm>
     </Modal>
   );
 }
