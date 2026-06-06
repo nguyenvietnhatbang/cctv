@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
 import { NEXT_STATUS_ACTIONS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
-import { Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
+import { Field, Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { Material, Role, Technician, WorkFile, WorkOrderDetail, WorkOrderStatus } from "@/components/ops/types";
 import { AssignmentForm } from "@/components/ops/modals/assignment-form";
 import { CostNoteForm } from "@/components/ops/modals/cost-note-form";
@@ -104,17 +104,17 @@ export function WorkOrderEditModal({
 
   return (
     <Modal title={`Sửa phiếu ${detail.workOrder.code}`} size="xl" onClose={onClose}>
-      <div className="grid gap-4">
-        <section className="rounded-md border border-zinc-200 p-4">
+      <div className="modal-stack">
+        <section className="modal-hero">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={detail.workOrder.status} />
+            <StatusBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
           </div>
           <h3 className="mt-3 text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
           <p className="mt-2 text-sm text-zinc-500">Hẹn: {dateTime(detail.workOrder.appointment_at)}</p>
         </section>
 
-        <nav className="flex gap-2 overflow-x-auto" aria-label="Sửa phiếu">
+        <nav className="modal-tabs" aria-label="Sửa phiếu">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -132,16 +132,24 @@ export function WorkOrderEditModal({
         </nav>
 
         {activeTab === "basic" ? (
-          <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="grid gap-4 rounded-md border border-zinc-200 p-4">
+          <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="modal-panel form-grid">
             <h3 className="section-title">Thông tin cơ bản</h3>
             <fieldset disabled={pendingAction === "update"} className="contents">
               <div className="grid gap-3 md:grid-cols-2">
-                <textarea name="description" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.description} placeholder="Mô tả" required />
-                <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
-                <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" />
-                <textarea name="completionNote" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành" />
+                <Field label="Mô tả công việc">
+                  <textarea name="description" className="input min-h-24" defaultValue={detail.workOrder.description} placeholder="Mô tả" required />
+                </Field>
+                <Field label="Thời gian hẹn">
+                  <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
+                </Field>
+                <Field label="Ghi chú nội bộ">
+                  <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" />
+                </Field>
+                <Field label="Ghi chú hoàn thành">
+                  <textarea name="completionNote" className="input min-h-24" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành" />
+                </Field>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="form-actions">
                 <button className="btn-secondary h-10" onClick={onClose} type="button">Đóng</button>
                 <PendingButton className="btn-primary h-10" type="submit" pending={pendingAction === "update"} pendingLabel="Đang lưu...">Lưu thông tin</PendingButton>
               </div>
@@ -152,7 +160,7 @@ export function WorkOrderEditModal({
         {activeTab === "workflow" ? (
           <section className="grid gap-4 lg:grid-cols-2">
             {canNext && nextAction ? (
-              <div className="rounded-md border border-zinc-200 p-4">
+              <div className="modal-panel">
                 <h3 className="section-title">Chuyển trạng thái</h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-600">Thao tác tiếp theo theo đúng luồng xử lý của phiếu.</p>
                 <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>

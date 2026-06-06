@@ -1,9 +1,27 @@
 "use client";
 
-import { Bell, CheckCircle2, Eye } from "lucide-react";
+import { useState } from "react";
+import { Bell, CheckCircle2, Eye, Search, MailOpen, Mail, Filter } from "lucide-react";
 import { dateTime } from "@/components/ops/format";
-import { EmptyState } from "@/components/ops/ui";
+import { EmptyState, TableShell } from "@/components/ops/ui";
 import type { NotificationItem } from "@/components/ops/types";
+
+function timeAgo(dateString: string) {
+  try {
+    const now = new Date();
+    const past = new Date(dateString);
+    const diffMs = now.getTime() - past.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Vừa xong";
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    const diffHrs = Math.floor(diffMins / 60);
+    if (diffHrs < 24) return `${diffHrs} giờ trước`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays} ngày trước`;
+  } catch {
+    return dateTime(dateString);
+  }
+}
 
 export function NotificationsScreen({
   notifications,
@@ -14,35 +32,162 @@ export function NotificationsScreen({
   onOpen: (id: string) => void;
   onRead: (id: string) => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredNotifications = notifications.filter((item) => {
+    return (
+      !searchQuery ||
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.body.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
+  const unreadCount = notifications.filter((item) => !item.read_at).length;
+
   return (
-    <section className="panel">
-      <div className="panel-heading">
-        <h2>Thông báo</h2>
-        <span>{notifications.filter((item) => !item.read_at).length} chưa đọc</span>
+    <div className="flex flex-col gap-6">
+      {/* Screen Title & Statistics Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Thông báo</h2>
+          <p className="text-xs text-zinc-500 mt-1">Các cập nhật trạng thái công việc và ghi chú quan trọng từ kỹ thuật</p>
+        </div>
+        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
+          {unreadCount} chưa đọc
+        </span>
       </div>
-      <div className="grid gap-2">
-        {notifications.map((item) => (
-          <div key={item.id} className={`rounded-md border p-3 ${item.read_at ? "border-zinc-200" : "border-cyan-200 bg-cyan-50"}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold">{item.title}</p>
-                <p className="mt-1 text-sm text-zinc-600">{item.body}</p>
-                <p className="mt-2 text-xs text-zinc-500">{dateTime(item.created_at)}</p>
-              </div>
-              <Bell size={18} className={item.read_at ? "text-zinc-400" : "text-cyan-700"} />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {item.work_order_id ? (
-                <button onClick={() => onOpen(item.work_order_id!)} className="btn-secondary h-9" type="button"><Eye size={15} />Mở phiếu</button>
-              ) : null}
-              {!item.read_at ? (
-                <button onClick={() => onRead(item.id)} className="btn-primary h-9" type="button"><CheckCircle2 size={15} />Đã đọc</button>
-              ) : null}
-            </div>
+
+      {/* Notifications Table Shell with Compact Filter Header */}
+      <TableShell>
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-zinc-100 bg-zinc-50/20">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-zinc-500">
+              Tổng số: {filteredNotifications.length} thông báo
+            </span>
           </div>
-        ))}
-        {notifications.length === 0 ? <EmptyState>Chưa có thông báo.</EmptyState> : null}
-      </div>
-    </section>
+          <div className="flex items-center gap-2">
+            <div className="relative flex items-center !w-64 shrink-0">
+              <Search size={13} className="absolute left-2.5 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input pl-8 h-9 py-1 text-xs !w-full"
+                placeholder="Tìm kiếm thông báo..."
+              />
+            </div>
+            <button className="btn-secondary h-9 text-xs px-2.5 flex items-center gap-1.5" type="button">
+              <Filter size={13} />
+              Lọc
+            </button>
+          </div>
+        </div>
+
+        {filteredNotifications.length === 0 ? (
+          <EmptyState>Chưa có thông báo nào.</EmptyState>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th className="w-[40px] text-center">
+                  <input type="checkbox" className="rounded border-zinc-300" disabled />
+                </th>
+                <th className="w-[380px]">Nội dung</th>
+                <th>Công việc liên kết</th>
+                <th>Thời gian</th>
+                <th>Trạng thái</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filteredNotifications.map((item) => {
+                const isUnread = !item.read_at;
+
+                return (
+                  <tr
+                    key={item.id}
+                    className={isUnread ? "bg-zinc-50/50 hover:bg-zinc-50/70" : "hover:bg-zinc-50/30"}
+                  >
+                    <td className="text-center">
+                      <input type="checkbox" className="rounded border-zinc-300" disabled />
+                    </td>
+                    <td>
+                      <div className="flex items-start gap-2.5">
+                        <div
+                          className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isUnread ? "bg-blue-50 text-blue-600" : "bg-zinc-100 text-zinc-400"}`}
+                        >
+                          <Bell size={12} />
+                        </div>
+                        <div>
+                          <p className={`text-sm ${isUnread ? "font-semibold text-zinc-900" : "text-zinc-700"}`}>
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{item.body}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      {item.work_order_id ? (
+                        <button
+                          onClick={() => onOpen(item.work_order_id!)}
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 transition-colors animate-fade-in"
+                          type="button"
+                        >
+                          <Eye size={11} />
+                          Xem công việc
+                        </button>
+                      ) : (
+                        <span className="text-xs text-zinc-400">Không có</span>
+                      )}
+                    </td>
+                    <td>
+                      <p className="text-xs font-medium text-zinc-700">{timeAgo(item.created_at)}</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">{dateTime(item.created_at)}</p>
+                    </td>
+                    <td>
+                      {isUnread ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                          <Mail size={10} />
+                          Chưa đọc
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-50 text-zinc-500 border border-zinc-200">
+                          <MailOpen size={10} />
+                          Đã đọc
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="action-cell">
+                        {item.work_order_id ? (
+                          <button
+                            onClick={() => onOpen(item.work_order_id!)}
+                            className="icon-button"
+                            type="button"
+                            title="Mở công việc"
+                          >
+                            <Eye size={15} />
+                          </button>
+                        ) : null}
+                        {isUnread ? (
+                          <button
+                            onClick={() => onRead(item.id)}
+                            className="icon-button text-green-600 hover:border-green-200 hover:bg-green-50"
+                            type="button"
+                            title="Đánh dấu đã đọc"
+                          >
+                            <CheckCircle2 size={15} />
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </TableShell>
+    </div>
   );
 }

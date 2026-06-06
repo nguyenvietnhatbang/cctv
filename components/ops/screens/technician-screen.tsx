@@ -21,7 +21,7 @@ export function TechnicianScreen({
               <p className="text-sm font-semibold text-zinc-500">{order.code}</p>
               <h2 className="mt-1 text-lg font-semibold">{order.customer_name}</h2>
             </div>
-            <StatusBadge status={order.status} />
+            <StatusBadge order={order} />
           </div>
           <p className="mt-3 text-sm leading-6 text-zinc-600">{order.description}</p>
           <div className="mt-4 grid gap-2 text-sm">

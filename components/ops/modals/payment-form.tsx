@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { CreditCard } from "lucide-react";
 import { money } from "@/components/ops/format";
-import { PendingButton, ValidatedForm } from "@/components/ops/ui";
+import { Field, PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
 
 export function PaymentForm({
@@ -21,10 +21,10 @@ export function PaymentForm({
   const [method, setMethod] = useState(detail.workOrder.payment_method ?? "cash");
 
   return (
-    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="rounded-md border border-zinc-200 p-4">
+    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-panel form-grid">
       <h3 className="section-title">Thanh toán</h3>
-      <p className="mt-2 text-2xl font-semibold">{money(detail.workOrder.total_amount)}</p>
-      <div className="mt-3 grid gap-1 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
+      <p className="text-2xl font-semibold">{money(detail.workOrder.total_amount)}</p>
+      <div className="grid gap-1 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
         <p>Tiền công: <strong>{money(detail.workOrder.labor_cost)}</strong></p>
         <p>Vật tư: <strong>{money(detail.workOrder.material_amount)}</strong></p>
         <p>VAT: <strong>{money(detail.workOrder.vat_amount)}</strong></p>
@@ -34,30 +34,44 @@ export function PaymentForm({
           Chỉ cập nhật thanh toán khi phiếu đã hoàn thành, chờ thanh toán hoặc đang công nợ.
         </p>
       ) : null}
-      <div className="mt-3 grid gap-2">
-        <select
-          name="status"
-          className="input"
-          value={status}
-          onChange={(event) => {
-            const nextStatus = event.target.value as "paid" | "debt";
-            setStatus(nextStatus);
-            if (nextStatus === "debt") setMethod("debt");
-            if (nextStatus === "paid" && method === "debt") setMethod("cash");
-          }}
-          disabled={!canSubmit || isSubmitting}
-        >
-          <option value="paid">Đã thanh toán</option>
-          {currentStatus !== "debt" ? <option value="debt">Công nợ</option> : null}
-        </select>
-        <select name="method" className="input" value={method} onChange={(event) => setMethod(event.target.value)} disabled={!canSubmit || isSubmitting || status === "debt"}>
-          <option value="cash">Tiền mặt</option>
-          <option value="bank_transfer">Chuyển khoản</option>
-          <option value="debt">Công nợ</option>
-        </select>
-        <input name="transactionRef" className="input" defaultValue={detail.workOrder.transaction_ref ?? ""} placeholder="Mã giao dịch" disabled={!canSubmit || isSubmitting || status === "debt"} />
-        <input name="debtDueDate" className="input" type="date" defaultValue={detail.workOrder.debt_due_date ?? ""} disabled={!canSubmit || isSubmitting || status !== "debt"} />
-        <input name="note" className="input" defaultValue={detail.workOrder.payment_note ?? ""} placeholder={status === "debt" ? "Ghi chú công nợ hoặc ngày hẹn" : "Ghi chú"} disabled={!canSubmit || isSubmitting} />
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Trạng thái thanh toán">
+          <select
+            name="status"
+            className="input"
+            value={status}
+            onChange={(event) => {
+              const nextStatus = event.target.value as "paid" | "debt";
+              setStatus(nextStatus);
+              if (nextStatus === "debt") setMethod("debt");
+              if (nextStatus === "paid" && method === "debt") setMethod("cash");
+            }}
+            disabled={!canSubmit || isSubmitting}
+          >
+            <option value="paid">Đã thanh toán</option>
+            {currentStatus !== "debt" ? <option value="debt">Công nợ</option> : null}
+          </select>
+        </Field>
+        <Field label="Phương thức">
+          <select name="method" className="input" value={method} onChange={(event) => setMethod(event.target.value)} disabled={!canSubmit || isSubmitting || status === "debt"}>
+            <option value="cash">Tiền mặt</option>
+            <option value="bank_transfer">Chuyển khoản</option>
+            <option value="debt">Công nợ</option>
+          </select>
+        </Field>
+        <Field label="Mã giao dịch">
+          <input name="transactionRef" className="input" defaultValue={detail.workOrder.transaction_ref ?? ""} placeholder="Mã giao dịch" disabled={!canSubmit || isSubmitting || status === "debt"} />
+        </Field>
+        <Field label="Hạn công nợ">
+          <input name="debtDueDate" className="input" type="date" defaultValue={detail.workOrder.debt_due_date ?? ""} disabled={!canSubmit || isSubmitting || status !== "debt"} />
+        </Field>
+        <div className="md:col-span-2">
+          <Field label="Ghi chú">
+            <input name="note" className="input" defaultValue={detail.workOrder.payment_note ?? ""} placeholder={status === "debt" ? "Ghi chú công nợ hoặc ngày hẹn" : "Ghi chú"} disabled={!canSubmit || isSubmitting} />
+          </Field>
+        </div>
+      </div>
+      <div className="form-actions">
         <PendingButton className="btn-primary h-10" type="submit" disabled={!canSubmit} pending={isSubmitting} pendingLabel="Đang cập nhật..."><CreditCard size={15} />Xác nhận</PendingButton>
       </div>
     </ValidatedForm>

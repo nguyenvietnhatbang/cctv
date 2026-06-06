@@ -4,10 +4,11 @@ export type { Role, SessionUser, WorkOrderStatus, WorkOrderType };
 
 export type Metrics = {
   total_today: string;
-  pending_assignment: string;
-  working: string;
-  awaiting_acceptance: string;
-  awaiting_payment: string;
+  todo: string;
+  doing: string;
+  doing_overdue: string;
+  done: string;
+  done_overdue: string;
   paid_today: string;
   open_debt: string;
 };
@@ -22,6 +23,7 @@ export type WorkOrderListItem = {
   description: string;
   appointment_at: string | null;
   created_at: string;
+  updated_at?: string;
   labor_cost: string;
   vat_rate: string;
   customer_name: string;
@@ -158,8 +160,10 @@ export type ModalState =
   | { type: "payment-action"; id: string }
   | { type: "order-cancel"; item: WorkOrderListItem }
   | { type: "customer-detail"; item: Customer }
+  | { type: "customer-create" }
   | { type: "customer-edit"; item: Customer }
   | { type: "customer-delete"; item: Customer }
+  | { type: "user-create" }
   | { type: "user-edit"; item: AppUser }
   | { type: "user-delete"; item: AppUser }
   | { type: "technician-edit"; item: Technician }

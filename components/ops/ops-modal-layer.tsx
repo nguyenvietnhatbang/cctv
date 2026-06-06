@@ -4,7 +4,14 @@ import { useState, type Dispatch, type FormEvent, type SetStateAction } from "re
 import { apiFetch } from "@/components/ops/api";
 import { removeById, replaceById } from "@/components/ops/app-utils";
 import type { AppData, AppUser, Customer, ModalState, Role, Technician, WorkOrderDetail } from "@/components/ops/types";
-import { CustomerDetailModal, CustomerEditModal, TechnicianEditModal, UserEditModal } from "@/components/ops/entity-modals";
+import {
+  CustomerCreateModal,
+  CustomerDetailModal,
+  CustomerEditModal,
+  TechnicianEditModal,
+  UserCreateModal,
+  UserEditModal,
+} from "@/components/ops/entity-modals";
 import { ConfirmModal, Modal, PendingButton, ValidatedForm } from "@/components/ops/ui";
 import {
   DispatchAssignmentModal,
@@ -33,6 +40,8 @@ type OpsModalLayerProps = {
   submitAssignment: (event: FormEvent<HTMLFormElement>, closeAfterSubmit?: boolean) => Promise<void>;
   submitPayment: (event: FormEvent<HTMLFormElement>, closeAfterSubmit?: boolean) => Promise<void>;
   submitWorkOrderPatch: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onCreateCustomer: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onCreateUser: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 };
 
 export function OpsModalLayer({
@@ -53,6 +62,8 @@ export function OpsModalLayer({
   submitAssignment,
   submitPayment,
   submitWorkOrderPatch,
+  onCreateCustomer,
+  onCreateUser,
 }: OpsModalLayerProps) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [materialPendingAction, setMaterialPendingAction] = useState<{ type: "create" } | { type: "update" | "delete"; id: string } | null>(null);
@@ -209,8 +220,29 @@ export function OpsModalLayer({
           })}
         />
       ) : null}
+      {modal?.type === "customer-create" ? (
+        <CustomerCreateModal
+          onClose={() => setModal(null)}
+          isSubmitting={pendingAction === "customer-create"}
+          onSubmit={(event) => runMutation("customer-create", async () => {
+            await onCreateCustomer(event);
+            setModal(null);
+          })}
+        />
+      ) : null}
       {modal?.type === "customer-detail" ? <CustomerDetailModal item={modal.item} orders={data.orders} onClose={() => setModal(null)} /> : null}
       {modal?.type === "customer-delete" ? <ConfirmModal title="Xóa khách hàng" body={`Xóa khách hàng ${modal.item.name}? Nếu đã có phiếu, hệ thống sẽ từ chối.`} onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/customers/${modal.item.id}`, async () => { setData((current) => ({ ...current, customers: removeById(current.customers, modal.item.id) })); })} /> : null}
+
+      {modal?.type === "user-create" ? (
+        <UserCreateModal
+          onClose={() => setModal(null)}
+          isSubmitting={pendingAction === "user-create"}
+          onSubmit={(event) => runMutation("user-create", async () => {
+            await onCreateUser(event);
+            setModal(null);
+          })}
+        />
+      ) : null}
 
       {modal?.type === "user-edit" ? (
         <UserEditModal

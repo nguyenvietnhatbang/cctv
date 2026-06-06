@@ -26,19 +26,21 @@ export async function GET() {
 
     const result = await query<{
       total_today: string;
-      pending_assignment: string;
-      working: string;
-      awaiting_acceptance: string;
-      awaiting_payment: string;
+      todo: string;
+      doing: string;
+      doing_overdue: string;
+      done: string;
+      done_overdue: string;
       paid_today: string;
       open_debt: string;
     }>(
       `select
         count(*) filter (where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date) as total_today,
-        count(*) filter (where wo.status = 'pending_assignment') as pending_assignment,
-        count(*) filter (where wo.status in ('traveling', 'working')) as working,
-        count(*) filter (where wo.status = 'awaiting_acceptance') as awaiting_acceptance,
-        count(*) filter (where wo.status = 'awaiting_payment') as awaiting_payment,
+        count(*) filter (where wo.status in ('pending_assignment', 'assigned', 'accepted', 'traveling')) as todo,
+        count(*) filter (where wo.status in ('working', 'awaiting_acceptance') and (wo.appointment_at is null or wo.appointment_at >= now())) as doing,
+        count(*) filter (where wo.status in ('working', 'awaiting_acceptance') and wo.appointment_at < now()) as doing_overdue,
+        count(*) filter (where wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and (wo.appointment_at is null or wo.updated_at <= wo.appointment_at)) as done,
+        count(*) filter (where wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and wo.appointment_at is not null and wo.updated_at > wo.appointment_at) as done_overdue,
         coalesce(sum(p.total_amount) filter (
           where p.status = 'paid' and (p.confirmed_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date
         ), 0) as paid_today,

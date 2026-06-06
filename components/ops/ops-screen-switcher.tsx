@@ -41,6 +41,7 @@ type OpsScreenSwitcherProps = {
   onReadNotification: (id: string) => Promise<void>;
   onEditUser: (item: AppData["users"][number]) => void;
   onDeleteUser: (item: AppData["users"][number]) => void;
+  onOpenCreateModal: (type: "user" | "customer") => void;
 };
 
 export function OpsScreenSwitcher({
@@ -70,6 +71,7 @@ export function OpsScreenSwitcher({
   onReadNotification,
   onEditUser,
   onDeleteUser,
+  onOpenCreateModal,
 }: OpsScreenSwitcherProps) {
   if (section === "dashboard") {
     return <DashboardScreen metrics={data.metrics} orders={data.orders} onOpenOrders={(status) => onFilter({ ...defaultFilters, status })} />;
@@ -102,6 +104,7 @@ export function OpsScreenSwitcher({
         onView={onViewCustomer}
         onEdit={onEditCustomer}
         onDelete={onDeleteCustomer}
+        onTriggerCreate={() => onOpenCreateModal("customer")}
       />
     );
   }
@@ -141,6 +144,7 @@ export function OpsScreenSwitcher({
         onCreate={onCreateUser}
         onEdit={onEditUser}
         onDelete={onDeleteUser}
+        onTriggerCreate={() => onOpenCreateModal("user")}
       />
     );
   }

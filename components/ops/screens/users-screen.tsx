@@ -1,8 +1,9 @@
 "use client";
 
-import { Edit, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Edit, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
-import { EmptyState, PendingButton, TableShell, Toolbar, ValidatedForm } from "@/components/ops/ui";
+import { EmptyState, TableShell } from "@/components/ops/ui";
 import type { AppUser } from "@/components/ops/types";
 
 export function UsersScreen({
@@ -11,63 +12,166 @@ export function UsersScreen({
   onCreate,
   onEdit,
   onDelete,
+  onTriggerCreate,
 }: {
   users: AppUser[];
   isCreating: boolean;
   onCreate: (event: React.FormEvent<HTMLFormElement>) => void;
   onEdit: (item: AppUser) => void;
   onDelete: (item: AppUser) => void;
+  onTriggerCreate: () => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      !searchQuery ||
+      user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (user.phone && user.phone.includes(searchQuery));
+    const matchesRole = !roleFilter || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
   return (
-    <>
-      <Toolbar title="Nhân viên" subtitle="Quản lý tài khoản nội bộ">
-        <ValidatedForm onSubmit={onCreate} aria-busy={isCreating} className="grid gap-3 md:grid-cols-3 xl:grid-cols-[1fr_1fr_160px_160px_160px_1fr_auto]">
-          <fieldset disabled={isCreating} className="contents">
-            <input name="fullName" className="input" placeholder="Họ tên" required />
-            <input name="email" type="email" className="input" placeholder="Email" />
-            <input name="phone" className="input" placeholder="Số điện thoại" />
-            <input name="password" type="password" className="input" placeholder="Mật khẩu" required minLength={8} />
-            <select name="role" className="input" defaultValue="dispatcher">
-              {Object.entries(ROLE_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}
-            </select>
-            <input name="serviceArea" className="input" placeholder="Khu vực nếu là kỹ thuật" />
-            <PendingButton className="btn-primary h-11" type="submit" pending={isCreating} pendingLabel="Đang tạo...">Tạo</PendingButton>
-          </fieldset>
-        </ValidatedForm>
-      </Toolbar>
+    <div className="flex flex-col gap-6">
+      {/* Screen Title & Action Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Nhân viên</h2>
+          <p className="text-xs text-zinc-500 mt-1">Quản lý tài khoản nội bộ và phân quyền hệ thống</p>
+        </div>
+        <button onClick={onTriggerCreate} className="btn-primary" type="button">
+          <Plus size={16} />
+          Thêm nhân viên
+        </button>
+      </div>
+
+      {/* Users Table Shell with Compact Filter Header */}
       <TableShell>
-        {users.length === 0 ? <EmptyState>Chưa có nhân viên.</EmptyState> : (
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-zinc-100 bg-zinc-50/20">
+          <div className="flex items-center gap-2">
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="input !w-40 bg-white h-9 py-1 text-xs shrink-0"
+            >
+              <option value="">Tất cả vai trò</option>
+              {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                <option key={role} value={role}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex items-center !w-64 shrink-0">
+              <Search size={13} className="absolute left-2.5 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="input pl-8 h-9 py-1 text-xs !w-full"
+                placeholder="Tìm theo tên, email, SĐT..."
+              />
+            </div>
+            <button className="btn-secondary h-9 text-xs px-2.5 flex items-center gap-1.5" type="button">
+              <Filter size={13} />
+              Lọc
+            </button>
+          </div>
+        </div>
+
+        {filteredUsers.length === 0 ? (
+          <EmptyState>Không tìm thấy nhân viên phù hợp.</EmptyState>
+        ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Nhân viên</th>
-                <th>Liên hệ</th>
+                <th className="w-[300px]">Nhân viên</th>
+                <th>Thông tin liên hệ</th>
                 <th>Vai trò</th>
+                <th>Khu vực phụ trách</th>
                 <th>Trạng thái</th>
-                <th>Khu vực</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {users.map((item) => (
-                <tr key={item.id}>
-                  <td className="font-semibold">{item.full_name}</td>
-                  <td>{item.email ?? item.phone ?? "Chưa có"}</td>
-                  <td>{ROLE_LABELS[item.role]}</td>
-                  <td>{item.status === "active" ? "Hoạt động" : "Ngưng"}</td>
-                  <td>{item.service_area ?? ""}</td>
-                  <td>
-                    <div className="action-cell">
-                      <button className="icon-button" onClick={() => onEdit(item)} type="button" aria-label="Sửa"><Edit size={16} /></button>
-                      <button className="icon-button" onClick={() => onDelete(item)} type="button" aria-label="Xóa"><Trash2 size={16} /></button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredUsers.map((item) => {
+                const initials = item.full_name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .substring(0, 2)
+                  .toUpperCase();
+
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-zinc-100 text-zinc-800 flex items-center justify-center font-bold text-xs border border-zinc-200 shrink-0">
+                          {initials}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-zinc-900 leading-tight">{item.full_name}</p>
+                          <p className="text-xs text-zinc-400 mt-1">#{item.id.substring(0, 8)}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <p className="text-sm font-medium text-zinc-700">{item.phone ?? "Chưa có SĐT"}</p>
+                      <p className="text-xs text-zinc-400 mt-0.5">{item.email ?? "Chưa có email"}</p>
+                    </td>
+                    <td>
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 text-zinc-800">
+                        <UserCheck size={11} />
+                        {ROLE_LABELS[item.role]}
+                      </span>
+                    </td>
+                    <td className="text-zinc-600 text-sm">
+                      {item.service_area ?? (item.role === "technician" ? "Chưa phân khu" : "Không áp dụng")}
+                    </td>
+                    <td>
+                      {item.status === "active" ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                          Hoạt động
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+                          Ngưng hoạt động
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="action-cell">
+                        <button
+                          className="icon-button"
+                          onClick={() => onEdit(item)}
+                          type="button"
+                          aria-label="Sửa"
+                        >
+                          <Edit size={15} />
+                        </button>
+                        {item.status === "active" ? (
+                          <button
+                            className="icon-button hover:text-red-600 hover:border-red-200"
+                            onClick={() => onDelete(item)}
+                            type="button"
+                            aria-label="Ngưng hoạt động"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </TableShell>
-    </>
+    </div>
   );
 }

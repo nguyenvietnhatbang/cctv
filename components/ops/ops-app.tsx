@@ -43,7 +43,9 @@ export function OpsApp() {
   const [modal, setModal] = useState<ModalState>(null);
   const [detail, setDetail] = useState<WorkOrderDetail | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const loadedDataKeyRef = useRef<string | null>(null);
+  const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
+  const ordersCacheRef = useRef<Record<string, WorkOrderListItem[]>>({});
+  const initialLoadedRef = useRef<boolean>(false);
 
   const section = useMemo<TabId>(() => {
     const segment = pathname.split("/").filter(Boolean)[0] as TabId | undefined;
@@ -84,6 +86,7 @@ export function OpsApp() {
   const loadDetail = useCallback(async (id: string) => {
     const payload = await apiFetch<WorkOrderDetail>(`/api/work-orders/${id}`);
     setDetail(payload);
+    detailsCacheRef.current[id] = payload;
     return payload;
   }, []);
 
@@ -94,8 +97,10 @@ export function OpsApp() {
   }, []);
 
   const refreshOrders = useCallback(async () => {
-    const payload = await apiFetch<{ workOrders: AppData["orders"] }>(`/api/work-orders?${workOrderQueryString()}`);
+    const params = workOrderQueryString();
+    const payload = await apiFetch<{ workOrders: AppData["orders"] }>(`/api/work-orders?${params}`);
     setData((current) => ({ ...current, orders: payload.workOrders }));
+    ordersCacheRef.current[params] = payload.workOrders;
     return payload.workOrders;
   }, [workOrderQueryString]);
 
@@ -158,24 +163,20 @@ export function OpsApp() {
       report,
       users: users?.users ?? [],
     });
-  }, [workOrderQueryString]);
 
-  const dataLoadKey = useCallback((currentUser: SessionUser) => {
-    return `${currentUser.id}:${workOrderQueryString()}`;
+    ordersCacheRef.current[params] = orders.workOrders;
+    initialLoadedRef.current = true;
   }, [workOrderQueryString]);
 
   const loadData = useCallback(async (nextUser?: SessionUser | null) => {
     const currentUser = nextUser ?? user;
     if (!currentUser) return;
-    const key = dataLoadKey(currentUser);
-    loadedDataKeyRef.current = key;
     try {
       await loadDataForUser(currentUser);
     } catch (reason) {
-      if (loadedDataKeyRef.current === key) loadedDataKeyRef.current = null;
       throw reason;
     }
-  }, [dataLoadKey, loadDataForUser, user]);
+  }, [loadDataForUser, user]);
 
   useEffect(() => {
     let active = true;
@@ -196,15 +197,22 @@ export function OpsApp() {
 
   useEffect(() => {
     if (!loading && user) {
-      const key = dataLoadKey(user);
-      if (loadedDataKeyRef.current === key) return;
-      loadedDataKeyRef.current = key;
-      loadDataForUser(user).catch((reason) => {
-        if (loadedDataKeyRef.current === key) loadedDataKeyRef.current = null;
-        setError(reason instanceof Error ? reason.message : "Không tải được dữ liệu");
-      });
+      if (!initialLoadedRef.current) {
+        loadDataForUser(user).catch((reason) => {
+          setError(reason instanceof Error ? reason.message : "Không tải được dữ liệu");
+        });
+      } else {
+        const params = workOrderQueryString();
+        const cached = ordersCacheRef.current[params];
+        if (cached) {
+          setData((current) => ({ ...current, orders: cached }));
+        }
+        refreshOrders().catch((reason) => {
+          setError(reason instanceof Error ? reason.message : "Không tải được danh sách phiếu");
+        });
+      }
     }
-  }, [dataLoadKey, filters, loadDataForUser, loading, user]);
+  }, [filters, loading, user, loadDataForUser, refreshOrders, workOrderQueryString]);
 
   useEffect(() => {
     const nextFilters = filtersFromSearchParams(searchParams);
@@ -225,25 +233,88 @@ export function OpsApp() {
 
   useEffect(() => {
     if (!routedOrderId || !user) return;
-    loadDetail(routedOrderId)
-      .then(() => {
-        setModal({ type: searchParams.get("mode") === "edit" ? "order-edit" : "order-detail", id: routedOrderId });
-      })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được chi tiết phiếu"));
-  }, [loadDetail, routedOrderId, searchParams, user]);
+    const type = searchParams.get("mode") === "edit" ? "order-edit" : "order-detail";
+    setModal({ type, id: routedOrderId });
 
+    const cached = detailsCacheRef.current[routedOrderId];
+    if (cached) {
+      setDetail(cached);
+    } else {
+      const item = data.orders.find((o) => o.id === routedOrderId);
+      if (item) {
+        setDetail({
+          workOrder: {
+            ...item,
+            internal_note: null,
+            completion_note: null,
+            acceptance_name: null,
+            acceptance_phone: null,
+            accepted_at: null,
+            payment_method: null,
+            payment_note: null,
+            material_amount: "0",
+            vat_amount: "0",
+            transaction_ref: null,
+            debt_due_date: null,
+          },
+          history: [],
+          materials: [],
+          files: [],
+        });
+      }
+    }
+
+    loadDetail(routedOrderId).catch((reason) =>
+      setError(reason instanceof Error ? reason.message : "Không tải được chi tiết phiếu")
+    );
+  }, [loadDetail, routedOrderId, searchParams, user, data.orders]);
+
+  const modalType = modal?.type;
   useEffect(() => {
-    if (routedOrderId || (modal?.type !== "order-detail" && modal?.type !== "order-edit")) return;
-    setModal(null);
-    setDetail(null);
-  }, [modal?.type, routedOrderId]);
+    if (!routedOrderId && (modalType === "order-detail" || modalType === "order-edit")) {
+      setModal(null);
+      setDetail(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routedOrderId]);
+
+  function getFallbackDetail(id: string): WorkOrderDetail | null {
+    const item = data.orders.find((o) => o.id === id);
+    if (!item) return null;
+    return {
+      workOrder: {
+        ...item,
+        internal_note: null,
+        completion_note: null,
+        acceptance_name: null,
+        acceptance_phone: null,
+        accepted_at: null,
+        payment_method: null,
+        payment_note: null,
+        material_amount: "0",
+        vat_amount: "0",
+        transaction_ref: null,
+        debt_due_date: null,
+      },
+      history: [],
+      materials: [],
+      files: [],
+    };
+  }
 
   async function openOrder(id: string, type: "order-detail" | "order-edit" = "order-detail") {
     try {
       setError(null);
-      setDetail(null);
-      await loadDetail(id);
       setModal({ type, id });
+
+      const cached = detailsCacheRef.current[id];
+      if (cached) {
+        setDetail(cached);
+      } else {
+        setDetail(getFallbackDetail(id));
+      }
+
+      await loadDetail(id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không tải được chi tiết phiếu");
     }
@@ -252,9 +323,16 @@ export function OpsApp() {
   async function openDispatchModal(id: string, type: "dispatch-detail" | "dispatch-assignment") {
     try {
       setError(null);
-      setDetail(null);
-      await loadDetail(id);
       setModal({ type, id });
+
+      const cached = detailsCacheRef.current[id];
+      if (cached) {
+        setDetail(cached);
+      } else {
+        setDetail(getFallbackDetail(id));
+      }
+
+      await loadDetail(id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không tải được chi tiết phiếu");
     }
@@ -263,15 +341,23 @@ export function OpsApp() {
   async function openPaymentModal(id: string, type: "payment-detail" | "payment-action") {
     try {
       setError(null);
-      setDetail(null);
-      await loadDetail(id);
       setModal({ type, id });
+
+      const cached = detailsCacheRef.current[id];
+      if (cached) {
+        setDetail(cached);
+      } else {
+        setDetail(getFallbackDetail(id));
+      }
+
+      await loadDetail(id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không tải được chi tiết thanh toán");
     }
   }
 
   async function afterMutation() {
+    ordersCacheRef.current = {};
     await refreshOrderContext();
   }
 
@@ -289,6 +375,9 @@ export function OpsApp() {
       });
       setUser(payload.user);
       router.push(payload.user.role === "technician" ? "/technician" : "/dashboard");
+      initialLoadedRef.current = false;
+      ordersCacheRef.current = {};
+      detailsCacheRef.current = {};
       await loadData(payload.user);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Đăng nhập thất bại");
@@ -304,6 +393,9 @@ export function OpsApp() {
       setData(emptyData);
       setDetail(null);
       setModal(null);
+      initialLoadedRef.current = false;
+      ordersCacheRef.current = {};
+      detailsCacheRef.current = {};
       router.push("/dashboard");
     }
   }
@@ -510,10 +602,10 @@ export function OpsApp() {
           setModal={setModal}
           detail={detail}
           setDetail={setDetail}
-        data={data}
-        setData={setData}
-        setError={setError}
-        role={user.role}
+          data={data}
+          setData={setData}
+          setError={setError}
+          role={user.role}
           closeOrderModal={closeOrderModal}
           closeInlineModal={closeInlineModal}
           afterMutation={afterMutation}
@@ -523,6 +615,8 @@ export function OpsApp() {
           submitAssignment={submitAssignment}
           submitPayment={submitPayment}
           submitWorkOrderPatch={submitWorkOrderPatch}
+          onCreateCustomer={handleCreateCustomer}
+          onCreateUser={handleCreateUser}
         />
       )}
     >
@@ -566,6 +660,7 @@ export function OpsApp() {
         }}
         onEditUser={(item) => setModal({ type: "user-edit", item })}
         onDeleteUser={(item) => setModal({ type: "user-delete", item })}
+        onOpenCreateModal={(type) => setModal({ type: type === "user" ? "user-create" : "customer-create" })}
       />
     </OpsShell>
   );

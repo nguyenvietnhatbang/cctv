@@ -5,6 +5,9 @@ import { X } from "lucide-react";
 import {
   WORK_ORDER_STATUS_LABELS,
   WORK_ORDER_STATUS_TONE,
+  DISPLAY_STATUS_LABELS,
+  DISPLAY_STATUS_TONE,
+  getDisplayStatus,
   type WorkOrderStatus,
 } from "@/lib/types";
 
@@ -105,12 +108,40 @@ export function LoadingScreen({ label = "Đang tải dữ liệu..." }: { label?
   );
 }
 
-export function StatusBadge({ status }: { status: WorkOrderStatus }) {
-  return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${WORK_ORDER_STATUS_TONE[status]}`}>
-      {WORK_ORDER_STATUS_LABELS[status]}
-    </span>
-  );
+export function StatusBadge({
+  status,
+  order,
+}: {
+  status?: WorkOrderStatus;
+  order?: { status: string; appointment_at: string | null; updated_at?: string };
+}) {
+  if (order) {
+    const disp = getDisplayStatus(order);
+    return (
+      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${DISPLAY_STATUS_TONE[disp]}`}>
+        {DISPLAY_STATUS_LABELS[disp]}
+      </span>
+    );
+  }
+
+  if (status) {
+    if (status in DISPLAY_STATUS_LABELS) {
+      const disp = status as keyof typeof DISPLAY_STATUS_LABELS;
+      return (
+        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${DISPLAY_STATUS_TONE[disp]}`}>
+          {DISPLAY_STATUS_LABELS[disp]}
+        </span>
+      );
+    }
+    const s = status as WorkOrderStatus;
+    return (
+      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${WORK_ORDER_STATUS_TONE[s]}`}>
+        {WORK_ORDER_STATUS_LABELS[s]}
+      </span>
+    );
+  }
+
+  return null;
 }
 
 export function Modal({

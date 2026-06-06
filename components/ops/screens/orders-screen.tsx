@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Eye, Plus, XCircle } from "lucide-react";
-import { WORK_ORDER_STATUS_LABELS, WORK_ORDER_STATUSES, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES } from "@/lib/types";
+import { Edit, Eye, Plus, XCircle, Search, Filter } from "lucide-react";
+import { DISPLAY_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { EmptyState, StatusBadge, TableShell, Toolbar } from "@/components/ops/ui";
+import { EmptyState, StatusBadge, TableShell } from "@/components/ops/ui";
 import { WorkOrderCreateModal } from "@/components/ops/modals";
 import type { Customer, Filters, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -36,51 +36,102 @@ export function OrdersScreen({
   const [creating, setCreating] = useState(false);
 
   return (
-    <>
-      <Toolbar title="Danh sách phiếu" subtitle="Lọc, xem, sửa và xóa phiếu công việc">
-        <div className="mb-3 flex justify-end">
-          {canCreate ? (
-            <button className="btn-primary h-10" onClick={() => setCreating(true)} type="button">
-              <Plus size={16} />Tạo phiếu
-            </button>
-          ) : null}
+    <div className="flex flex-col gap-6">
+      {/* Screen Title & Action Header */}
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Công việc</h2>
+          <p className="text-xs text-zinc-500 mt-1">Lập kế hoạch, theo dõi tiến độ thi công và xử lý sự cố kỹ thuật</p>
         </div>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px] xl:grid-cols-[minmax(0,1fr)_160px_160px_200px_150px_150px]">
-          <input
-            value={filters.q}
-            onChange={(event) => onFilter({ ...filters, q: event.target.value })}
-            className="input"
-            placeholder="Mã phiếu, khách, SĐT, địa chỉ"
-          />
-          <select value={filters.status} onChange={(event) => onFilter({ ...filters, status: event.target.value })} className="input">
-            <option value="">Tất cả trạng thái</option>
-            {WORK_ORDER_STATUSES.map((status) => (
-              <option key={status} value={status}>{WORK_ORDER_STATUS_LABELS[status]}</option>
-            ))}
-          </select>
-          <select value={filters.type} onChange={(event) => onFilter({ ...filters, type: event.target.value })} className="input">
-            <option value="">Tất cả loại việc</option>
-            {WORK_ORDER_TYPES.map((type) => (
-              <option key={type} value={type}>{WORK_ORDER_TYPE_LABELS[type]}</option>
-            ))}
-          </select>
-          <select value={filters.technicianId} onChange={(event) => onFilter({ ...filters, technicianId: event.target.value })} className="input">
-            <option value="">Tất cả kỹ thuật</option>
-            {technicians.map((technician) => (
-              <option key={technician.id} value={technician.id}>{technician.full_name}</option>
-            ))}
-          </select>
-          <input type="date" value={filters.dateFrom} onChange={(event) => onFilter({ ...filters, dateFrom: event.target.value })} className="input" aria-label="Từ ngày" />
-          <input type="date" value={filters.dateTo} onChange={(event) => onFilter({ ...filters, dateTo: event.target.value })} className="input" aria-label="Đến ngày" />
-        </div>
-      </Toolbar>
+        {canCreate ? (
+          <button className="btn-primary" onClick={() => setCreating(true)} type="button">
+            <Plus size={16} />
+            Tạo công việc
+          </button>
+        ) : null}
+      </div>
 
+      {/* Orders Table Shell with Compact Filter Header */}
       <TableShell>
-        {orders.length === 0 ? <EmptyState>Không có phiếu phù hợp bộ lọc.</EmptyState> : (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-zinc-200 bg-zinc-50/20">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={filters.status}
+              onChange={(event) => onFilter({ ...filters, status: event.target.value })}
+              className="input !w-[160px] bg-white h-9 py-1 text-xs shrink-0"
+            >
+              <option value="">Trạng thái: Tất cả</option>
+              {Object.entries(DISPLAY_STATUS_LABELS).map(([status, label]) => (
+                <option key={status} value={status}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filters.type}
+              onChange={(event) => onFilter({ ...filters, type: event.target.value })}
+              className="input !w-[135px] bg-white h-9 py-1 text-xs shrink-0"
+            >
+              <option value="">Loại việc: Tất cả</option>
+              {WORK_ORDER_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {WORK_ORDER_TYPE_LABELS[type]}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filters.technicianId}
+              onChange={(event) => onFilter({ ...filters, technicianId: event.target.value })}
+              className="input !w-[150px] bg-white h-9 py-1 text-xs shrink-0"
+            >
+              <option value="">Kỹ thuật: Tất cả</option>
+              {technicians.map((technician) => (
+                <option key={technician.id} value={technician.id}>
+                  {technician.full_name}
+                </option>
+              ))}
+            </select>
+
+            {/* Combined Date Range Box */}
+            <div className="flex items-center gap-1.5 text-xs text-zinc-500 bg-white border border-zinc-200 rounded-md px-2.5 h-9 shrink-0">
+              <span className="text-[10px] uppercase font-bold text-zinc-400">Từ:</span>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(event) => onFilter({ ...filters, dateFrom: event.target.value })}
+                className="border-none bg-transparent outline-none p-0 text-xs w-[110px]"
+                aria-label="Từ ngày"
+              />
+              <span className="text-zinc-200">|</span>
+              <span className="text-[10px] uppercase font-bold text-zinc-400">Đến:</span>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(event) => onFilter({ ...filters, dateTo: event.target.value })}
+                className="border-none bg-transparent outline-none p-0 text-xs w-[110px]"
+                aria-label="Đến ngày"
+              />
+            </div>
+          </div>
+
+          <div className="relative flex items-center !w-60 shrink-0">
+            <Search size={13} className="absolute left-2.5 text-zinc-400" />
+            <input
+              value={filters.q}
+              onChange={(event) => onFilter({ ...filters, q: event.target.value })}
+              className="input pl-8 h-9 py-1 text-xs !w-full"
+              placeholder="Tìm kiếm công việc..."
+            />
+          </div>
+        </div>
+
+        {orders.length === 0 ? (
+          <EmptyState>Không có công việc phù hợp bộ lọc.</EmptyState>
+        ) : (
           <table className="data-table">
             <thead>
               <tr>
-                <th>Mã phiếu</th>
+                <th className="w-[120px]">Mã công việc</th>
                 <th>Khách hàng</th>
                 <th>Loại việc</th>
                 <th>Kỹ thuật</th>
@@ -95,19 +146,48 @@ export function OrdersScreen({
                 <tr key={order.id}>
                   <td className="font-semibold">{order.code}</td>
                   <td>
-                    <p className="font-medium">{order.customer_name}</p>
-                    <p className="text-xs text-zinc-500">{order.customer_phone} · {order.customer_address}</p>
+                    <p className="font-semibold text-zinc-900 leading-tight">{order.customer_name}</p>
+                    <p className="text-xs text-zinc-500 mt-1 truncate max-w-xs">
+                      {order.customer_phone} · {order.customer_address}
+                    </p>
                   </td>
-                  <td>{WORK_ORDER_TYPE_LABELS[order.type]}</td>
-                  <td>{order.technician_name ?? "Chưa phân công"}</td>
-                  <td><StatusBadge status={order.status} /></td>
-                  <td>{dateTime(order.appointment_at ?? order.created_at)}</td>
-                  <td className="text-right font-semibold">{money(order.total_amount)}</td>
+                  <td>
+                    <span className="inline-flex px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 text-xs font-semibold">
+                      {WORK_ORDER_TYPE_LABELS[order.type]}
+                    </span>
+                  </td>
+                  <td className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
+                  <td>
+                    <StatusBadge order={order} />
+                  </td>
+                  <td className="text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</td>
+                  <td className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
                   <td>
                     <div className="action-cell">
-                      <button className="icon-button" onClick={() => onView(order.id)} type="button" aria-label="Xem"><Eye size={16} /></button>
-                      <button className="icon-button" onClick={() => onEdit(order.id)} type="button" aria-label="Sửa"><Edit size={16} /></button>
-                      <button className="icon-button" onClick={() => onCancel(order)} type="button" aria-label="Hủy phiếu"><XCircle size={16} /></button>
+                      <button
+                        className="icon-button"
+                        onClick={() => onView(order.id)}
+                        type="button"
+                        aria-label="Xem"
+                      >
+                        <Eye size={15} />
+                      </button>
+                      <button
+                        className="icon-button"
+                        onClick={() => onEdit(order.id)}
+                        type="button"
+                        aria-label="Sửa"
+                      >
+                        <Edit size={15} />
+                      </button>
+                      <button
+                        className="icon-button hover:text-red-600 hover:border-red-200"
+                        onClick={() => onCancel(order)}
+                        type="button"
+                        aria-label="Hủy công việc"
+                      >
+                        <XCircle size={15} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -126,6 +206,6 @@ export function OrdersScreen({
           onSubmit={onCreate}
         />
       ) : null}
-    </>
+    </div>
   );
 }

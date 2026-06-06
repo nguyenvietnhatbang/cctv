@@ -27,7 +27,7 @@ export function DispatchAssignmentModal({
         <section className="grid gap-4">
           <div className="rounded-md border border-zinc-200 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={detail.workOrder.status} />
+              <StatusBadge order={detail.workOrder} />
               <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             </div>
             <h3 className="mt-3 text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>

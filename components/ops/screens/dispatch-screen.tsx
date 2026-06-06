@@ -21,9 +21,9 @@ export function DispatchScreen({
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
       <section className="grid gap-4">
-        <Toolbar title="Phiếu cần phân công" subtitle="Xem bối cảnh phiếu hoặc mở modal phân công riêng" />
+        <Toolbar title="Công việc cần phân công" subtitle="Xem bối cảnh công việc hoặc mở modal phân công riêng" />
         <TableShell>
-          {pending.length === 0 ? <EmptyState>Không còn phiếu chờ phân công.</EmptyState> : (
+          {pending.length === 0 ? <EmptyState>Không còn công việc chờ phân công.</EmptyState> : (
             <table className="data-table">
               <thead>
                 <tr>
@@ -40,10 +40,10 @@ export function DispatchScreen({
                     <td className="font-semibold">{order.code}</td>
                     <td>{order.customer_name}</td>
                     <td>{order.customer_address}</td>
-                    <td><StatusBadge status={order.status} /></td>
+                    <td><StatusBadge order={order} /></td>
                     <td>
                       <div className="action-cell">
-                        <button className="icon-button" onClick={() => onView(order.id)} type="button" aria-label="Xem phiếu">
+                        <button className="icon-button" onClick={() => onView(order.id)} type="button" aria-label="Xem công việc">
                           <Eye size={16} />
                         </button>
                         <button className="icon-button" onClick={() => onAssign(order.id)} type="button" aria-label="Phân công">

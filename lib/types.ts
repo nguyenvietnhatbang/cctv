@@ -104,3 +104,58 @@ export const NEXT_STATUS_ACTIONS: Partial<
     roles: ["dispatcher", "accountant", "admin"],
   },
 };
+
+export type DisplayStatus = "todo" | "doing" | "doing_overdue" | "done" | "done_overdue" | "cancelled";
+
+export const DISPLAY_STATUS_LABELS: Record<DisplayStatus, string> = {
+  todo: "Việc chưa làm",
+  doing: "Đang làm",
+  doing_overdue: "Đang làm quá hạn",
+  done: "Hoàn thành",
+  done_overdue: "Hoàn thành quá hạn",
+  cancelled: "Hủy",
+};
+
+export const DISPLAY_STATUS_TONE: Record<DisplayStatus, string> = {
+  todo: "bg-amber-50 text-amber-800 ring-amber-200",
+  doing: "bg-blue-50 text-blue-800 ring-blue-200",
+  doing_overdue: "bg-red-50 text-red-800 ring-red-200 animate-pulse",
+  done: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  done_overdue: "bg-orange-50 text-orange-800 ring-orange-200",
+  cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
+};
+
+export function getDisplayStatus(order: {
+  status: string;
+  appointment_at: string | null;
+  updated_at?: string;
+}): DisplayStatus {
+  if (order.status === "cancelled") return "cancelled";
+
+  const isFinished = ["completed", "awaiting_payment", "paid", "debt"].includes(order.status);
+  const isDoing = ["working", "awaiting_acceptance"].includes(order.status);
+
+  if (isFinished) {
+    if (order.appointment_at && order.updated_at) {
+      const appDate = new Date(order.appointment_at);
+      const updDate = new Date(order.updated_at);
+      if (updDate > appDate) {
+        return "done_overdue";
+      }
+    }
+    return "done";
+  }
+
+  if (isDoing) {
+    if (order.appointment_at) {
+      const appDate = new Date(order.appointment_at);
+      if (new Date() > appDate) {
+        return "doing_overdue";
+      }
+    }
+    return "doing";
+  }
+
+  return "todo";
+}
+

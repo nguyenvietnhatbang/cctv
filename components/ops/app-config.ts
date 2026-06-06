@@ -26,7 +26,7 @@ export type TabId =
 
 export const tabs: ReadonlyArray<{ id: TabId; label: string; roles: readonly Role[] }> = [
   { id: "dashboard", label: "Tổng quan", roles: ["admin", "dispatcher", "accountant", "technician"] },
-  { id: "orders", label: "Phiếu", roles: ["admin", "dispatcher", "accountant", "technician"] },
+  { id: "orders", label: "Công việc", roles: ["admin", "dispatcher", "accountant", "technician"] },
   { id: "customers", label: "Khách hàng", roles: ["admin", "dispatcher", "accountant"] },
   { id: "dispatch", label: "Phân công", roles: ["admin", "dispatcher"] },
   { id: "technician", label: "Kỹ thuật", roles: ["dispatcher", "technician"] },

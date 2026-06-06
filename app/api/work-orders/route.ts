@@ -22,8 +22,20 @@ export async function GET(request: Request) {
     const filters = ["true"];
 
     if (status) {
-      params.push(status);
-      filters.push(`wo.status = $${params.length}`);
+      if (status === "todo") {
+        filters.push(`wo.status in ('pending_assignment', 'assigned', 'accepted', 'traveling')`);
+      } else if (status === "doing") {
+        filters.push(`wo.status in ('working', 'awaiting_acceptance') and (wo.appointment_at is null or wo.appointment_at >= now())`);
+      } else if (status === "doing_overdue") {
+        filters.push(`wo.status in ('working', 'awaiting_acceptance') and wo.appointment_at < now()`);
+      } else if (status === "done") {
+        filters.push(`wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and (wo.appointment_at is null or wo.updated_at <= wo.appointment_at)`);
+      } else if (status === "done_overdue") {
+        filters.push(`wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and wo.appointment_at is not null and wo.updated_at > wo.appointment_at`);
+      } else {
+        params.push(status);
+        filters.push(`wo.status = $${params.length}`);
+      }
     }
 
     if (type) {
@@ -64,7 +76,7 @@ export async function GET(request: Request) {
 
     const result = await query(
       `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
-              wo.appointment_at, wo.created_at, wo.labor_cost, wo.vat_rate,
+              wo.appointment_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
               t.id as technician_id, tu.full_name as technician_name,

@@ -115,7 +115,7 @@ export function CustomerDetailModal({
                     <p className="font-bold text-zinc-950">{order.code}</p>
                     <p className="mt-1 text-zinc-500">{WORK_ORDER_TYPE_LABELS[order.type]} · {dateTime(order.appointment_at ?? order.created_at)}</p>
                   </div>
-                  <StatusBadge status={order.status} />
+                  <StatusBadge order={order} />
                 </div>
                 <p className="mt-2 text-zinc-600">{order.description}</p>
               </div>
@@ -135,7 +135,7 @@ export function CustomerDetailModal({
                   <p className="font-bold text-zinc-950">{order.code}</p>
                   <p className="mt-1 text-zinc-500">{paymentLabels[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thanh toán"}</p>
                 </div>
-                <StatusBadge status={order.status} />
+                <StatusBadge order={order} />
                 <p className="font-bold text-zinc-950 md:text-right">{money(order.total_amount)}</p>
               </div>
             ))}
@@ -239,3 +239,73 @@ export function TechnicianEditModal({
     </Modal>
   );
 }
+
+export function CustomerCreateModal({
+  onClose,
+  onSubmit,
+  isSubmitting = false,
+}: {
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting?: boolean;
+}) {
+  return (
+    <Modal title="Tạo khách hàng" onClose={onClose}>
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="grid gap-3">
+        <fieldset disabled={isSubmitting} className="contents">
+          <input name="name" className="input" placeholder="Tên khách" required />
+          <input name="phone" className="input" placeholder="Số điện thoại" required />
+          <input name="address" className="input" placeholder="Địa chỉ" required />
+          <input name="addressNote" className="input" placeholder="Ghi chú địa chỉ" />
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
+            <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang tạo...">Tạo khách hàng</PendingButton>
+          </div>
+        </fieldset>
+      </ValidatedForm>
+    </Modal>
+  );
+}
+
+export function UserCreateModal({
+  onClose,
+  onSubmit,
+  isSubmitting = false,
+}: {
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSubmitting?: boolean;
+}) {
+  const [selectedRole, setSelectedRole] = useState("dispatcher");
+
+  return (
+    <Modal title="Tạo nhân viên" onClose={onClose}>
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="grid gap-3">
+        <fieldset disabled={isSubmitting} className="contents">
+          <input name="fullName" className="input" placeholder="Họ tên" required />
+          <input name="email" type="email" className="input" placeholder="Email" />
+          <input name="phone" className="input" placeholder="Số điện thoại" />
+          <input name="password" type="password" className="input" placeholder="Mật khẩu (ít nhất 8 ký tự)" required minLength={8} />
+          <select 
+            name="role" 
+            className="input" 
+            value={selectedRole} 
+            onChange={(e) => setSelectedRole(e.target.value)}
+          >
+            {Object.entries(ROLE_LABELS).map(([role, label]) => (
+              <option key={role} value={role}>{label}</option>
+            ))}
+          </select>
+          {selectedRole === "technician" ? (
+            <input name="serviceArea" className="input" placeholder="Khu vực phụ trách (ví dụ: Quận 1, Quận 3)" />
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
+            <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang tạo...">Tạo nhân viên</PendingButton>
+          </div>
+        </fieldset>
+      </ValidatedForm>
+    </Modal>
+  );
+}
+

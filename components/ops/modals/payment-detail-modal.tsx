@@ -57,7 +57,7 @@ export function PaymentDetailModal({
       <div className="grid gap-4">
         <section className="rounded-md border border-zinc-200 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={detail.workOrder.status} />
+            <StatusBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
           </div>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
@@ -88,7 +88,7 @@ export function PaymentDetailModal({
 
         {activeTab === "summary" ? (
           <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <InfoItem label="Mã phiếu">{detail.workOrder.code}</InfoItem>
+            <InfoItem label="Mã công việc">{detail.workOrder.code}</InfoItem>
             <InfoItem label="Thanh toán">{paymentStatus}</InfoItem>
             <InfoItem label="Phương thức">{paymentMethod}</InfoItem>
             <InfoItem label="Mã giao dịch">{detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>

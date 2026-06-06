@@ -10,7 +10,7 @@ import type { Technician, WorkOrderDetail } from "@/components/ops/types";
 type DispatchDetailTab = "work" | "customer" | "technician" | "history" | "resources";
 
 const tabs: ReadonlyArray<{ id: DispatchDetailTab; label: string; icon: LucideIcon }> = [
-  { id: "work", label: "Phiếu việc", icon: FileText },
+  { id: "work", label: "Công việc", icon: FileText },
   { id: "customer", label: "Khách hàng", icon: UserRound },
   { id: "technician", label: "Kỹ thuật", icon: Wrench },
   { id: "history", label: "Lịch sử", icon: History },
@@ -52,7 +52,7 @@ export function DispatchDetailModal({
       <div className="grid gap-4">
         <section className="rounded-md border border-zinc-200 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={detail.workOrder.status} />
+            <StatusBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
           </div>
           <h3 className="mt-3 text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
@@ -78,7 +78,7 @@ export function DispatchDetailModal({
 
         {activeTab === "work" ? (
           <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <InfoItem label="Mã phiếu">{detail.workOrder.code}</InfoItem>
+            <InfoItem label="Mã công việc">{detail.workOrder.code}</InfoItem>
             <InfoItem label="Ưu tiên">{detail.workOrder.priority === "urgent" ? "Gấp" : "Bình thường"}</InfoItem>
             <InfoItem label="Hẹn xử lý">{dateTime(detail.workOrder.appointment_at)}</InfoItem>
             <InfoItem label="Ngày tạo">{dateTime(detail.workOrder.created_at)}</InfoItem>
