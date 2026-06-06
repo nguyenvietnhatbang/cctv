@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import type { WorkOrderStatus } from "@/lib/types";
 import { assignWorkOrderSchema } from "@/lib/validators";
 import { changeWorkOrderStatus } from "@/lib/work-orders";
@@ -17,10 +16,6 @@ export async function POST(request: Request, context: Context) {
     const user = await requireUser(["admin", "dispatcher"]);
     const { id } = await context.params;
     const body = assignWorkOrderSchema.parse(await request.json());
-    if (isMockMode()) {
-      mockStore.assignWorkOrder(user, id, body.technicianId, body.note);
-      return jsonOk({ ok: true });
-    }
 
     await withTransaction(async (client) => {
       const statusResult = await client.query<{ status: WorkOrderStatus }>(

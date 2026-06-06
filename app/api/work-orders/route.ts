@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { createWorkOrderSchema } from "@/lib/validators";
 import { changeWorkOrderStatus, getTechnicianIdForUser, makeWorkOrderCode } from "@/lib/work-orders";
 
@@ -11,9 +10,6 @@ export async function GET(request: Request) {
   try {
     const user = await requireUser();
     const { searchParams } = new URL(request.url);
-    if (isMockMode()) {
-      return jsonOk({ workOrders: mockStore.workOrders(user, searchParams) });
-    }
 
     const status = searchParams.get("status");
     const type = searchParams.get("type");
@@ -95,10 +91,6 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser(["admin", "dispatcher"]);
     const body = createWorkOrderSchema.parse(await request.json());
-    if (isMockMode()) {
-      const created = mockStore.createWorkOrder(user, body);
-      return jsonCreated({ workOrder: created });
-    }
 
     if (!body.customerId && !body.customer) {
       return Response.json({ error: "Cần chọn hoặc tạo khách hàng" }, { status: 422 });
@@ -106,12 +98,13 @@ export async function POST(request: Request) {
 
     const created = await withTransaction(async (client) => {
       let customerId = body.customerId;
+      let customer = null;
 
       if (!customerId && body.customer) {
-        const customerResult = await client.query<{ id: string }>(
+        const customerResult = await client.query(
           `insert into customers (name, phone, address, address_note, created_by)
            values ($1, $2, $3, $4, $5)
-           returning id`,
+           returning id, name, phone, address, address_note, created_at`,
           [
             body.customer.name,
             body.customer.phone,
@@ -120,7 +113,8 @@ export async function POST(request: Request) {
             user.id,
           ],
         );
-        customerId = customerResult.rows[0].id;
+        customer = customerResult.rows[0];
+        customerId = customer.id;
       }
 
       const workOrderResult = await client.query(
@@ -169,10 +163,28 @@ export async function POST(request: Request) {
         );
       }
 
-      return workOrder;
+      const listResult = await client.query(
+        `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
+                wo.appointment_at, wo.created_at, wo.labor_cost, wo.vat_rate,
+                c.id as customer_id,
+                c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
+                t.id as technician_id, tu.full_name as technician_name,
+                coalesce(p.total_amount, 0) as total_amount, p.status as payment_status
+         from work_orders wo
+         join customers c on c.id = wo.customer_id
+         left join work_order_assignments woa on woa.work_order_id = wo.id and woa.unassigned_at is null
+         left join technicians t on t.id = woa.technician_id
+         left join users tu on tu.id = t.user_id
+         left join payments p on p.work_order_id = wo.id
+         where wo.id = $1
+         limit 1`,
+        [workOrder.id],
+      );
+
+      return { workOrder: listResult.rows[0], customer };
     });
 
-    return jsonCreated({ workOrder: created });
+    return jsonCreated(created);
   } catch (error) {
     return handleRouteError(error);
   }

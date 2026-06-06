@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { changeStatusSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork, changeWorkOrderStatus } from "@/lib/work-orders";
 
@@ -32,14 +31,6 @@ export async function POST(request: Request, context: Context) {
 
     if (user.role === "accountant" && body.status !== "awaiting_payment") {
       return Response.json({ error: "Kế toán chỉ cập nhật trạng thái thanh toán" }, { status: 403 });
-    }
-
-    if (isMockMode()) {
-      mockStore.changeStatus(user, id, body.status, body.note, {
-        lat: body.checkInLat,
-        lng: body.checkInLng,
-      });
-      return jsonOk({ ok: true });
     }
 
     if (user.role === "technician") {

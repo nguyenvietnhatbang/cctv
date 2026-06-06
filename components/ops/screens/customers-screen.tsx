@@ -6,12 +6,14 @@ import type { Customer } from "@/components/ops/types";
 
 export function CustomersScreen({
   customers,
+  isCreating,
   onCreate,
   onView,
   onEdit,
   onDelete,
 }: {
   customers: Customer[];
+  isCreating: boolean;
   onCreate: (event: React.FormEvent<HTMLFormElement>) => void;
   onView: (item: Customer) => void;
   onEdit: (item: Customer) => void;
@@ -20,12 +22,14 @@ export function CustomersScreen({
   return (
     <>
       <Toolbar title="Khách hàng" subtitle="Tạo mới, sửa thông tin liên hệ và địa chỉ thi công">
-        <form onSubmit={onCreate} className="grid gap-3 md:grid-cols-[1fr_170px_1fr_1fr_auto]">
-          <input name="name" className="input" placeholder="Tên khách" required />
-          <input name="phone" className="input" placeholder="Số điện thoại" required />
-          <input name="address" className="input" placeholder="Địa chỉ" required />
-          <input name="addressNote" className="input" placeholder="Ghi chú địa chỉ" />
-          <button className="btn-primary h-11" type="submit">Tạo</button>
+        <form onSubmit={onCreate} aria-busy={isCreating} className="grid gap-3 md:grid-cols-[1fr_170px_1fr_1fr_auto]">
+          <fieldset disabled={isCreating} className="contents">
+            <input name="name" className="input" placeholder="Tên khách" required />
+            <input name="phone" className="input" placeholder="Số điện thoại" required />
+            <input name="address" className="input" placeholder="Địa chỉ" required />
+            <input name="addressNote" className="input" placeholder="Ghi chú địa chỉ" />
+            <button className="btn-primary h-11" type="submit">{isCreating ? "Đang tạo..." : "Tạo"}</button>
+          </fieldset>
         </form>
       </Toolbar>
       <TableShell>

@@ -2,7 +2,6 @@ import { randomUUID } from "crypto";
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonCreated } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { getMaxUploadBytes, uploadWorkOrderFile } from "@/lib/storage";
 import { uploadPurposeSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork } from "@/lib/work-orders";
@@ -29,10 +28,6 @@ export async function POST(request: Request, context: Context) {
 
     if (!(file instanceof File)) {
       return Response.json({ error: "Cần chọn file" }, { status: 422 });
-    }
-
-    if (isMockMode()) {
-      return jsonCreated({ file: mockStore.createFile(id, purpose, file.name) });
     }
 
     await assertCanMutateFieldWork(user, id);

@@ -6,7 +6,6 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { query } from "@/lib/db";
 import { HttpError } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import type { Role, SessionUser } from "@/lib/types";
 
 const SESSION_COOKIE = "cctv_session";
@@ -28,9 +27,6 @@ type SessionPayload = JWTPayload & {
 
 function getEncodedSecret() {
   const secret = process.env.SESSION_SECRET;
-  if (!secret && isMockMode()) {
-    return new TextEncoder().encode("mock-session-secret-for-local-development-only");
-  }
   if (!secret) {
     throw new Error("Missing SESSION_SECRET");
   }
@@ -106,10 +102,6 @@ export const getCurrentUser = cache(async () => {
     return null;
   }
 
-  if (isMockMode()) {
-    return mockStore.getUserById(session.userId);
-  }
-
   const result = await query<UserRow>(
     `select id, full_name, email, phone, role, status
      from users
@@ -136,10 +128,6 @@ export async function requireUser(roles?: Role[]) {
 }
 
 export async function loginWithPassword(identifier: string, password: string) {
-  if (isMockMode()) {
-    return mockStore.login(identifier, password);
-  }
-
   const result = await query<UserRow & { password_hash: string }>(
     `select id, full_name, email, phone, role, status, password_hash
      from users

@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { todayInVietnam } from "@/components/ops/format";
 
 export const runtime = "nodejs";
@@ -13,9 +12,6 @@ export async function GET(request: Request) {
     const today = todayInVietnam();
     const from = searchParams.get("from") || today;
     const to = searchParams.get("to") || today;
-    if (isMockMode()) {
-      return jsonOk(mockStore.report(from, to));
-    }
 
     const [summary, byStatus, byTechnician, materials] = await Promise.all([
       query(

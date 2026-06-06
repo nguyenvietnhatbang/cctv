@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { getTechnicianIdForUser } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
@@ -9,9 +8,6 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const user = await requireUser();
-    if (isMockMode()) {
-      return jsonOk({ metrics: mockStore.dashboard(user) });
-    }
 
     const technicianId = user.role === "technician" ? await getTechnicianIdForUser(user.id) : null;
     const params: unknown[] = [];

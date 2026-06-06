@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { updateTechnicianSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -19,7 +18,7 @@ export async function PATCH(request: Request, context: Context) {
       return jsonOk({ technician: mockStore.updateTechnician(id, body) });
     }
 
-    const result = await query(
+    const updateResult = await query(
       `update technicians
        set service_area = coalesce($2, service_area),
            status = coalesce($3, status)
@@ -28,9 +27,25 @@ export async function PATCH(request: Request, context: Context) {
       [id, body.serviceArea ?? null, body.status ?? null],
     );
 
-    if (!result.rows[0]) {
+    if (!updateResult.rows[0]) {
       return Response.json({ error: "Không tìm thấy kỹ thuật viên" }, { status: 404 });
     }
+
+    const result = await query(
+      `select t.id, t.user_id, u.full_name, u.phone, u.email, t.service_area, t.status,
+              count(woa.id) filter (
+                where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date
+                  and woa.unassigned_at is null
+              ) as jobs_today
+       from technicians t
+       join users u on u.id = t.user_id
+       left join work_order_assignments woa on woa.technician_id = t.id
+       left join work_orders wo on wo.id = woa.work_order_id
+       where t.id = $1
+       group by t.id, u.id
+       limit 1`,
+      [id],
+    );
 
     return jsonOk({ technician: result.rows[0] });
   } catch (error) {

@@ -2,7 +2,6 @@ import { randomUUID } from "crypto";
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import type { WorkOrderStatus } from "@/lib/types";
 import { uploadWorkOrderBytes } from "@/lib/storage";
 import { acceptanceSchema } from "@/lib/validators";
@@ -19,10 +18,6 @@ export async function POST(request: Request, context: Context) {
     const user = await requireUser(["admin", "dispatcher", "technician"]);
     const { id } = await context.params;
     const body = acceptanceSchema.parse(await request.json());
-    if (isMockMode()) {
-      mockStore.accept(user, id, body);
-      return jsonOk({ ok: true });
-    }
 
     await assertCanMutateFieldWork(user, id);
     const base64 = body.signatureDataUrl.replace("data:image/png;base64,", "");

@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { notificationReadSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -15,10 +14,6 @@ export async function PATCH(request: Request, context: Context) {
     const user = await requireUser();
     const { id } = await context.params;
     const body = notificationReadSchema.parse(await request.json());
-    if (isMockMode()) {
-      mockStore.setNotificationRead(user, id, body.read);
-      return jsonOk({ ok: true });
-    }
 
     await query(
       `update notifications

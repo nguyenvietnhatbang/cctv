@@ -16,9 +16,6 @@ export async function PATCH(request: Request, context: Context) {
     const user = await requireUser(["admin", "dispatcher", "technician"]);
     const { id, materialId } = await context.params;
     const body = updateMaterialSchema.parse(await request.json());
-    if (isMockMode()) {
-      return jsonOk({ material: mockStore.updateMaterial(id, materialId, body) });
-    }
 
     await assertCanMutateFieldWork(user, id);
     await assertCanEditFinancials(user, id);
@@ -52,10 +49,6 @@ export async function DELETE(_request: Request, context: Context) {
   try {
     const user = await requireUser(["admin", "dispatcher", "technician"]);
     const { id, materialId } = await context.params;
-    if (isMockMode()) {
-      mockStore.deleteMaterial(id, materialId);
-      return jsonNoContent();
-    }
 
     await assertCanMutateFieldWork(user, id);
     await assertCanEditFinancials(user, id);

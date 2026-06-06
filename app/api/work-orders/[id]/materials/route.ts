@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { createMaterialSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanMutateFieldWork } from "@/lib/work-orders";
 
@@ -15,9 +14,6 @@ export async function GET(_request: Request, context: Context) {
   try {
     const user = await requireUser();
     const { id } = await context.params;
-    if (isMockMode()) {
-      return jsonOk({ materials: mockStore.detail(user, id).materials });
-    }
 
     const result = await query(
       `select id, name, quantity, unit_price, line_total, created_at
@@ -38,9 +34,6 @@ export async function POST(request: Request, context: Context) {
     const user = await requireUser(["admin", "dispatcher", "technician"]);
     const { id } = await context.params;
     const body = createMaterialSchema.parse(await request.json());
-    if (isMockMode()) {
-      return jsonCreated({ material: mockStore.createMaterial(user, id, body) });
-    }
 
     await assertCanMutateFieldWork(user, id);
     await assertCanEditFinancials(user, id);

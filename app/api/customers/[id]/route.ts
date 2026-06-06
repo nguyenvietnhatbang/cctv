@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { createCustomerSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -15,9 +14,6 @@ export async function PATCH(request: Request, context: Context) {
     await requireUser(["admin", "dispatcher"]);
     const { id } = await context.params;
     const body = createCustomerSchema.partial().parse(await request.json());
-    if (isMockMode()) {
-      return jsonOk({ customer: mockStore.updateCustomer(id, body) });
-    }
 
     const result = await query(
       `update customers
@@ -26,7 +22,7 @@ export async function PATCH(request: Request, context: Context) {
            address = coalesce($4, address),
            address_note = coalesce($5, address_note)
        where id = $1
-       returning id, name, phone, address, address_note`,
+       returning id, name, phone, address, address_note, created_at`,
       [id, body.name ?? null, body.phone ?? null, body.address ?? null, body.addressNote ?? null],
     );
 
@@ -44,10 +40,6 @@ export async function DELETE(_request: Request, context: Context) {
   try {
     await requireUser(["admin", "dispatcher"]);
     const { id } = await context.params;
-    if (isMockMode()) {
-      mockStore.deleteCustomer(id);
-      return jsonNoContent();
-    }
 
     const result = await query("delete from customers where id = $1 returning id", [id]);
 

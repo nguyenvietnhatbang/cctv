@@ -14,6 +14,7 @@ export function OrdersScreen({
   technicians,
   orders,
   canCreate,
+  isCreating,
   onFilter,
   onCreate,
   onView,
@@ -25,6 +26,7 @@ export function OrdersScreen({
   technicians: Technician[];
   orders: WorkOrderListItem[];
   canCreate: boolean;
+  isCreating: boolean;
   onFilter: (filters: Filters) => void;
   onCreate: (event: React.FormEvent<HTMLFormElement>) => void;
   onView: (id: string) => void;
@@ -119,6 +121,7 @@ export function OrdersScreen({
         <WorkOrderCreateModal
           customers={customers}
           technicians={technicians}
+          isSubmitting={isCreating}
           onClose={() => setCreating(false)}
           onSubmit={onCreate}
         />

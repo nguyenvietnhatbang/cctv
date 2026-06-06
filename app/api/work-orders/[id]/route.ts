@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { createSignedFileUrl } from "@/lib/storage";
 import { updateWorkOrderSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanReadWorkOrder } from "@/lib/work-orders";
@@ -16,9 +15,6 @@ export async function GET(_request: Request, context: Context) {
   try {
     const user = await requireUser();
     const { id } = await context.params;
-    if (isMockMode()) {
-      return jsonOk(mockStore.detail(user, id));
-    }
 
     await assertCanReadWorkOrder(user, id);
 
@@ -96,10 +92,6 @@ export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireUser(["admin", "dispatcher", "technician"]);
     const { id } = await context.params;
-    if (isMockMode()) {
-      const body = updateWorkOrderSchema.parse(await request.json());
-      return jsonOk({ workOrder: mockStore.updateWorkOrder(user, id, body) });
-    }
 
     await assertCanReadWorkOrder(user, id);
     const body = updateWorkOrderSchema.parse(await request.json());
@@ -174,12 +166,8 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher"]);
+    await requireUser(["admin", "dispatcher"]);
     const { id } = await context.params;
-    if (isMockMode()) {
-      mockStore.changeStatus(user, id, "cancelled", "Xóa mock");
-      return jsonNoContent();
-    }
 
     const result = await query("delete from work_orders where id = $1 returning id", [id]);
 

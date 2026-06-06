@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { createCustomerSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -11,9 +10,6 @@ export async function GET(request: Request) {
     await requireUser(["admin", "dispatcher", "accountant"]);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("q")?.trim() ?? "";
-    if (isMockMode()) {
-      return jsonOk({ customers: mockStore.customers(search) });
-    }
 
     const result = await query(
       `select id, name, phone, address, address_note, created_at
@@ -36,10 +32,6 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser(["admin", "dispatcher"]);
     const body = createCustomerSchema.parse(await request.json());
-    if (isMockMode()) {
-      void user;
-      return jsonCreated({ customer: mockStore.createCustomer(body) });
-    }
 
     const result = await query(
       `insert into customers (name, phone, address, address_note, created_by)

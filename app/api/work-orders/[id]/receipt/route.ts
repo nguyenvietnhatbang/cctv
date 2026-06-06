@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { assertCanReadWorkOrder } from "@/lib/work-orders";
 

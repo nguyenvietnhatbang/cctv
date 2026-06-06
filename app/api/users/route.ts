@@ -1,7 +1,6 @@
 import { hashPassword, requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { createUserSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -9,9 +8,6 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     await requireUser(["admin"]);
-    if (isMockMode()) {
-      return jsonOk({ users: mockStore.users() });
-    }
 
     const result = await query(
       `select u.id, u.full_name, u.email, u.phone, u.role, u.status,
@@ -31,9 +27,6 @@ export async function POST(request: Request) {
   try {
     await requireUser(["admin"]);
     const body = createUserSchema.parse(await request.json());
-    if (isMockMode()) {
-      return jsonCreated({ user: mockStore.createUser(body) });
-    }
 
     const passwordHash = await hashPassword(body.password);
 
@@ -69,7 +62,17 @@ export async function POST(request: Request) {
       return user;
     });
 
-    return jsonCreated({ user: created });
+    const result = await query(
+      `select u.id, u.full_name, u.email, u.phone, u.role, u.status,
+              t.id as technician_id, t.service_area, t.status as technician_status
+       from users u
+       left join technicians t on t.user_id = u.id
+       where u.id = $1
+       limit 1`,
+      [created.id],
+    );
+
+    return jsonCreated({ user: result.rows[0] });
   } catch (error) {
     return handleRouteError(error);
   }

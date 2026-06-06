@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { updatePaymentSchema } from "@/lib/validators";
 import { changeWorkOrderStatus } from "@/lib/work-orders";
 
@@ -23,11 +22,6 @@ export async function PATCH(request: Request, context: Context) {
 
     if (body.status === "debt" && !body.note && !body.debtDueDate) {
       return Response.json({ error: "Cần ghi chú hoặc ngày hẹn khi chuyển công nợ" }, { status: 422 });
-    }
-
-    if (isMockMode()) {
-      mockStore.pay(user, id, body);
-      return jsonOk({ ok: true });
     }
 
     await withTransaction(async (client) => {

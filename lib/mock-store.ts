@@ -561,7 +561,11 @@ export const mockStore = {
     });
     state.history.push({ id: randomUUID(), work_order_id: order.id, from_status: null, to_status: "pending_assignment", changed_by: user.id, changed_at: nowIso(), note: "Tạo phiếu" });
     if (body.technicianId) this.assignWorkOrder(user, order.id, body.technicianId, "Phân công kỹ thuật viên");
+<<<<<<< ours
     return order;
+=======
+    return listItem(state, order);
+>>>>>>> theirs
   },
 
   detail(user: SessionUser, id: string) {
@@ -795,18 +799,33 @@ export const mockStore = {
     if (body.role === "technician" || body.technician) {
       state.technicians.push({ id: randomUUID(), user_id: user.id, service_area: body.technician?.serviceArea ?? null, status: body.technician?.status ?? "available", created_at: nowIso() });
     }
+<<<<<<< ours
     return user;
   },
 
   updateUser(id: string, body: Partial<{ fullName: string; email: string | null; phone: string | null; role: Role; status: "active" | "inactive" }>) {
     const user = getState().users.find((item) => item.id === id);
+=======
+    const tech = state.technicians.find((item) => item.user_id === user.id);
+    return { ...user, technician_id: tech?.id ?? null, service_area: tech?.service_area ?? null, technician_status: tech?.status ?? null };
+  },
+
+  updateUser(id: string, body: Partial<{ fullName: string; email: string | null; phone: string | null; role: Role; status: "active" | "inactive" }>) {
+    const state = getState();
+    const user = state.users.find((item) => item.id === id);
+>>>>>>> theirs
     if (!user) throw new HttpError(404, "Không tìm thấy nhân viên");
     if (body.fullName !== undefined) user.full_name = body.fullName;
     if (body.email !== undefined) user.email = body.email;
     if (body.phone !== undefined) user.phone = body.phone;
     if (body.role !== undefined) user.role = body.role;
     if (body.status !== undefined) user.status = body.status;
+<<<<<<< ours
     return user;
+=======
+    const tech = state.technicians.find((item) => item.user_id === user.id);
+    return { ...user, technician_id: tech?.id ?? null, service_area: tech?.service_area ?? null, technician_status: tech?.status ?? null };
+>>>>>>> theirs
   },
 
   deactivateUser(id: string) {

@@ -18,10 +18,6 @@ export async function DELETE(_request: Request, context: Context) {
   try {
     const user = await requireUser(["admin", "dispatcher", "technician"]);
     const { id, fileId } = await context.params;
-    if (isMockMode()) {
-      mockStore.deleteFile(id, fileId);
-      return jsonNoContent();
-    }
 
     await assertCanMutateFieldWork(user, id);
 

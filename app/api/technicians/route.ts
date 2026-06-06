@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { createTechnicianSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -9,9 +8,6 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     await requireUser(["admin", "dispatcher"]);
-    if (isMockMode()) {
-      return jsonOk({ technicians: mockStore.technicians() });
-    }
 
     const result = await query(
       `select t.id, t.user_id, u.full_name, u.phone, u.email, t.service_area, t.status,
@@ -38,9 +34,6 @@ export async function POST(request: Request) {
   try {
     await requireUser(["admin"]);
     const body = createTechnicianSchema.parse(await request.json());
-    if (isMockMode()) {
-      return jsonCreated({ technician: mockStore.createTechnician(body.userId, { serviceArea: body.serviceArea, status: body.status }) });
-    }
 
     const result = await query(
       `insert into technicians (user_id, service_area, status)
