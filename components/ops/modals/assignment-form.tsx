@@ -2,7 +2,7 @@
 
 import { FormEvent } from "react";
 import { TECHNICIAN_STATUS_LABELS } from "@/lib/types";
-import { Field, PendingButton, ValidatedForm } from "@/components/ops/ui";
+import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { Technician, WorkOrderDetail } from "@/components/ops/types";
 
 export function AssignmentForm({
@@ -17,11 +17,9 @@ export function AssignmentForm({
   isSubmitting?: boolean;
 }) {
   return (
-    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-panel form-grid">
+    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="rounded-md border border-zinc-200 p-4">
       <h3 className="section-title">Phân công</h3>
-      <fieldset disabled={isSubmitting} className="contents">
-        <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Kỹ thuật viên">
+      <fieldset disabled={isSubmitting} className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
           <select name="technicianId" className="input" required defaultValue={detail.workOrder.technician_id ?? ""}>
             <option value="" disabled>Chọn kỹ thuật viên</option>
             {technicians.map((technician) => (
@@ -30,14 +28,8 @@ export function AssignmentForm({
               </option>
             ))}
           </select>
-          </Field>
-          <Field label="Ghi chú phân công">
-            <input name="note" className="input" placeholder="Ghi chú phân công" />
-          </Field>
-        </div>
-        <div className="form-actions">
-          <PendingButton className="btn-secondary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang phân công...">Cập nhật</PendingButton>
-        </div>
+          <input name="note" className="input" placeholder="Ghi chú phân công" />
+          <PendingButton className="btn-secondary h-11" type="submit" pending={isSubmitting} pendingLabel="Đang phân công...">Cập nhật</PendingButton>
       </fieldset>
     </ValidatedForm>
   );
