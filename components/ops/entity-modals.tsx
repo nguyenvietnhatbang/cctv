@@ -6,6 +6,7 @@ import { ROLE_LABELS, TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@
 import { dateTime, money } from "@/components/ops/format";
 import { Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { AppUser, Customer, Technician, WorkOrderListItem } from "@/components/ops/types";
+import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 
 type CustomerTab = "info" | "orders" | "payments";
 
@@ -31,10 +32,31 @@ export function CustomerDetailModal({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<CustomerTab>("info");
+  const [ordersQuery, setOrdersQuery] = useState("");
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [paymentsQuery, setPaymentsQuery] = useState("");
+  const [paymentsPage, setPaymentsPage] = useState(1);
   const customerOrders = useMemo(
     () => orders.filter((order) => order.customer_id === item.id),
     [item.id, orders],
   );
+  const normalizedOrdersQuery = ordersQuery.trim().toLowerCase();
+  const filteredCustomerOrders = customerOrders.filter((order) => {
+    if (!normalizedOrdersQuery) return true;
+    return [order.code, WORK_ORDER_TYPE_LABELS[order.type], order.description, order.technician_name ?? "", dateTime(order.appointment_at ?? order.created_at)]
+      .some((value) => value.toLowerCase().includes(normalizedOrdersQuery));
+  });
+  const visibleCustomerOrders = pageItems(filteredCustomerOrders, clampPage(ordersPage, filteredCustomerOrders.length));
+  const normalizedPaymentsQuery = paymentsQuery.trim().toLowerCase();
+  const filteredCustomerPayments = customerOrders.filter((order) => {
+    if (!normalizedPaymentsQuery) return true;
+    return [
+      order.code,
+      paymentLabels[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thanh toán",
+      money(order.total_amount),
+    ].some((value) => value.toLowerCase().includes(normalizedPaymentsQuery));
+  });
+  const visibleCustomerPayments = pageItems(filteredCustomerPayments, clampPage(paymentsPage, filteredCustomerPayments.length));
   const paidTotal = customerOrders
     .filter((order) => order.payment_status === "paid")
     .reduce((sum, order) => sum + Number(order.total_amount), 0);
@@ -60,7 +82,7 @@ export function CustomerDetailModal({
           </div>
         </section>
 
-        <nav className="flex gap-2 overflow-x-auto" aria-label="Thông tin khách hàng">
+        <nav className="modal-tabbar" aria-label="Thông tin khách hàng">
           {customerTabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -104,11 +126,23 @@ export function CustomerDetailModal({
 
         {activeTab === "orders" ? (
           <section className="grid gap-2">
-            {customerOrders.length === 0 ? (
+            <ModalListControls
+              query={ordersQuery}
+              onQueryChange={(nextQuery) => {
+                setOrdersQuery(nextQuery);
+                setOrdersPage(1);
+              }}
+              page={clampPage(ordersPage, filteredCustomerOrders.length)}
+              total={filteredCustomerOrders.length}
+              label="Lọc phiếu của khách hàng"
+              placeholder="Lọc mã phiếu, loại việc, kỹ thuật..."
+              onPageChange={(nextPage) => setOrdersPage(clampPage(nextPage, filteredCustomerOrders.length))}
+            />
+            {filteredCustomerOrders.length === 0 ? (
               <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500">
-                Khách hàng chưa có phiếu.
+                Không có phiếu phù hợp.
               </div>
-            ) : customerOrders.map((order) => (
+            ) : visibleCustomerOrders.map((order) => (
               <div key={order.id} className="rounded-md border border-zinc-200 p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -125,11 +159,23 @@ export function CustomerDetailModal({
 
         {activeTab === "payments" ? (
           <section className="grid gap-2">
-            {customerOrders.length === 0 ? (
+            <ModalListControls
+              query={paymentsQuery}
+              onQueryChange={(nextQuery) => {
+                setPaymentsQuery(nextQuery);
+                setPaymentsPage(1);
+              }}
+              page={clampPage(paymentsPage, filteredCustomerPayments.length)}
+              total={filteredCustomerPayments.length}
+              label="Lọc thanh toán của khách hàng"
+              placeholder="Lọc mã phiếu, trạng thái, số tiền..."
+              onPageChange={(nextPage) => setPaymentsPage(clampPage(nextPage, filteredCustomerPayments.length))}
+            />
+            {filteredCustomerPayments.length === 0 ? (
               <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500">
-                Chưa có dữ liệu thanh toán.
+                Không có dữ liệu thanh toán phù hợp.
               </div>
-            ) : customerOrders.map((order) => (
+            ) : visibleCustomerPayments.map((order) => (
               <div key={order.id} className="grid gap-2 rounded-md border border-zinc-200 p-3 text-sm md:grid-cols-[1fr_auto_auto] md:items-center">
                 <div>
                   <p className="font-bold text-zinc-950">{order.code}</p>
@@ -308,4 +354,3 @@ export function UserCreateModal({
     </Modal>
   );
 }
-

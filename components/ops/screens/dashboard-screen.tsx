@@ -4,7 +4,7 @@ import { useState } from "react";
 import { StatusBadge } from "@/components/ops/ui";
 import { money } from "@/components/ops/format";
 import type { Metrics, WorkOrderListItem } from "@/components/ops/types";
-import { Calendar, ChevronDown, Filter, TrendingUp } from "lucide-react";
+import { ChevronDown, Filter, TrendingUp } from "lucide-react";
 
 export function DashboardScreen({
   metrics,

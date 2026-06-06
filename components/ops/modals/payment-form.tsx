@@ -21,7 +21,7 @@ export function PaymentForm({
   const [method, setMethod] = useState(detail.workOrder.payment_method ?? "cash");
 
   return (
-    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="rounded-md border border-zinc-200 p-4">
+    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-section">
       <h3 className="section-title">Thanh toán</h3>
       <p className="mt-2 text-2xl font-semibold">{money(detail.workOrder.total_amount)}</p>
       <div className="mt-3 grid gap-1 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">

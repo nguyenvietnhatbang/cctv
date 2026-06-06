@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Bell, CheckCircle2, Eye, Search, MailOpen, Mail, Filter } from "lucide-react";
 import { dateTime } from "@/components/ops/format";
-import { EmptyState, TableShell } from "@/components/ops/ui";
+import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { NotificationItem } from "@/components/ops/types";
 
 function timeAgo(dateString: string) {
@@ -33,14 +33,22 @@ export function NotificationsScreen({
   onRead: (id: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
+  const [page, setPage] = useState(1);
 
   const filteredNotifications = notifications.filter((item) => {
-    return (
+    const matchesRead =
+      readFilter === "all" ||
+      (readFilter === "unread" && !item.read_at) ||
+      (readFilter === "read" && item.read_at);
+    const matchesSearch =
       !searchQuery ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.body.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+      item.body.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesRead && matchesSearch;
   });
+  const safePage = clampTablePage(page, filteredNotifications.length);
+  const visibleNotifications = getPageItems(filteredNotifications, safePage);
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
 
@@ -65,14 +73,29 @@ export function NotificationsScreen({
               Tổng số: {filteredNotifications.length} thông báo
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={readFilter}
+              onChange={(event) => {
+                setReadFilter(event.target.value as typeof readFilter);
+                setPage(1);
+              }}
+              className="input h-9 !w-36 shrink-0 bg-white py-1 text-xs"
+            >
+              <option value="all">Tất cả</option>
+              <option value="unread">Chưa đọc</option>
+              <option value="read">Đã đọc</option>
+            </select>
             <div className="relative flex items-center !w-64 shrink-0">
-              <Search size={13} className="absolute left-2.5 text-zinc-400" />
+              <Search size={13} className="search-field-icon" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input pl-8 h-9 py-1 text-xs !w-full"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="input search-field-input h-9 !w-full py-1 text-xs"
                 placeholder="Tìm kiếm thông báo..."
               />
             </div>
@@ -100,7 +123,7 @@ export function NotificationsScreen({
               </tr>
             </thead>
             <tbody>
-              {filteredNotifications.map((item) => {
+              {visibleNotifications.map((item) => {
                 const isUnread = !item.read_at;
 
                 return (
@@ -187,6 +210,7 @@ export function NotificationsScreen({
             </tbody>
           </table>
         )}
+        <TablePagination page={safePage} total={filteredNotifications.length} onPageChange={setPage} />
       </TableShell>
     </div>
   );

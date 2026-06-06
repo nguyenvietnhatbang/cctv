@@ -3,13 +3,11 @@
 import { useState } from "react";
 import { Edit, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
-import { EmptyState, TableShell } from "@/components/ops/ui";
+import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { AppUser } from "@/components/ops/types";
 
 export function UsersScreen({
   users,
-  isCreating,
-  onCreate,
   onEdit,
   onDelete,
   onTriggerCreate,
@@ -23,6 +21,7 @@ export function UsersScreen({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -33,6 +32,8 @@ export function UsersScreen({
     const matchesRole = !roleFilter || user.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+  const safePage = clampTablePage(page, filteredUsers.length);
+  const visibleUsers = getPageItems(filteredUsers, safePage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,7 +55,10 @@ export function UsersScreen({
           <div className="flex items-center gap-2">
             <select
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setPage(1);
+              }}
               className="input !w-40 bg-white h-9 py-1 text-xs shrink-0"
             >
               <option value="">Tất cả vai trò</option>
@@ -67,12 +71,15 @@ export function UsersScreen({
           </div>
           <div className="flex items-center gap-2">
             <div className="relative flex items-center !w-64 shrink-0">
-              <Search size={13} className="absolute left-2.5 text-zinc-400" />
+              <Search size={13} className="search-field-icon" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input pl-8 h-9 py-1 text-xs !w-full"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="input search-field-input h-9 !w-full py-1 text-xs"
                 placeholder="Tìm theo tên, email, SĐT..."
               />
             </div>
@@ -98,7 +105,7 @@ export function UsersScreen({
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((item) => {
+              {visibleUsers.map((item) => {
                 const initials = item.full_name
                   .split(" ")
                   .map((n) => n[0])
@@ -171,6 +178,7 @@ export function UsersScreen({
             </tbody>
           </table>
         )}
+        <TablePagination page={safePage} total={filteredUsers.length} onPageChange={setPage} />
       </TableShell>
     </div>
   );

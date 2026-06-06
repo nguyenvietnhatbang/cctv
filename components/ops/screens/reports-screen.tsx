@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, TrendingUp, Users2, PackageCheck } from "lucide-react";
+import { BarChart3, TrendingUp, Users2, PackageCheck, Search } from "lucide-react";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
 import { money, todayInVietnam } from "@/components/ops/format";
-import { PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
+import { PendingButton, StatusBadge, TablePagination, ValidatedForm, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { ReportData } from "@/components/ops/types";
 
 export function ReportsScreen({
@@ -16,6 +16,26 @@ export function ReportsScreen({
 }) {
   const today = todayInVietnam();
   const [submitting, setSubmitting] = useState(false);
+  const [technicianQuery, setTechnicianQuery] = useState("");
+  const [technicianPage, setTechnicianPage] = useState(1);
+  const [materialQuery, setMaterialQuery] = useState("");
+  const [materialPage, setMaterialPage] = useState(1);
+  const filteredTechnicians = report?.byTechnician.filter((item) => {
+    const q = technicianQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [item.technician_name, String(item.order_count), money(item.paid_revenue)]
+      .some((value) => value.toLowerCase().includes(q));
+  }) ?? [];
+  const safeTechnicianPage = clampTablePage(technicianPage, filteredTechnicians.length, 8);
+  const visibleTechnicians = getPageItems(filteredTechnicians, safeTechnicianPage, 8);
+  const filteredMaterials = report?.materials.filter((item) => {
+    const q = materialQuery.trim().toLowerCase();
+    if (!q) return true;
+    return [item.name, String(item.quantity), money(item.total_amount)]
+      .some((value) => value.toLowerCase().includes(q));
+  }) ?? [];
+  const safeMaterialPage = clampTablePage(materialPage, filteredMaterials.length, 8);
+  const visibleMaterials = getPageItems(filteredMaterials, safeMaterialPage, 8);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     setSubmitting(true);
@@ -141,8 +161,22 @@ export function ReportsScreen({
                 </div>
                 <span className="text-xs font-semibold text-zinc-500">Doanh thu đã thu</span>
               </div>
-              <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1">
-                {report.byTechnician.map((item) => (
+              <div className="mb-3">
+                <div className="relative flex items-center">
+                  <Search size={13} className="search-field-icon" />
+                  <input
+                    value={technicianQuery}
+                    onChange={(event) => {
+                      setTechnicianQuery(event.target.value);
+                      setTechnicianPage(1);
+                    }}
+                    className="input search-field-input h-9 py-1 text-xs"
+                    placeholder="Tìm kỹ thuật viên, doanh thu..."
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                {visibleTechnicians.map((item) => (
                   <div
                     key={item.technician_name}
                     className="compact-row border border-zinc-100 rounded-md p-3 hover:bg-zinc-50 transition-colors"
@@ -155,6 +189,7 @@ export function ReportsScreen({
                   </div>
                 ))}
               </div>
+              <TablePagination page={safeTechnicianPage} total={filteredTechnicians.length} pageSize={8} onPageChange={setTechnicianPage} />
             </section>
 
             {/* Materials Used */}
@@ -167,11 +202,25 @@ export function ReportsScreen({
                   </h2>
                 </div>
                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 text-zinc-800">
-                  {report.materials.length} dòng
+                  {filteredMaterials.length} dòng
                 </span>
               </div>
-              <div className="grid gap-2 max-h-[350px] overflow-y-auto pr-1">
-                {report.materials.map((item) => (
+              <div className="mb-3">
+                <div className="relative flex items-center">
+                  <Search size={13} className="search-field-icon" />
+                  <input
+                    value={materialQuery}
+                    onChange={(event) => {
+                      setMaterialQuery(event.target.value);
+                      setMaterialPage(1);
+                    }}
+                    className="input search-field-input h-9 py-1 text-xs"
+                    placeholder="Tìm vật tư, số lượng, tổng tiền..."
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                {visibleMaterials.map((item) => (
                   <div
                     key={item.name}
                     className="compact-row border border-zinc-100 rounded-md p-3 hover:bg-zinc-50 transition-colors"
@@ -184,6 +233,7 @@ export function ReportsScreen({
                   </div>
                 ))}
               </div>
+              <TablePagination page={safeMaterialPage} total={filteredMaterials.length} pageSize={8} onPageChange={setMaterialPage} />
             </section>
           </div>
         </>

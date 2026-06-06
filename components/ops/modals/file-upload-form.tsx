@@ -21,7 +21,7 @@ export function FileUploadForm({
   deletingFileId?: string | null;
 }) {
   return (
-    <div className="rounded-md border border-zinc-200 p-4">
+    <div className="modal-section">
       <h3 className="section-title">Ảnh / chữ ký</h3>
       <ValidatedForm onSubmit={onSubmit} aria-busy={isUploading} className="mt-3 grid gap-2">
         <select name="purpose" className="input" defaultValue="before" disabled={isUploading}>
@@ -33,10 +33,10 @@ export function FileUploadForm({
         <input name="file" type="file" className="input" accept="image/*" capture="environment" required disabled={isUploading} aria-label="tệp ảnh" />
         <PendingButton className="btn-secondary h-10" type="submit" pending={isUploading} pendingLabel="Đang upload..."><Upload size={15} />Upload</PendingButton>
       </ValidatedForm>
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {detail.files.map((file) => (
           <div key={file.id} className="grid gap-2 rounded-md bg-zinc-100 p-2 text-xs text-zinc-700">
-            <a href={file.signed_url ?? "#"} target="_blank" rel="noreferrer" className="font-semibold underline">
+            <a href={file.signed_url ?? "#"} target="_blank" rel="noreferrer" className="truncate font-semibold underline">
               {file.purpose}: {file.original_name}
             </a>
             {!locked && file.purpose !== "signature" ? (

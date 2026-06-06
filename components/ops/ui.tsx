@@ -255,3 +255,56 @@ export function TableShell({
 }) {
   return <div className="table-shell">{children}</div>;
 }
+
+export const TABLE_PAGE_SIZE = 10;
+
+export function getPageCount(total: number, pageSize = TABLE_PAGE_SIZE) {
+  return Math.max(1, Math.ceil(total / pageSize));
+}
+
+export function clampTablePage(page: number, total: number, pageSize = TABLE_PAGE_SIZE) {
+  return Math.min(Math.max(1, page), getPageCount(total, pageSize));
+}
+
+export function getPageItems<T>(items: T[], page: number, pageSize = TABLE_PAGE_SIZE) {
+  const safePage = clampTablePage(page, items.length, pageSize);
+  return items.slice((safePage - 1) * pageSize, safePage * pageSize);
+}
+
+export function TablePagination({
+  page,
+  total,
+  pageSize = TABLE_PAGE_SIZE,
+  onPageChange,
+}: {
+  page: number;
+  total: number;
+  pageSize?: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pageCount = getPageCount(total, pageSize);
+  const safePage = clampTablePage(page, total, pageSize);
+  const start = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const end = Math.min(total, safePage * pageSize);
+
+  if (total === 0) return null;
+
+  return (
+    <div className="table-pagination">
+      <span className="text-xs font-semibold text-zinc-500">
+        Hiển thị {start}-{end} / {total}
+      </span>
+      <div className="flex items-center gap-1">
+        <button className="btn-secondary h-8 px-2 text-xs" type="button" disabled={safePage <= 1} onClick={() => onPageChange(safePage - 1)}>
+          Trước
+        </button>
+        <span className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
+          {safePage}/{pageCount}
+        </span>
+        <button className="btn-secondary h-8 px-2 text-xs" type="button" disabled={safePage >= pageCount} onClick={() => onPageChange(safePage + 1)}>
+          Sau
+        </button>
+      </div>
+    </div>
+  );
+}

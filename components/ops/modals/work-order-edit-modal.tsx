@@ -105,16 +105,17 @@ export function WorkOrderEditModal({
   return (
     <Modal title={`Sửa phiếu ${detail.workOrder.code}`} size="xl" onClose={onClose}>
       <div className="grid gap-4">
-        <section className="rounded-md border border-zinc-200 p-4">
+        <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
+            <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
           </div>
           <h3 className="mt-3 text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
           <p className="mt-2 text-sm text-zinc-500">Hẹn: {dateTime(detail.workOrder.appointment_at)}</p>
         </section>
 
-        <nav className="flex gap-2 overflow-x-auto" aria-label="Sửa phiếu">
+        <nav className="modal-tabbar" aria-label="Sửa phiếu">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -131,83 +132,85 @@ export function WorkOrderEditModal({
           })}
         </nav>
 
-        {activeTab === "basic" ? (
-          <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="grid gap-4 rounded-md border border-zinc-200 p-4">
-            <h3 className="section-title">Thông tin cơ bản</h3>
-            <fieldset disabled={pendingAction === "update"} className="contents">
-              <div className="grid gap-3 md:grid-cols-2">
-                <textarea name="description" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.description} placeholder="Mô tả" required />
-                <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
-                <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" />
-                <textarea name="completionNote" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành" />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button className="btn-secondary h-10" onClick={onClose} type="button">Đóng</button>
-                <PendingButton className="btn-primary h-10" type="submit" pending={pendingAction === "update"} pendingLabel="Đang lưu...">Lưu thông tin</PendingButton>
-              </div>
-            </fieldset>
-          </ValidatedForm>
-        ) : null}
-
-        {activeTab === "workflow" ? (
-          <section className="grid gap-4 lg:grid-cols-2">
-            {canNext && nextAction ? (
-              <div className="rounded-md border border-zinc-200 p-4">
-                <h3 className="section-title">Chuyển trạng thái</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-600">Thao tác tiếp theo theo đúng luồng xử lý của phiếu.</p>
-                <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>
-                  <CheckCircle2 size={15} />{nextAction.label}
-                </PendingButton>
-              </div>
-            ) : null}
-            {canAssign ? <AssignmentForm detail={detail} technicians={technicians} onSubmit={onAssign} isSubmitting={pendingAction === "assign"} /> : null}
-            {canCancel ? (
-              <ValidatedForm onSubmit={onCancel} aria-busy={pendingAction === "cancel"} className="rounded-md border border-red-200 bg-red-50 p-4 lg:col-span-2">
-                <h3 className="section-title text-red-900">Hủy phiếu</h3>
-                <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-                  <input name="note" className="input" placeholder="Lý do hủy phiếu" required disabled={pendingAction === "cancel"} />
-                  <PendingButton className="btn-danger h-11" type="submit" pending={pendingAction === "cancel"} pendingLabel="Đang hủy..."><XCircle size={15} />Hủy phiếu</PendingButton>
+        <div className="modal-edit-shell">
+          {activeTab === "basic" ? (
+            <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="modal-section grid gap-4">
+              <h3 className="section-title">Thông tin cơ bản</h3>
+              <fieldset disabled={pendingAction === "update"} className="contents">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <textarea name="description" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.description} placeholder="Mô tả" required />
+                  <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
+                  <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" />
+                  <textarea name="completionNote" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành" />
                 </div>
-              </ValidatedForm>
-            ) : null}
-          </section>
-        ) : null}
+                <div className="flex justify-end gap-2">
+                  <button className="btn-secondary h-10" onClick={onClose} type="button">Đóng</button>
+                  <PendingButton className="btn-primary h-10" type="submit" pending={pendingAction === "update"} pendingLabel="Đang lưu...">Lưu thông tin</PendingButton>
+                </div>
+              </fieldset>
+            </ValidatedForm>
+          ) : null}
 
-        {activeTab === "costs" ? (
-          <CostNoteForm detail={detail} financialLocked={financialLocked} onSubmit={onUpdate} isSubmitting={pendingAction === "update"} />
-        ) : null}
+          {activeTab === "workflow" ? (
+            <section className="grid gap-4 lg:grid-cols-2">
+              {canNext && nextAction ? (
+                <div className="modal-section">
+                  <h3 className="section-title">Chuyển trạng thái</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600">Thao tác tiếp theo theo đúng luồng xử lý của phiếu.</p>
+                  <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>
+                    <CheckCircle2 size={15} />{nextAction.label}
+                  </PendingButton>
+                </div>
+              ) : null}
+              {canAssign ? <AssignmentForm detail={detail} technicians={technicians} onSubmit={onAssign} isSubmitting={pendingAction === "assign"} /> : null}
+              {canCancel ? (
+                <ValidatedForm onSubmit={onCancel} aria-busy={pendingAction === "cancel"} className="rounded-md border border-red-200 bg-red-50 p-4 lg:col-span-2">
+                  <h3 className="section-title text-red-900">Hủy phiếu</h3>
+                  <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+                    <input name="note" className="input" placeholder="Lý do hủy phiếu" required disabled={pendingAction === "cancel"} />
+                    <PendingButton className="btn-danger h-11" type="submit" pending={pendingAction === "cancel"} pendingLabel="Đang hủy..."><XCircle size={15} />Hủy phiếu</PendingButton>
+                  </div>
+                </ValidatedForm>
+              ) : null}
+            </section>
+          ) : null}
 
-        {activeTab === "resources" ? (
-          <section className="grid gap-4 lg:grid-cols-2">
-            <FileUploadForm detail={detail} locked={financialLocked} onSubmit={onUpload} onDelete={onFileDelete} isUploading={pendingAction === "upload"} deletingFileId={deletingFileId} />
-            <MaterialsForm
-              detail={detail}
-              locked={financialLocked}
-              onCreate={onMaterialCreate}
-              onUpdate={onMaterialUpdate}
-              onDelete={onMaterialDelete}
-              pendingAction={materialPendingAction}
-            />
-          </section>
-        ) : null}
+          {activeTab === "costs" ? (
+            <CostNoteForm detail={detail} financialLocked={financialLocked} onSubmit={onUpdate} isSubmitting={pendingAction === "update"} />
+          ) : null}
 
-        {activeTab === "payment" ? (
-          <section className="grid gap-4 lg:grid-cols-2">
-            {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} /> : null}
-            {detail.workOrder.status === "awaiting_acceptance" ? (
-              <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
-            ) : detail.workOrder.accepted_at ? (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-                <p className="font-semibold">Đã nghiệm thu: {dateTime(detail.workOrder.accepted_at)}</p>
-                {signatureFile?.signed_url ? <a className="mt-2 inline-flex font-semibold underline" href={signatureFile.signed_url} target="_blank" rel="noreferrer">Xem chữ ký</a> : null}
-              </div>
-            ) : (
-              <div className="rounded-md border border-zinc-200 p-4 text-sm text-zinc-600">
-                Phiếu chưa tới bước nghiệm thu.
-              </div>
-            )}
-          </section>
-        ) : null}
+          {activeTab === "resources" ? (
+            <section className="grid gap-4 lg:grid-cols-2">
+              <FileUploadForm detail={detail} locked={financialLocked} onSubmit={onUpload} onDelete={onFileDelete} isUploading={pendingAction === "upload"} deletingFileId={deletingFileId} />
+              <MaterialsForm
+                detail={detail}
+                locked={financialLocked}
+                onCreate={onMaterialCreate}
+                onUpdate={onMaterialUpdate}
+                onDelete={onMaterialDelete}
+                pendingAction={materialPendingAction}
+              />
+            </section>
+          ) : null}
+
+          {activeTab === "payment" ? (
+            <section className="grid gap-4 lg:grid-cols-2">
+              {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} /> : null}
+              {detail.workOrder.status === "awaiting_acceptance" ? (
+                <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
+              ) : detail.workOrder.accepted_at ? (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                  <p className="font-semibold">Đã nghiệm thu: {dateTime(detail.workOrder.accepted_at)}</p>
+                  {signatureFile?.signed_url ? <a className="mt-2 inline-flex font-semibold underline" href={signatureFile.signed_url} target="_blank" rel="noreferrer">Xem chữ ký</a> : null}
+                </div>
+              ) : (
+                <div className="modal-section text-sm text-zinc-600">
+                  Phiếu chưa tới bước nghiệm thu.
+                </div>
+              )}
+            </section>
+          ) : null}
+        </div>
       </div>
     </Modal>
   );

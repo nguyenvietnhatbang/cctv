@@ -6,6 +6,7 @@ import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { Modal, StatusBadge } from "@/components/ops/ui";
 import type { Technician, WorkOrderDetail } from "@/components/ops/types";
+import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 
 type DetailTab = "overview" | "customer" | "progress" | "costs" | "resources";
 
@@ -25,9 +26,9 @@ const paymentLabels: Record<string, string> = {
 
 function InfoItem({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-md border border-zinc-200 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">{label}</p>
-      <div className="mt-1 text-sm font-semibold text-zinc-900">{children}</div>
+    <div className="detail-card">
+      <p className="detail-label">{label}</p>
+      <div className="detail-value">{children}</div>
     </div>
   );
 }
@@ -41,204 +42,281 @@ export function WorkOrderDetailModal({
   technicians: Technician[];
   onClose: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<DetailTab>("overview");
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [resourceQuery, setResourceQuery] = useState("");
+  const [materialPage, setMaterialPage] = useState(1);
+  const [filePage, setFilePage] = useState(1);
   const assignedTechnician = technicians.find((technician) => technician.id === detail.workOrder.technician_id) ?? null;
   const signatureFile = detail.files.find((file) => file.purpose === "signature");
   const paymentStatus = detail.workOrder.payment_status
     ? paymentLabels[detail.workOrder.payment_status] ?? detail.workOrder.payment_status
     : "Chưa thanh toán";
+  const normalizedHistoryQuery = historyQuery.trim().toLowerCase();
+  const filteredHistory = detail.history.filter((item) => {
+    if (!normalizedHistoryQuery) return true;
+    return [
+      item.to_status,
+      item.changed_by_name ?? "",
+      item.note ?? "",
+      dateTime(item.changed_at),
+    ].some((value) => value.toLowerCase().includes(normalizedHistoryQuery));
+  });
+  const visibleHistory = pageItems(filteredHistory, clampPage(historyPage, filteredHistory.length));
+  const normalizedResourceQuery = resourceQuery.trim().toLowerCase();
+  const filteredMaterials = detail.materials.filter((material) => {
+    if (!normalizedResourceQuery) return true;
+    return [
+      material.name,
+      String(material.quantity),
+      money(material.unit_price),
+      money(material.line_total),
+    ].some((value) => value.toLowerCase().includes(normalizedResourceQuery));
+  });
+  const filteredFiles = detail.files.filter((file) => {
+    if (!normalizedResourceQuery) return true;
+    return [file.purpose, file.original_name].some((value) => value.toLowerCase().includes(normalizedResourceQuery));
+  });
+  const visibleMaterials = pageItems(filteredMaterials, clampPage(materialPage, filteredMaterials.length));
+  const visibleFiles = pageItems(filteredFiles, clampPage(filePage, filteredFiles.length));
 
   return (
     <Modal title={`Xem chi tiết công việc ${detail.workOrder.code}`} size="xl" onClose={onClose}>
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        {/* Left Column: Main Workspace */}
-        <div className="flex flex-col gap-5">
-          {/* Customer & Description */}
-          <section className="rounded-md border border-zinc-200 p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-2">Thông tin chung & Khách hàng</h3>
-            <div className="grid gap-3 sm:grid-cols-2 mb-4">
-              <InfoItem label="Khách hàng">{detail.workOrder.customer_name}</InfoItem>
-              <InfoItem label="Số điện thoại">
-                <a className="inline-flex items-center gap-1.5 text-teal-700" href={`tel:${detail.workOrder.customer_phone}`}>
-                  <Phone size={14} />{detail.workOrder.customer_phone}
-                </a>
-              </InfoItem>
-              <div className="rounded-md border border-zinc-200 p-3 sm:col-span-2">
-                <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Địa chỉ</p>
-                <a
-                  className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-teal-700 leading-snug"
-                  href={`https://maps.google.com/?q=${encodeURIComponent(detail.workOrder.customer_address)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <MapPinned size={14} className="shrink-0" />{detail.workOrder.customer_address}
-                </a>
-              </div>
+      <div className="grid gap-4">
+        <section className="modal-summary">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge order={detail.workOrder} />
+            <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
+            <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
+              <p className="mt-1 text-sm text-zinc-500">Hẹn: {dateTime(detail.workOrder.appointment_at)}</p>
             </div>
+            <p className="text-xl font-bold text-zinc-950">{money(detail.workOrder.total_amount)}</p>
+          </div>
+        </section>
 
-            <div className="rounded-md border border-zinc-200 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Mô tả công việc</p>
-              <p className="mt-1 text-sm leading-6 text-zinc-800 whitespace-pre-wrap">{detail.workOrder.description}</p>
-            </div>
-          </section>
+        <nav className="modal-tabbar" aria-label="Xem chi tiết công việc">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                className={`tab-button gap-2 ${activeTab === tab.id ? "tab-button-active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
+                type="button"
+              >
+                <Icon size={15} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
 
-          {/* Materials */}
-          <section className="rounded-md border border-zinc-200 p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 border-b border-zinc-100 pb-1.5">Vật tư sử dụng</h3>
-            {detail.materials.length === 0 ? (
-              <p className="text-sm text-zinc-500 py-1">Chưa có vật tư sử dụng.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm divide-y divide-zinc-200">
-                  <thead>
-                    <tr className="text-left text-xs uppercase text-zinc-400">
-                      <th className="py-2">Tên vật tư</th>
-                      <th className="py-2 text-center">SL</th>
-                      <th className="py-2 text-right">Đơn giá</th>
-                      <th className="py-2 text-right">Thành tiền</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-150">
-                    {detail.materials.map((material) => (
-                      <tr key={material.id}>
-                        <td className="py-2 font-medium text-zinc-900">{material.name}</td>
-                        <td className="py-2 text-center text-zinc-700">{material.quantity}</td>
-                        <td className="py-2 text-right text-zinc-700">{money(material.unit_price)}</td>
-                        <td className="py-2 text-right font-bold text-zinc-900">{money(material.line_total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-          {/* Resources & Acceptance */}
-          <section className="rounded-md border border-zinc-200 p-4 flex flex-col gap-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Tệp tài liệu & Nghiệm thu</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-md border border-zinc-100 p-3 bg-zinc-50/30">
-                <h4 className="text-xs font-bold uppercase text-zinc-500 mb-2">Tệp đính kèm</h4>
-                {detail.files.length === 0 ? (
-                  <p className="text-xs text-zinc-500 py-1">Chưa có tệp.</p>
-                ) : (
-                  <div className="grid gap-1.5">
-                    {detail.files.map((file) => (
-                      file.signed_url ? (
-                        <a key={file.id} className="text-xs font-semibold text-teal-700 underline truncate block" href={file.signed_url} target="_blank" rel="noreferrer">
-                          {file.purpose}: {file.original_name}
-                        </a>
-                      ) : (
-                        <span key={file.id} className="text-xs font-semibold text-zinc-500 truncate block">
-                          {file.purpose}: {file.original_name}
-                        </span>
-                      )
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="rounded-md border border-zinc-100 p-3 bg-zinc-50/30">
-                <h4 className="text-xs font-bold uppercase text-zinc-500 mb-2">Nghiệm thu công việc</h4>
-                <div className="flex flex-col gap-2">
-                  <a className="btn-secondary h-9 text-xs justify-center" href={`/api/work-orders/${detail.workOrder.id}/receipt`} target="_blank" rel="noreferrer">
-                    <ReceiptText size={14} />Biên bản nghiệm thu
-                  </a>
-                  {signatureFile?.signed_url ? (
-                    <a className="btn-secondary h-9 text-xs justify-center" href={signatureFile.signed_url} target="_blank" rel="noreferrer">
-                      <Wrench size={14} />Xem chữ ký
-                    </a>
-                  ) : (
-                    <span className="text-xs text-zinc-500 text-center py-2 border border-dashed border-zinc-200 rounded-md">Chưa có chữ ký</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Timeline */}
-          <section className="rounded-md border border-zinc-200 p-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 border-b border-zinc-100 pb-1.5">Lịch sử trạng thái</h3>
-            {detail.history.length === 0 ? (
-              <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center text-xs text-zinc-400">
-                Chưa có lịch sử trạng thái.
-              </div>
-            ) : (
-              <div className="relative pl-6 border-l border-zinc-200 grid gap-4 ml-2 mt-2">
-                {detail.history.map((item) => (
-                  <div key={item.id} className="relative text-xs">
-                    <span className="absolute -left-[30px] top-0.5 w-2 h-2 rounded-full bg-zinc-400 ring-4 ring-white" />
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <StatusBadge status={item.to_status} />
-                      <span className="font-semibold text-zinc-400">{dateTime(item.changed_at)}</span>
-                    </div>
-                    <p className="mt-1 font-semibold text-zinc-700">{item.changed_by_name ?? "Hệ thống"}</p>
-                    {item.note ? <p className="mt-1 text-zinc-500 italic bg-zinc-50 p-2 rounded border border-zinc-100">{item.note}</p> : null}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-
-        {/* Right Column: Sidebar */}
-        <div className="flex flex-col gap-5">
-          {/* Metadata */}
-          <section className="rounded-md border border-zinc-200 p-4 flex flex-col gap-3 bg-zinc-50/10">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Chi tiết công việc</h3>
-            <InfoItem label="Trạng thái">
-              <StatusBadge order={detail.workOrder} />
-            </InfoItem>
+        {activeTab === "overview" ? (
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <InfoItem label="Mã công việc">{detail.workOrder.code}</InfoItem>
             <InfoItem label="Loại công việc">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</InfoItem>
             <InfoItem label="Độ ưu tiên">{detail.workOrder.priority === "urgent" ? "Khẩn cấp" : "Bình thường"}</InfoItem>
             <InfoItem label="Thời gian hẹn">{dateTime(detail.workOrder.appointment_at)}</InfoItem>
             <InfoItem label="Ngày tạo">{dateTime(detail.workOrder.created_at)}</InfoItem>
+            <InfoItem label="Kỹ thuật viên">{detail.workOrder.technician_name ?? "Chưa phân công"}</InfoItem>
+            <InfoItem label="Trạng thái kỹ thuật">{assignedTechnician ? TECHNICIAN_STATUS_LABELS[assignedTechnician.status] : "Chưa gán"}</InfoItem>
+            <InfoItem label="Thanh toán">{paymentStatus}</InfoItem>
+            <div className="detail-card md:col-span-2 xl:col-span-4">
+              <p className="detail-label">Mô tả công việc</p>
+              <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.description}</p>
+            </div>
           </section>
+        ) : null}
 
-          {/* Pricing & Payments */}
-          <section className="rounded-md border border-zinc-200 p-4 flex flex-col gap-3 bg-zinc-50/10">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Chi phí & Thanh toán</h3>
+        {activeTab === "customer" ? (
+          <section className="grid gap-3 md:grid-cols-2">
+            <InfoItem label="Khách hàng">{detail.workOrder.customer_name}</InfoItem>
+            <InfoItem label="Số điện thoại">
+              <a className="inline-flex min-w-0 items-center gap-2 text-teal-700" href={`tel:${detail.workOrder.customer_phone}`}>
+                <Phone size={15} className="shrink-0" />{detail.workOrder.customer_phone}
+              </a>
+            </InfoItem>
+            <div className="detail-card md:col-span-2">
+              <p className="detail-label">Địa chỉ</p>
+              <a
+                className="detail-value inline-flex items-start gap-2 text-teal-700"
+                href={`https://maps.google.com/?q=${encodeURIComponent(detail.workOrder.customer_address)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MapPinned size={15} className="mt-0.5 shrink-0" />{detail.workOrder.customer_address}
+              </a>
+            </div>
+            <div className="detail-card">
+              <p className="detail-label">Ghi chú nội bộ</p>
+              <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.internal_note ?? "Không có ghi chú"}</p>
+            </div>
+            <div className="detail-card">
+              <p className="detail-label">Ghi chú hoàn thành</p>
+              <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.completion_note ?? "Không có ghi chú"}</p>
+            </div>
+          </section>
+        ) : null}
+
+        {activeTab === "progress" ? (
+          <section className="grid gap-3">
+            <ModalListControls
+              query={historyQuery}
+              onQueryChange={(nextQuery) => {
+                setHistoryQuery(nextQuery);
+                setHistoryPage(1);
+              }}
+              page={clampPage(historyPage, filteredHistory.length)}
+              total={filteredHistory.length}
+              label="Lọc lịch sử trạng thái"
+              placeholder="Lọc theo trạng thái, người đổi, ghi chú..."
+              onPageChange={(nextPage) => setHistoryPage(clampPage(nextPage, filteredHistory.length))}
+            />
+            {filteredHistory.length === 0 ? (
+              <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500">
+                Không có lịch sử phù hợp.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {visibleHistory.map((item) => (
+                  <div key={item.id} className="detail-card text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <StatusBadge status={item.to_status} />
+                      <span className="font-semibold text-zinc-500">{dateTime(item.changed_at)}</span>
+                    </div>
+                    <p className="mt-2 font-semibold text-zinc-800">{item.changed_by_name ?? "Hệ thống"}</p>
+                    {item.note ? <p className="mt-1 whitespace-pre-wrap text-zinc-600">{item.note}</p> : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        {activeTab === "costs" ? (
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <InfoItem label="Tiền công">{money(detail.workOrder.labor_cost)}</InfoItem>
+            <InfoItem label="Tiền vật tư">{money(detail.workOrder.material_amount)}</InfoItem>
+            <InfoItem label="VAT">{money(detail.workOrder.vat_amount)}</InfoItem>
+            <InfoItem label="Tổng cộng">{money(detail.workOrder.total_amount)}</InfoItem>
             <InfoItem label="Thanh toán">{paymentStatus}</InfoItem>
             <InfoItem label="Phương thức">{detail.workOrder.payment_method ?? "Chưa có"}</InfoItem>
             <InfoItem label="Mã giao dịch">{detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>
             <InfoItem label="Hạn công nợ">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Không có"}</InfoItem>
-            <InfoItem label="Ghi chú thanh toán">{detail.workOrder.payment_note ?? "Không có"}</InfoItem>
-            
-            <div className="border-t border-zinc-200 pt-3 flex flex-col gap-1.5 text-xs text-zinc-600">
-              <div className="flex justify-between">
-                <span>Tiền công:</span>
-                <span className="font-semibold text-zinc-850">{money(detail.workOrder.labor_cost)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tiền vật tư:</span>
-                <span className="font-semibold text-zinc-850">{money(detail.workOrder.material_amount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Thuế VAT:</span>
-                <span className="font-semibold text-zinc-850">{money(detail.workOrder.vat_amount)}</span>
-              </div>
-              <div className="flex justify-between border-t border-zinc-200 pt-1.5 text-sm text-zinc-950 font-extrabold">
-                <span>Tổng cộng:</span>
-                <span>{money(detail.workOrder.total_amount)}</span>
-              </div>
+            <div className="detail-card md:col-span-2 xl:col-span-4">
+              <p className="detail-label">Ghi chú thanh toán</p>
+              <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.payment_note ?? "Không có ghi chú"}</p>
             </div>
           </section>
+        ) : null}
 
-          {/* Technician & Notes */}
-          <section className="rounded-md border border-zinc-200 p-4 flex flex-col gap-3 bg-zinc-50/10">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-100 pb-1.5">Nhân viên phụ trách</h3>
-            <InfoItem label="Kỹ thuật viên">{detail.workOrder.technician_name ?? "Chưa phân công"}</InfoItem>
-            <InfoItem label="Trạng thái">{assignedTechnician ? TECHNICIAN_STATUS_LABELS[assignedTechnician.status] : "Chưa gán"}</InfoItem>
-            
-            <div className="rounded border border-zinc-150 p-2.5 mt-1 bg-white">
-              <p className="text-[10px] font-bold uppercase text-zinc-400">Ghi chú nội bộ</p>
-              <p className="mt-1 text-xs text-zinc-700 leading-relaxed whitespace-pre-wrap">{detail.workOrder.internal_note ?? "Không có ghi chú"}</p>
+        {activeTab === "resources" ? (
+          <section className="grid gap-4 lg:grid-cols-2">
+            <div className="modal-section">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="section-title">Vật tư sử dụng</h3>
+                <span className="text-xs font-semibold text-zinc-500">{filteredMaterials.length} mục</span>
+              </div>
+              <div className="mt-3">
+                <ModalListControls
+                  query={resourceQuery}
+                  onQueryChange={(nextQuery) => {
+                    setResourceQuery(nextQuery);
+                    setMaterialPage(1);
+                    setFilePage(1);
+                  }}
+                  page={clampPage(materialPage, filteredMaterials.length)}
+                  total={filteredMaterials.length}
+                  label="Lọc vật tư và tệp"
+                  placeholder="Lọc vật tư, tệp, loại ảnh..."
+                  onPageChange={(nextPage) => setMaterialPage(clampPage(nextPage, filteredMaterials.length))}
+                />
+              </div>
+              {filteredMaterials.length === 0 ? (
+                <p className="mt-3 text-sm text-zinc-500">Không có vật tư phù hợp.</p>
+              ) : (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500">
+                        <th className="py-2 pr-3 font-semibold">Tên vật tư</th>
+                        <th className="px-3 py-2 text-center font-semibold">SL</th>
+                        <th className="px-3 py-2 text-right font-semibold">Đơn giá</th>
+                        <th className="py-2 pl-3 text-right font-semibold">Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100">
+                      {visibleMaterials.map((material) => (
+                        <tr key={material.id}>
+                          <td className="py-2 pr-3 font-medium text-zinc-900">{material.name}</td>
+                          <td className="px-3 py-2 text-center text-zinc-700">{material.quantity}</td>
+                          <td className="px-3 py-2 text-right text-zinc-700">{money(material.unit_price)}</td>
+                          <td className="py-2 pl-3 text-right font-bold text-zinc-900">{money(material.line_total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            <div className="rounded border border-zinc-150 p-2.5 bg-white">
-              <p className="text-[10px] font-bold uppercase text-zinc-400">Ghi chú hoàn thành</p>
-              <p className="mt-1 text-xs text-zinc-700 leading-relaxed whitespace-pre-wrap">{detail.workOrder.completion_note ?? "Không có ghi chú"}</p>
+            <div className="grid gap-4">
+              <div className="modal-section">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="section-title">Tệp đính kèm</h3>
+                  <span className="text-xs font-semibold text-zinc-500">{filteredFiles.length} mục</span>
+                </div>
+                <div className="mt-3">
+                  <ModalListControls
+                    query={resourceQuery}
+                    onQueryChange={(nextQuery) => {
+                      setResourceQuery(nextQuery);
+                      setMaterialPage(1);
+                      setFilePage(1);
+                    }}
+                    page={clampPage(filePage, filteredFiles.length)}
+                    total={filteredFiles.length}
+                    label="Lọc tệp đính kèm"
+                    placeholder="Lọc vật tư, tệp, loại ảnh..."
+                    onPageChange={(nextPage) => setFilePage(clampPage(nextPage, filteredFiles.length))}
+                  />
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {filteredFiles.length === 0 ? <p className="text-sm text-zinc-500">Không có tệp phù hợp.</p> : visibleFiles.map((file) => (
+                    file.signed_url ? (
+                      <a key={file.id} className="truncate rounded-md bg-zinc-50 px-3 py-2 text-sm font-semibold text-teal-700 underline" href={file.signed_url} target="_blank" rel="noreferrer">
+                        {file.purpose}: {file.original_name}
+                      </a>
+                    ) : (
+                      <span key={file.id} className="truncate rounded-md bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-500">
+                        {file.purpose}: {file.original_name}
+                      </span>
+                    )
+                  ))}
+                </div>
+              </div>
+              <div className="modal-section">
+                <h3 className="section-title">Nghiệm thu</h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <a className="btn-secondary h-10" href={`/api/work-orders/${detail.workOrder.id}/receipt`} target="_blank" rel="noreferrer">
+                    <ReceiptText size={15} />Biên bản
+                  </a>
+                  {signatureFile?.signed_url ? (
+                    <a className="btn-secondary h-10" href={signatureFile.signed_url} target="_blank" rel="noreferrer">
+                      <Wrench size={15} />Chữ ký
+                    </a>
+                  ) : (
+                    <span className="inline-flex min-h-10 items-center justify-center rounded-md border border-dashed border-zinc-300 px-3 text-sm font-semibold text-zinc-500">Chưa có chữ ký</span>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
-        </div>
+        ) : null}
       </div>
     </Modal>
   );

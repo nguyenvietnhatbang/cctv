@@ -70,7 +70,7 @@ export function SignatureAcceptanceForm({
   }
 
   return (
-    <ValidatedForm onSubmit={submit} aria-busy={isSubmitting} className="rounded-md border border-zinc-200 p-4">
+    <ValidatedForm onSubmit={submit} aria-busy={isSubmitting} className="modal-section">
       <h3 className="section-title">Nghiệm thu</h3>
       <div className="mt-3 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
         <p className="font-semibold">{detail.workOrder.customer_name}</p>

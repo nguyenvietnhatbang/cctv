@@ -6,6 +6,7 @@ import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { Modal, StatusBadge } from "@/components/ops/ui";
 import type { Technician, WorkOrderDetail } from "@/components/ops/types";
+import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 
 type DispatchDetailTab = "work" | "customer" | "technician" | "history" | "resources";
 
@@ -25,9 +26,9 @@ const paymentLabels: Record<string, string> = {
 
 function InfoItem({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-md border border-zinc-200 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">{label}</p>
-      <div className="mt-1 text-sm font-semibold text-zinc-900">{children}</div>
+    <div className="detail-card">
+      <p className="detail-label">{label}</p>
+      <div className="detail-value">{children}</div>
     </div>
   );
 }
@@ -42,24 +43,49 @@ export function DispatchDetailModal({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<DispatchDetailTab>("work");
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [resourceQuery, setResourceQuery] = useState("");
+  const [materialPage, setMaterialPage] = useState(1);
+  const [filePage, setFilePage] = useState(1);
   const assignedTechnician = technicians.find((technician) => technician.id === detail.workOrder.technician_id) ?? null;
   const paymentStatus = detail.workOrder.payment_status
     ? paymentLabels[detail.workOrder.payment_status] ?? detail.workOrder.payment_status
     : "Chưa thanh toán";
+  const normalizedHistoryQuery = historyQuery.trim().toLowerCase();
+  const filteredHistory = detail.history.filter((item) => {
+    if (!normalizedHistoryQuery) return true;
+    return [item.to_status, item.changed_by_name ?? "", item.note ?? "", dateTime(item.changed_at)]
+      .some((value) => value.toLowerCase().includes(normalizedHistoryQuery));
+  });
+  const visibleHistory = pageItems(filteredHistory, clampPage(historyPage, filteredHistory.length));
+  const normalizedResourceQuery = resourceQuery.trim().toLowerCase();
+  const filteredMaterials = detail.materials.filter((material) => {
+    if (!normalizedResourceQuery) return true;
+    return [material.name, String(material.quantity), money(material.line_total)]
+      .some((value) => value.toLowerCase().includes(normalizedResourceQuery));
+  });
+  const filteredFiles = detail.files.filter((file) => {
+    if (!normalizedResourceQuery) return true;
+    return [file.purpose, file.original_name].some((value) => value.toLowerCase().includes(normalizedResourceQuery));
+  });
+  const visibleMaterials = pageItems(filteredMaterials, clampPage(materialPage, filteredMaterials.length));
+  const visibleFiles = pageItems(filteredFiles, clampPage(filePage, filteredFiles.length));
 
   return (
     <Modal title={`Xem ${detail.workOrder.code}`} size="xl" onClose={onClose}>
       <div className="grid gap-4">
-        <section className="rounded-md border border-zinc-200 p-4">
+        <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
+            <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
           </div>
           <h3 className="mt-3 text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
           <p className="mt-2 text-sm leading-6 text-zinc-600">{detail.workOrder.description}</p>
         </section>
 
-        <nav className="flex gap-2 overflow-x-auto" aria-label="Thông tin phiếu phân công">
+        <nav className="modal-tabbar" aria-label="Thông tin phiếu phân công">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -86,9 +112,9 @@ export function DispatchDetailModal({
             <InfoItem label="Vật tư">{money(detail.workOrder.material_amount)}</InfoItem>
             <InfoItem label="VAT">{money(detail.workOrder.vat_amount)}</InfoItem>
             <InfoItem label="Tổng">{money(detail.workOrder.total_amount)}</InfoItem>
-            <div className="rounded-md border border-zinc-200 p-3 md:col-span-2 xl:col-span-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Ghi chú nội bộ</p>
-              <p className="mt-1 text-sm leading-6 text-zinc-700">{detail.workOrder.internal_note ?? "Chưa có ghi chú"}</p>
+            <div className="detail-card md:col-span-2 xl:col-span-4">
+              <p className="detail-label">Ghi chú nội bộ</p>
+              <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.internal_note ?? "Chưa có ghi chú"}</p>
             </div>
           </section>
         ) : null}
@@ -101,15 +127,15 @@ export function DispatchDetailModal({
                 <Phone size={15} />{detail.workOrder.customer_phone}
               </a>
             </InfoItem>
-            <div className="rounded-md border border-zinc-200 p-3 md:col-span-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Địa chỉ</p>
+            <div className="detail-card md:col-span-2">
+              <p className="detail-label">Địa chỉ</p>
               <a
-                className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-teal-700"
+                className="detail-value inline-flex items-start gap-2 text-teal-700"
                 href={`https://maps.google.com/?q=${encodeURIComponent(detail.workOrder.customer_address)}`}
                 target="_blank"
                 rel="noreferrer"
               >
-                <MapPinned size={15} />{detail.workOrder.customer_address}
+                <MapPinned size={15} className="mt-0.5 shrink-0" />{detail.workOrder.customer_address}
               </a>
             </div>
           </section>
@@ -128,12 +154,24 @@ export function DispatchDetailModal({
 
         {activeTab === "history" ? (
           <section className="grid gap-2">
-            {detail.history.length === 0 ? (
+            <ModalListControls
+              query={historyQuery}
+              onQueryChange={(nextQuery) => {
+                setHistoryQuery(nextQuery);
+                setHistoryPage(1);
+              }}
+              page={clampPage(historyPage, filteredHistory.length)}
+              total={filteredHistory.length}
+              label="Lọc lịch sử điều phối"
+              placeholder="Lọc theo trạng thái, người đổi, ghi chú..."
+              onPageChange={(nextPage) => setHistoryPage(clampPage(nextPage, filteredHistory.length))}
+            />
+            {filteredHistory.length === 0 ? (
               <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500">
-                Chưa có lịch sử trạng thái.
+                Không có lịch sử phù hợp.
               </div>
-            ) : detail.history.map((item) => (
-              <div key={item.id} className="rounded-md border border-zinc-200 p-3 text-sm">
+            ) : visibleHistory.map((item) => (
+              <div key={item.id} className="detail-card text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <StatusBadge status={item.to_status} />
                   <span className="font-semibold text-zinc-500">{dateTime(item.changed_at)}</span>
@@ -147,10 +185,28 @@ export function DispatchDetailModal({
 
         {activeTab === "resources" ? (
           <section className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-md border border-zinc-200 p-4">
-              <h3 className="section-title">Vật tư</h3>
+            <div className="modal-section">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="section-title">Vật tư</h3>
+                <span className="text-xs font-semibold text-zinc-500">{filteredMaterials.length} mục</span>
+              </div>
+              <div className="mt-3">
+                <ModalListControls
+                  query={resourceQuery}
+                  onQueryChange={(nextQuery) => {
+                    setResourceQuery(nextQuery);
+                    setMaterialPage(1);
+                    setFilePage(1);
+                  }}
+                  page={clampPage(materialPage, filteredMaterials.length)}
+                  total={filteredMaterials.length}
+                  label="Lọc vật tư điều phối"
+                  placeholder="Lọc vật tư, tệp..."
+                  onPageChange={(nextPage) => setMaterialPage(clampPage(nextPage, filteredMaterials.length))}
+                />
+              </div>
               <div className="mt-3 grid gap-2">
-                {detail.materials.length === 0 ? <p className="text-sm text-zinc-500">Chưa có vật tư.</p> : detail.materials.map((material) => (
+                {filteredMaterials.length === 0 ? <p className="text-sm text-zinc-500">Không có vật tư phù hợp.</p> : visibleMaterials.map((material) => (
                   <div key={material.id} className="flex items-center justify-between gap-3 text-sm">
                     <span className="font-semibold text-zinc-800">{material.name} x {material.quantity}</span>
                     <span className="text-zinc-600">{money(material.line_total)}</span>
@@ -158,10 +214,28 @@ export function DispatchDetailModal({
                 ))}
               </div>
             </div>
-            <div className="rounded-md border border-zinc-200 p-4">
-              <h3 className="section-title">Tệp liên quan</h3>
+            <div className="modal-section">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="section-title">Tệp liên quan</h3>
+                <span className="text-xs font-semibold text-zinc-500">{filteredFiles.length} mục</span>
+              </div>
+              <div className="mt-3">
+                <ModalListControls
+                  query={resourceQuery}
+                  onQueryChange={(nextQuery) => {
+                    setResourceQuery(nextQuery);
+                    setMaterialPage(1);
+                    setFilePage(1);
+                  }}
+                  page={clampPage(filePage, filteredFiles.length)}
+                  total={filteredFiles.length}
+                  label="Lọc tệp điều phối"
+                  placeholder="Lọc vật tư, tệp..."
+                  onPageChange={(nextPage) => setFilePage(clampPage(nextPage, filteredFiles.length))}
+                />
+              </div>
               <div className="mt-3 grid gap-2">
-                {detail.files.length === 0 ? <p className="text-sm text-zinc-500">Chưa có tệp.</p> : detail.files.map((file) => (
+                {filteredFiles.length === 0 ? <p className="text-sm text-zinc-500">Không có tệp phù hợp.</p> : visibleFiles.map((file) => (
                   file.signed_url ? (
                     <a
                       key={file.id}

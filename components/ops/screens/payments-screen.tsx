@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { CreditCard, Eye, Coins } from "lucide-react";
+import { CreditCard, Eye, Coins, Search } from "lucide-react";
 import { money } from "@/components/ops/format";
-import { EmptyState, StatusBadge, TableShell } from "@/components/ops/ui";
+import { EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
 
 export function PaymentsScreen({
@@ -16,21 +16,26 @@ export function PaymentsScreen({
   onPayment: (id: string) => void;
 }) {
   const [filter, setFilter] = useState<"all" | "awaiting" | "paid" | "debt">("awaiting");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
   const allPaymentOrders = orders.filter((order) =>
     ["completed", "awaiting_payment", "debt", "paid"].includes(order.status),
   );
   const paymentOrders = allPaymentOrders.filter((order) => {
-    if (filter === "awaiting") return ["completed", "awaiting_payment"].includes(order.status);
-    if (filter === "paid") return order.status === "paid" || order.payment_status === "paid";
-    if (filter === "debt") return order.status === "debt" || order.payment_status === "debt";
-    return true;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesFilter =
+      filter === "awaiting" ? ["completed", "awaiting_payment"].includes(order.status)
+      : filter === "paid" ? order.status === "paid" || order.payment_status === "paid"
+      : filter === "debt" ? order.status === "debt" || order.payment_status === "debt"
+      : true;
+    const matchesSearch =
+      !q ||
+      [order.code, order.customer_name, order.customer_phone, order.technician_name ?? ""]
+        .some((value) => value.toLowerCase().includes(q));
+    return matchesFilter && matchesSearch;
   });
-
-  const paymentLabels: Record<string, string> = {
-    unpaid: "Chưa thanh toán",
-    paid: "Đã thanh toán",
-    debt: "Công nợ",
-  };
+  const safePage = clampTablePage(page, paymentOrders.length);
+  const visiblePaymentOrders = getPageItems(paymentOrders, safePage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,17 +60,34 @@ export function PaymentsScreen({
               <button
                 key={value}
                 className={`tab-button h-8 px-3 text-xs ${filter === value ? "tab-button-active" : ""}`}
-                onClick={() => setFilter(value as typeof filter)}
+                onClick={() => {
+                  setFilter(value as typeof filter);
+                  setPage(1);
+                }}
                 type="button"
               >
                 {label}
               </button>
             ))}
           </div>
-          <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1">
-            <Coins size={13} />
-            Số công việc: {paymentOrders.length}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex items-center !w-64 shrink-0">
+              <Search size={13} className="search-field-icon" />
+              <input
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setPage(1);
+                }}
+                className="input search-field-input h-9 !w-full py-1 text-xs"
+                placeholder="Tìm mã, khách, SĐT..."
+              />
+            </div>
+            <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1">
+              <Coins size={13} />
+              Số công việc: {paymentOrders.length}
+            </span>
+          </div>
         </div>
 
         {paymentOrders.length === 0 ? (
@@ -83,7 +105,7 @@ export function PaymentsScreen({
               </tr>
             </thead>
             <tbody>
-              {paymentOrders.map((order) => (
+              {visiblePaymentOrders.map((order) => (
                 <tr key={order.id}>
                   <td className="font-semibold">{order.code}</td>
                   <td>
@@ -134,6 +156,7 @@ export function PaymentsScreen({
             </tbody>
           </table>
         )}
+        <TablePagination page={safePage} total={paymentOrders.length} onPageChange={setPage} />
       </TableShell>
     </div>
   );

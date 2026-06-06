@@ -17,7 +17,7 @@ export function CostNoteForm({
   isSubmitting?: boolean;
 }) {
   return (
-    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="rounded-md border border-zinc-200 p-4">
+    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-section">
       <h3 className="section-title">Chi phí và ghi chú</h3>
       {financialLocked ? (
         <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Chi phí đã khóa sau nghiệm thu/thanh toán. Chỉ admin được điều chỉnh tiền công và VAT.</p>

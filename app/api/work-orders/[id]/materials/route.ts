@@ -12,7 +12,7 @@ type Context = {
 
 export async function GET(_request: Request, context: Context) {
   try {
-    const user = await requireUser();
+    await requireUser();
     const { id } = await context.params;
 
     const result = await query(

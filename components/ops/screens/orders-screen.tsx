@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Eye, Plus, XCircle, Search, Filter } from "lucide-react";
+import { Edit, Eye, Plus, XCircle, Search } from "lucide-react";
 import { DISPLAY_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { EmptyState, StatusBadge, TableShell } from "@/components/ops/ui";
+import { EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import { WorkOrderCreateModal } from "@/components/ops/modals";
 import type { Customer, Filters, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -34,6 +34,14 @@ export function OrdersScreen({
   onCancel: (item: WorkOrderListItem) => void;
 }) {
   const [creating, setCreating] = useState(false);
+  const [page, setPage] = useState(1);
+  const safePage = clampTablePage(page, orders.length);
+  const visibleOrders = getPageItems(orders, safePage);
+
+  function applyFilter(nextFilters: Filters) {
+    setPage(1);
+    onFilter(nextFilters);
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,7 +65,7 @@ export function OrdersScreen({
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={filters.status}
-              onChange={(event) => onFilter({ ...filters, status: event.target.value })}
+              onChange={(event) => applyFilter({ ...filters, status: event.target.value })}
               className="input !w-[160px] bg-white h-9 py-1 text-xs shrink-0"
             >
               <option value="">Trạng thái: Tất cả</option>
@@ -69,7 +77,7 @@ export function OrdersScreen({
             </select>
             <select
               value={filters.type}
-              onChange={(event) => onFilter({ ...filters, type: event.target.value })}
+              onChange={(event) => applyFilter({ ...filters, type: event.target.value })}
               className="input !w-[135px] bg-white h-9 py-1 text-xs shrink-0"
             >
               <option value="">Loại việc: Tất cả</option>
@@ -81,7 +89,7 @@ export function OrdersScreen({
             </select>
             <select
               value={filters.technicianId}
-              onChange={(event) => onFilter({ ...filters, technicianId: event.target.value })}
+              onChange={(event) => applyFilter({ ...filters, technicianId: event.target.value })}
               className="input !w-[150px] bg-white h-9 py-1 text-xs shrink-0"
             >
               <option value="">Kỹ thuật: Tất cả</option>
@@ -98,7 +106,7 @@ export function OrdersScreen({
               <input
                 type="date"
                 value={filters.dateFrom}
-                onChange={(event) => onFilter({ ...filters, dateFrom: event.target.value })}
+                onChange={(event) => applyFilter({ ...filters, dateFrom: event.target.value })}
                 className="border-none bg-transparent outline-none p-0 text-xs w-[110px]"
                 aria-label="Từ ngày"
               />
@@ -107,7 +115,7 @@ export function OrdersScreen({
               <input
                 type="date"
                 value={filters.dateTo}
-                onChange={(event) => onFilter({ ...filters, dateTo: event.target.value })}
+                onChange={(event) => applyFilter({ ...filters, dateTo: event.target.value })}
                 className="border-none bg-transparent outline-none p-0 text-xs w-[110px]"
                 aria-label="Đến ngày"
               />
@@ -115,11 +123,11 @@ export function OrdersScreen({
           </div>
 
           <div className="relative flex items-center !w-60 shrink-0">
-            <Search size={13} className="absolute left-2.5 text-zinc-400" />
+            <Search size={13} className="search-field-icon" />
             <input
               value={filters.q}
-              onChange={(event) => onFilter({ ...filters, q: event.target.value })}
-              className="input pl-8 h-9 py-1 text-xs !w-full"
+              onChange={(event) => applyFilter({ ...filters, q: event.target.value })}
+              className="input search-field-input h-9 !w-full py-1 text-xs"
               placeholder="Tìm kiếm công việc..."
             />
           </div>
@@ -142,7 +150,7 @@ export function OrdersScreen({
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {visibleOrders.map((order) => (
                 <tr key={order.id}>
                   <td className="font-semibold">{order.code}</td>
                   <td>
@@ -195,6 +203,7 @@ export function OrdersScreen({
             </tbody>
           </table>
         )}
+        <TablePagination page={safePage} total={orders.length} onPageChange={setPage} />
       </TableShell>
 
       {creating ? (

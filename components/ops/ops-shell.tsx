@@ -148,11 +148,11 @@ export function OpsShell({
           <div className="flex items-center gap-3">
             {/* Mock Search Bar */}
             <div className="relative hidden lg:flex items-center w-56">
-              <Search size={14} className="absolute left-3 text-zinc-400" />
+              <Search size={14} className="search-field-icon" />
               <input
                 type="text"
                 placeholder="Tìm kiếm..."
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-md pl-8 pr-8 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-800"
+                className="search-field-input w-full rounded-md border border-zinc-200 bg-zinc-50 py-1.5 pr-8 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-800"
                 readOnly
               />
               <span className="absolute right-3 text-[9px] text-zinc-400 font-semibold border border-zinc-200 bg-white px-1 rounded leading-normal">

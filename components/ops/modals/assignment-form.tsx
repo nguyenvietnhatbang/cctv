@@ -17,9 +17,9 @@ export function AssignmentForm({
   isSubmitting?: boolean;
 }) {
   return (
-    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="rounded-md border border-zinc-200 p-4">
+    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-section">
       <h3 className="section-title">Phân công</h3>
-      <fieldset disabled={isSubmitting} className="mt-3 grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+      <fieldset disabled={isSubmitting} className="mt-3 grid gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
           <select name="technicianId" className="input" required defaultValue={detail.workOrder.technician_id ?? ""}>
             <option value="" disabled>Chọn kỹ thuật viên</option>
             {technicians.map((technician) => (
@@ -29,7 +29,7 @@ export function AssignmentForm({
             ))}
           </select>
           <input name="note" className="input" placeholder="Ghi chú phân công" />
-          <PendingButton className="btn-secondary h-11" type="submit" pending={isSubmitting} pendingLabel="Đang phân công...">Cập nhật</PendingButton>
+          <PendingButton className="btn-secondary h-10 xl:h-11" type="submit" pending={isSubmitting} pendingLabel="Đang phân công...">Cập nhật</PendingButton>
       </fieldset>
     </ValidatedForm>
   );

@@ -6,6 +6,7 @@ import { WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { Modal, StatusBadge } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
+import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 
 type PaymentTab = "summary" | "customer" | "costs" | "history";
 
@@ -30,9 +31,9 @@ const methodLabels: Record<string, string> = {
 
 function InfoItem({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-md border border-zinc-200 p-3">
-      <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">{label}</p>
-      <div className="mt-1 text-sm font-semibold text-zinc-900">{children}</div>
+    <div className="detail-card">
+      <p className="detail-label">{label}</p>
+      <div className="detail-value">{children}</div>
     </div>
   );
 }
@@ -45,20 +46,39 @@ export function PaymentDetailModal({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<PaymentTab>("summary");
+  const [materialQuery, setMaterialQuery] = useState("");
+  const [materialPage, setMaterialPage] = useState(1);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
   const paymentStatus = detail.workOrder.payment_status
     ? paymentLabels[detail.workOrder.payment_status] ?? detail.workOrder.payment_status
     : "Chưa thanh toán";
   const paymentMethod = detail.workOrder.payment_method
     ? methodLabels[detail.workOrder.payment_method] ?? detail.workOrder.payment_method
     : "Chưa có";
+  const normalizedMaterialQuery = materialQuery.trim().toLowerCase();
+  const filteredMaterials = detail.materials.filter((material) => {
+    if (!normalizedMaterialQuery) return true;
+    return [material.name, String(material.quantity), money(material.line_total)]
+      .some((value) => value.toLowerCase().includes(normalizedMaterialQuery));
+  });
+  const visibleMaterials = pageItems(filteredMaterials, clampPage(materialPage, filteredMaterials.length));
+  const normalizedHistoryQuery = historyQuery.trim().toLowerCase();
+  const filteredHistory = detail.history.filter((item) => {
+    if (!normalizedHistoryQuery) return true;
+    return [item.to_status, item.changed_by_name ?? "", item.note ?? "", dateTime(item.changed_at)]
+      .some((value) => value.toLowerCase().includes(normalizedHistoryQuery));
+  });
+  const visibleHistory = pageItems(filteredHistory, clampPage(historyPage, filteredHistory.length));
 
   return (
     <Modal title={`Xem thanh toán ${detail.workOrder.code}`} size="xl" onClose={onClose}>
       <div className="grid gap-4">
-        <section className="rounded-md border border-zinc-200 p-4">
+        <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
+            <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
           </div>
           <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -69,7 +89,7 @@ export function PaymentDetailModal({
           </div>
         </section>
 
-        <nav className="flex gap-2 overflow-x-auto" aria-label="Thông tin thanh toán">
+        <nav className="modal-tabbar" aria-label="Thông tin thanh toán">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -94,9 +114,9 @@ export function PaymentDetailModal({
             <InfoItem label="Mã giao dịch">{detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>
             <InfoItem label="Hạn công nợ">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Không có"}</InfoItem>
             <InfoItem label="Hẹn/Tạo">{dateTime(detail.workOrder.appointment_at ?? detail.workOrder.created_at)}</InfoItem>
-            <div className="rounded-md border border-zinc-200 p-3 md:col-span-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Ghi chú thanh toán</p>
-              <p className="mt-1 text-sm leading-6 text-zinc-700">{detail.workOrder.payment_note ?? "Chưa có ghi chú"}</p>
+            <div className="detail-card md:col-span-2">
+              <p className="detail-label">Ghi chú thanh toán</p>
+              <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.payment_note ?? "Chưa có ghi chú"}</p>
             </div>
           </section>
         ) : null}
@@ -105,9 +125,9 @@ export function PaymentDetailModal({
           <section className="grid gap-3 md:grid-cols-2">
             <InfoItem label="Khách hàng">{detail.workOrder.customer_name}</InfoItem>
             <InfoItem label="Số điện thoại">{detail.workOrder.customer_phone}</InfoItem>
-            <div className="rounded-md border border-zinc-200 p-3 md:col-span-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Địa chỉ</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-900">{detail.workOrder.customer_address}</p>
+            <div className="detail-card md:col-span-2">
+              <p className="detail-label">Địa chỉ</p>
+              <p className="detail-value">{detail.workOrder.customer_address}</p>
             </div>
           </section>
         ) : null}
@@ -118,10 +138,27 @@ export function PaymentDetailModal({
             <InfoItem label="Vật tư">{money(detail.workOrder.material_amount)}</InfoItem>
             <InfoItem label="VAT">{money(detail.workOrder.vat_amount)}</InfoItem>
             <InfoItem label="Tổng">{money(detail.workOrder.total_amount)}</InfoItem>
-            <div className="rounded-md border border-zinc-200 p-4 md:col-span-2 xl:col-span-4">
-              <h3 className="section-title">Vật tư</h3>
+            <div className="modal-section md:col-span-2 xl:col-span-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="section-title">Vật tư</h3>
+                <span className="text-xs font-semibold text-zinc-500">{filteredMaterials.length} mục</span>
+              </div>
+              <div className="mt-3">
+                <ModalListControls
+                  query={materialQuery}
+                  onQueryChange={(nextQuery) => {
+                    setMaterialQuery(nextQuery);
+                    setMaterialPage(1);
+                  }}
+                  page={clampPage(materialPage, filteredMaterials.length)}
+                  total={filteredMaterials.length}
+                  label="Lọc vật tư thanh toán"
+                  placeholder="Lọc vật tư, số lượng, thành tiền..."
+                  onPageChange={(nextPage) => setMaterialPage(clampPage(nextPage, filteredMaterials.length))}
+                />
+              </div>
               <div className="mt-3 grid gap-2">
-                {detail.materials.length === 0 ? <p className="text-sm text-zinc-500">Chưa có vật tư.</p> : detail.materials.map((material) => (
+                {filteredMaterials.length === 0 ? <p className="text-sm text-zinc-500">Không có vật tư phù hợp.</p> : visibleMaterials.map((material) => (
                   <div key={material.id} className="flex items-center justify-between gap-3 text-sm">
                     <span className="font-semibold text-zinc-800">{material.name} x {material.quantity}</span>
                     <span className="text-zinc-600">{money(material.line_total)}</span>
@@ -134,12 +171,24 @@ export function PaymentDetailModal({
 
         {activeTab === "history" ? (
           <section className="grid gap-2">
-            {detail.history.length === 0 ? (
+            <ModalListControls
+              query={historyQuery}
+              onQueryChange={(nextQuery) => {
+                setHistoryQuery(nextQuery);
+                setHistoryPage(1);
+              }}
+              page={clampPage(historyPage, filteredHistory.length)}
+              total={filteredHistory.length}
+              label="Lọc lịch sử thanh toán"
+              placeholder="Lọc theo trạng thái, người đổi, ghi chú..."
+              onPageChange={(nextPage) => setHistoryPage(clampPage(nextPage, filteredHistory.length))}
+            />
+            {filteredHistory.length === 0 ? (
               <div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-500">
-                Chưa có lịch sử trạng thái.
+                Không có lịch sử phù hợp.
               </div>
-            ) : detail.history.map((item) => (
-              <div key={item.id} className="rounded-md border border-zinc-200 p-3 text-sm">
+            ) : visibleHistory.map((item) => (
+              <div key={item.id} className="detail-card text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <StatusBadge status={item.to_status} />
                   <span className="font-semibold text-zinc-500">{dateTime(item.changed_at)}</span>

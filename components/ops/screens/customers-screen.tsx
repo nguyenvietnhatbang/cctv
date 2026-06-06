@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import { Edit, Eye, Trash2, Plus, Search, MapPin, Filter } from "lucide-react";
-import { EmptyState, TableShell } from "@/components/ops/ui";
+import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer } from "@/components/ops/types";
 
 export function CustomersScreen({
   customers,
-  isCreating,
-  onCreate,
   onView,
   onEdit,
   onDelete,
@@ -23,6 +21,7 @@ export function CustomersScreen({
   onTriggerCreate: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const filteredCustomers = customers.filter((customer) => {
     return (
@@ -33,6 +32,8 @@ export function CustomersScreen({
       (customer.address_note && customer.address_note.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   });
+  const safePage = clampTablePage(page, filteredCustomers.length);
+  const visibleCustomers = getPageItems(filteredCustomers, safePage);
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,12 +59,15 @@ export function CustomersScreen({
           </div>
           <div className="flex items-center gap-2">
             <div className="relative flex items-center !w-64 shrink-0">
-              <Search size={13} className="absolute left-2.5 text-zinc-400" />
+              <Search size={13} className="search-field-icon" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input pl-8 h-9 py-1 text-xs !w-full"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
+                className="input search-field-input h-9 !w-full py-1 text-xs"
                 placeholder="Tìm theo tên, SĐT, địa chỉ..."
               />
             </div>
@@ -88,7 +92,7 @@ export function CustomersScreen({
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.map((customer) => {
+              {visibleCustomers.map((customer) => {
                 const initials = customer.name
                   .split(" ")
                   .map((n) => n[0])
@@ -153,6 +157,7 @@ export function CustomersScreen({
             </tbody>
           </table>
         )}
+        <TablePagination page={safePage} total={filteredCustomers.length} onPageChange={setPage} />
       </TableShell>
     </div>
   );
