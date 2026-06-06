@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -142,6 +142,7 @@ export function OpsApp() {
   const [data, setData] = useState<AppData>(emptyData);
   const [modal, setModal] = useState<ModalState>(null);
   const [detail, setDetail] = useState<WorkOrderDetail | null>(null);
+  const loadedDataKeyRef = useRef<string | null>(null);
 
   const section = useMemo<TabId>(() => {
     const segment = pathname.split("/").filter(Boolean)[0] as TabId | undefined;
@@ -264,11 +265,22 @@ export function OpsApp() {
     });
   }, [workOrderQueryString]);
 
+  const dataLoadKey = useCallback((currentUser: SessionUser) => {
+    return `${currentUser.id}:${workOrderQueryString()}`;
+  }, [workOrderQueryString]);
+
   const loadData = useCallback(async (nextUser?: SessionUser | null) => {
     const currentUser = nextUser ?? user;
     if (!currentUser) return;
-    await loadDataForUser(currentUser);
-  }, [loadDataForUser, user]);
+    const key = dataLoadKey(currentUser);
+    loadedDataKeyRef.current = key;
+    try {
+      await loadDataForUser(currentUser);
+    } catch (reason) {
+      if (loadedDataKeyRef.current === key) loadedDataKeyRef.current = null;
+      throw reason;
+    }
+  }, [dataLoadKey, loadDataForUser, user]);
 
   useEffect(() => {
     let active = true;
@@ -289,9 +301,15 @@ export function OpsApp() {
 
   useEffect(() => {
     if (!loading && user) {
-      loadDataForUser(user).catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được dữ liệu"));
+      const key = dataLoadKey(user);
+      if (loadedDataKeyRef.current === key) return;
+      loadedDataKeyRef.current = key;
+      loadDataForUser(user).catch((reason) => {
+        if (loadedDataKeyRef.current === key) loadedDataKeyRef.current = null;
+        setError(reason instanceof Error ? reason.message : "Không tải được dữ liệu");
+      });
     }
-  }, [filters, loadDataForUser, loading, user]);
+  }, [dataLoadKey, filters, loadDataForUser, loading, user]);
 
   useEffect(() => {
     const nextFilters = filtersFromSearchParams(searchParams);
@@ -311,20 +329,19 @@ export function OpsApp() {
   }, [router, section, user]);
 
   useEffect(() => {
-    if (!routedOrderId || !user) {
-      if (modal?.type === "order-detail" || modal?.type === "order-edit") {
-        setModal(null);
-        setDetail(null);
-      }
-      return;
-    }
-
+    if (!routedOrderId || !user) return;
     loadDetail(routedOrderId)
       .then(() => {
         setModal({ type: searchParams.get("mode") === "edit" ? "order-edit" : "order-detail", id: routedOrderId });
       })
       .catch((reason) => setError(reason instanceof Error ? reason.message : "Không tải được chi tiết phiếu"));
-  }, [loadDetail, modal?.type, routedOrderId, searchParams, user]);
+  }, [loadDetail, routedOrderId, searchParams, user]);
+
+  useEffect(() => {
+    if (routedOrderId || (modal?.type !== "order-detail" && modal?.type !== "order-edit")) return;
+    setModal(null);
+    setDetail(null);
+  }, [modal?.type, routedOrderId]);
 
   async function openOrder(id: string, type: "order-detail" | "order-edit" = "order-detail") {
     try {
