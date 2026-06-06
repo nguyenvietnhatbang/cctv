@@ -30,42 +30,6 @@ export async function GET(_request: Request, context: Context) {
   try {
     const user = await requireUser();
     const { id } = await context.params;
-    if (isMockMode()) {
-      const detail = mockStore.detail(user, id);
-      const order = detail.workOrder;
-      const rows = detail.materials
-        .map(
-          (item) => `<tr><td>${escapeHtml(item.name)}</td><td>${escapeHtml(item.quantity)}</td><td>${money(
-            item.unit_price,
-          )}</td><td>${money(item.line_total)}</td></tr>`,
-        )
-        .join("");
-
-      return new Response(
-        `<!doctype html>
-        <html lang="vi">
-          <head><meta charset="utf-8" /><title>Biên bản nghiệm thu ${escapeHtml(order.code)}</title></head>
-          <body style="font-family: Arial, sans-serif; margin: 40px; color: #18181b;">
-            <button onclick="window.print()">In / lưu PDF</button>
-            <h1>Biên bản nghiệm thu công việc</h1>
-            <p>${escapeHtml(order.code)} · ${WORK_ORDER_STATUS_LABELS[order.status]}</p>
-            <h2>Khách hàng</h2>
-            <p>${escapeHtml(order.customer_name)} · ${escapeHtml(order.customer_phone)}</p>
-            <p>${escapeHtml(order.customer_address)}</p>
-            <h2>Công việc</h2>
-            <p>${WORK_ORDER_TYPE_LABELS[order.type]}</p>
-            <p>${escapeHtml(order.description)}</p>
-            <h2>Vật tư và chi phí</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead><tr><th>Vật tư</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
-              <tbody>${rows || "<tr><td colspan='4'>Không có vật tư</td></tr>"}</tbody>
-            </table>
-            <p style="text-align: right; font-size: 20px; font-weight: 700;">Tổng tiền: ${money(order.total_amount)}</p>
-          </body>
-        </html>`,
-        { headers: { "content-type": "text/html; charset=utf-8" } },
-      );
-    }
 
     await assertCanReadWorkOrder(user, id);
 

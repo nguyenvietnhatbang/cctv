@@ -14,9 +14,6 @@ export async function PATCH(request: Request, context: Context) {
     await requireUser(["admin", "dispatcher"]);
     const { id } = await context.params;
     const body = updateTechnicianSchema.parse(await request.json());
-    if (isMockMode()) {
-      return jsonOk({ technician: mockStore.updateTechnician(id, body) });
-    }
 
     const updateResult = await query(
       `update technicians
@@ -57,10 +54,6 @@ export async function DELETE(_request: Request, context: Context) {
   try {
     await requireUser(["admin"]);
     const { id } = await context.params;
-    if (isMockMode()) {
-      mockStore.updateTechnician(id, { status: "off" });
-      return jsonNoContent();
-    }
 
     const activeAssignments = await query(
       "select id from work_order_assignments where technician_id = $1 and unassigned_at is null limit 1",

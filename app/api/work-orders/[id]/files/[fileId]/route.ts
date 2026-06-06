@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { deleteWorkOrderFile } from "@/lib/storage";
 import type { WorkOrderStatus } from "@/lib/types";
 import { assertCanMutateFieldWork } from "@/lib/work-orders";

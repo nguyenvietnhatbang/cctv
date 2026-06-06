@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
-import { isMockMode, mockStore } from "@/lib/mock-store";
 import { updateMaterialSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanMutateFieldWork, syncWorkOrderPaymentAmounts } from "@/lib/work-orders";
 
