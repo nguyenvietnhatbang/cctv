@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Edit, Eye, Plus, XCircle, Search } from "lucide-react";
-import { DISPLAY_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES } from "@/lib/types";
+import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_TONE, getDisplayStatus, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES, type DisplayStatus } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import { WorkOrderCreateModal } from "@/components/ops/modals";
@@ -35,6 +35,21 @@ export function OrdersScreen({
 }) {
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
+  const statusSummary = orders.reduce<Record<DisplayStatus, number>>(
+    (summary, order) => {
+      const status = getDisplayStatus(order);
+      summary[status] += 1;
+      return summary;
+    },
+    {
+      todo: 0,
+      doing: 0,
+      doing_overdue: 0,
+      done: 0,
+      done_overdue: 0,
+      cancelled: 0,
+    },
+  );
   const safePage = clampTablePage(page, orders.length);
   const visibleOrders = getPageItems(orders, safePage);
 
@@ -57,6 +72,22 @@ export function OrdersScreen({
             Tạo công việc
           </button>
         ) : null}
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+        {(Object.entries(DISPLAY_STATUS_LABELS) as Array<[DisplayStatus, string]>).map(([status, label]) => (
+          <button
+            key={status}
+            className={`rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 ${filters.status === status ? "ring-2 ring-zinc-900" : ""}`}
+            onClick={() => applyFilter({ ...filters, status: filters.status === status ? "" : status })}
+            type="button"
+          >
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${DISPLAY_STATUS_TONE[status]}`}>
+              {label}
+            </span>
+            <p className="mt-2 text-2xl font-bold text-zinc-950">{statusSummary[status]}</p>
+          </button>
+        ))}
       </div>
 
       {/* Orders Table Shell with Compact Filter Header */}

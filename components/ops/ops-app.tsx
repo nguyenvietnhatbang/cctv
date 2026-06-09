@@ -84,6 +84,14 @@ export function OpsApp() {
     return params.toString();
   }, [filters.dateFrom, filters.dateTo, filters.q, filters.status, filters.technicianId, filters.type]);
 
+  const workOrderListRequest = useCallback(() => {
+    const params = section === "dispatch" ? "" : workOrderQueryString();
+    return {
+      key: section === "dispatch" ? "__dispatch_all__" : params,
+      url: params ? `/api/work-orders?${params}` : "/api/work-orders",
+    };
+  }, [section, workOrderQueryString]);
+
   const loadDetail = useCallback(async (id: string) => {
     const payload = await apiFetch<WorkOrderDetail>(`/api/work-orders/${id}`);
     setDetail(payload);
@@ -98,12 +106,12 @@ export function OpsApp() {
   }, []);
 
   const refreshOrders = useCallback(async () => {
-    const params = workOrderQueryString();
-    const payload = await apiFetch<{ workOrders: AppData["orders"] }>(`/api/work-orders?${params}`);
+    const request = workOrderListRequest();
+    const payload = await apiFetch<{ workOrders: AppData["orders"] }>(request.url);
     setData((current) => ({ ...current, orders: payload.workOrders }));
-    ordersCacheRef.current[params] = payload.workOrders;
+    ordersCacheRef.current[request.key] = payload.workOrders;
     return payload.workOrders;
-  }, [workOrderQueryString]);
+  }, [workOrderListRequest]);
 
   const refreshNotifications = useCallback(async () => {
     const payload = await apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications");
@@ -140,14 +148,14 @@ export function OpsApp() {
   }, [refreshDashboard, refreshOpenDetail, refreshOrders, refreshTechnicians, user?.role]);
 
   const loadDataForUser = useCallback(async (currentUser: SessionUser) => {
-    const params = workOrderQueryString();
+    const ordersRequest = workOrderListRequest();
     const canManageOps = ["admin", "dispatcher"].includes(currentUser.role);
     const canBackOffice = ["admin", "dispatcher", "accountant"].includes(currentUser.role);
     const today = todayInVietnam();
 
     const [dashboard, orders, notifications, technicians, customers, report, users] = await Promise.all([
       apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard"),
-      apiFetch<{ workOrders: AppData["orders"] }>(`/api/work-orders?${params}`),
+      apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url),
       apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications"),
       canManageOps ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
       canBackOffice ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
@@ -165,9 +173,9 @@ export function OpsApp() {
       users: users?.users ?? [],
     });
 
-    ordersCacheRef.current[params] = orders.workOrders;
+    ordersCacheRef.current[ordersRequest.key] = orders.workOrders;
     initialLoadedRef.current = true;
-  }, [workOrderQueryString]);
+  }, [workOrderListRequest]);
 
   const loadData = useCallback(async (nextUser?: SessionUser | null) => {
     const currentUser = nextUser ?? user;
@@ -203,8 +211,8 @@ export function OpsApp() {
           setError(reason instanceof Error ? reason.message : "Không tải được dữ liệu");
         });
       } else {
-        const params = workOrderQueryString();
-        const cached = ordersCacheRef.current[params];
+        const request = workOrderListRequest();
+        const cached = ordersCacheRef.current[request.key];
         if (cached) {
           setData((current) => ({ ...current, orders: cached }));
         }
@@ -213,7 +221,7 @@ export function OpsApp() {
         });
       }
     }
-  }, [filters, loading, user, loadDataForUser, refreshOrders, workOrderQueryString]);
+  }, [filters, loading, section, user, loadDataForUser, refreshOrders, workOrderListRequest]);
 
   useEffect(() => {
     const nextFilters = filtersFromSearchParams(searchParams);
@@ -567,6 +575,14 @@ export function OpsApp() {
     if (closeAfterSubmit) closeInlineModal();
   }
 
+  async function updateTechnicianStatus(id: string, status: WorkOrderListItem["status"], checkIn?: { checkInLat?: number; checkInLng?: number }) {
+    await apiFetch(`/api/work-orders/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, ...checkIn }),
+    });
+    await afterMutation();
+  }
+
   async function submitPayment(event: FormEvent<HTMLFormElement>, closeAfterSubmit = false) {
     event.preventDefault();
     if (!detail) return;
@@ -644,6 +660,7 @@ export function OpsApp() {
         onCreateUser={handleCreateUser}
         onOpenOrder={(id) => openOrder(id)}
         onEditOrder={(id) => openOrder(id, "order-edit")}
+        onTechnicianStatus={updateTechnicianStatus}
         onCancelOrder={(item) => setModal({ type: "order-cancel", item })}
         onViewCustomer={(item) => setModal({ type: "customer-detail", item })}
         onEditCustomer={(item) => setModal({ type: "customer-edit", item })}

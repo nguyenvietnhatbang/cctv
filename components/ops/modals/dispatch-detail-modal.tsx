@@ -78,7 +78,7 @@ export function DispatchDetailModal({
       <div className="grid gap-4">
         <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge order={detail.workOrder} />
+            <StatusBadge status={detail.workOrder.status} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
           </div>

@@ -42,7 +42,7 @@ export function DispatchAssignmentModal({
         <section className="grid gap-4">
           <div className="rounded-md border border-zinc-200 p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge order={detail.workOrder} />
+              <StatusBadge status={detail.workOrder.status} />
               <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             </div>
             <h3 className="mt-3 text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
@@ -59,7 +59,7 @@ export function DispatchAssignmentModal({
 
         <aside className="rounded-md border border-zinc-200 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="section-title">Tải kỹ thuật viên</h3>
+            <h3 className="section-title">Tải việc kỹ thuật viên</h3>
             <span className="text-xs font-semibold text-zinc-500">{filteredTechnicians.length} người</span>
           </div>
           <div className="mt-3 grid gap-2">

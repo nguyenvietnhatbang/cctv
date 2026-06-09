@@ -1,13 +1,15 @@
 import type { CustomerContact, Filters, SessionUser, WorkOrderListItem } from "@/components/ops/types";
+import { todayInVietnam } from "@/components/ops/format";
 
 export function filtersFromSearchParams(searchParams: { get: (key: string) => string | null }): Filters {
+  const today = todayInVietnam();
   return {
     q: searchParams.get("q") ?? "",
     status: searchParams.get("status") ?? "",
     type: searchParams.get("type") ?? "",
     technicianId: searchParams.get("technicianId") ?? "",
-    dateFrom: searchParams.get("dateFrom") ?? "",
-    dateTo: searchParams.get("dateTo") ?? "",
+    dateFrom: searchParams.get("dateFrom") ?? today,
+    dateTo: searchParams.get("dateTo") ?? today,
   };
 }
 

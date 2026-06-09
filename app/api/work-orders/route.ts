@@ -96,7 +96,7 @@ export async function GET(request: Request) {
 
     const result = await query(
       `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
-              wo.appointment_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
+              wo.appointment_at, woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
               t.id as technician_id, tu.full_name as technician_name,
@@ -203,7 +203,7 @@ export async function POST(request: Request) {
 
       const listResult = await client.query(
         `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
-                wo.appointment_at, wo.created_at, wo.labor_cost, wo.vat_rate,
+                wo.appointment_at, woa.assigned_at, wo.created_at, wo.labor_cost, wo.vat_rate,
                 c.id as customer_id,
                 c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
                 t.id as technician_id, tu.full_name as technician_name,

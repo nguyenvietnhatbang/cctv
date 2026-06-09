@@ -22,6 +22,7 @@ export type WorkOrderListItem = {
   status: WorkOrderStatus;
   description: string;
   appointment_at: string | null;
+  assigned_at?: string | null;
   created_at: string;
   updated_at?: string;
   labor_cost: string;

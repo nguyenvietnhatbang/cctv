@@ -26,6 +26,7 @@ type OpsScreenSwitcherProps = {
   onCreateUser: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onOpenOrder: (id: string) => void;
   onEditOrder: (id: string) => void;
+  onTechnicianStatus: (id: string, status: WorkOrderListItem["status"], checkIn?: { checkInLat?: number; checkInLng?: number }) => Promise<void>;
   onCancelOrder: (item: WorkOrderListItem) => void;
   onViewCustomer: (item: Customer) => void;
   onEditCustomer: (item: Customer) => void;
@@ -57,6 +58,7 @@ export function OpsScreenSwitcher({
   onCreateUser,
   onOpenOrder,
   onEditOrder,
+  onTechnicianStatus,
   onCancelOrder,
   onViewCustomer,
   onEditCustomer,
@@ -115,6 +117,7 @@ export function OpsScreenSwitcher({
     return (
       <DispatchScreen
         orders={data.orders}
+        customers={data.customers}
         technicians={data.technicians}
         onView={onOpenDispatch}
         onAssign={onAssignDispatch}
@@ -122,7 +125,7 @@ export function OpsScreenSwitcher({
     );
   }
 
-  if (section === "technician") return <TechnicianScreen orders={data.orders} onView={onOpenOrder} />;
+  if (section === "technician") return <TechnicianScreen orders={data.orders} onView={onOpenOrder} onEdit={onEditOrder} onStatus={onTechnicianStatus} />;
 
   if (section === "technicians") {
     return <TechniciansScreen technicians={data.technicians} onEdit={onEditTechnician} onDelete={onDeleteTechnician} />;
