@@ -2,11 +2,12 @@
 
 import { useState, type ReactNode } from "react";
 import { FileText, History, MapPinned, Package, Phone, UserRound, Wrench, type LucideIcon } from "lucide-react";
-import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
+import { filePurposeLabel, TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { Modal, StatusBadge } from "@/components/ops/ui";
 import type { Technician, WorkOrderDetail } from "@/components/ops/types";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
+import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 
 type DispatchDetailTab = "work" | "customer" | "technician" | "history" | "resources";
 
@@ -67,7 +68,7 @@ export function DispatchDetailModal({
   });
   const filteredFiles = detail.files.filter((file) => {
     if (!normalizedResourceQuery) return true;
-    return [file.purpose, file.original_name].some((value) => value.toLowerCase().includes(normalizedResourceQuery));
+    return [filePurposeLabel(file.purpose), file.original_name].some((value) => value.toLowerCase().includes(normalizedResourceQuery));
   });
   const visibleMaterials = pageItems(filteredMaterials, clampPage(materialPage, filteredMaterials.length));
   const visibleFiles = pageItems(filteredFiles, clampPage(filePage, filteredFiles.length));
@@ -234,24 +235,8 @@ export function DispatchDetailModal({
                   onPageChange={(nextPage) => setFilePage(clampPage(nextPage, filteredFiles.length))}
                 />
               </div>
-              <div className="mt-3 grid gap-2">
-                {filteredFiles.length === 0 ? <p className="text-sm text-zinc-500">Không có tệp phù hợp.</p> : visibleFiles.map((file) => (
-                  file.signed_url ? (
-                    <a
-                      key={file.id}
-                      className="text-sm font-semibold text-teal-700 underline"
-                      href={file.signed_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {file.original_name}
-                    </a>
-                  ) : (
-                    <span key={file.id} className="text-sm font-semibold text-zinc-500">
-                      {file.original_name}
-                    </span>
-                  )
-                ))}
+              <div className="mt-3">
+                <WorkFileGallery files={visibleFiles} />
               </div>
             </div>
             <InfoItem label="Thanh toán">{paymentStatus}</InfoItem>

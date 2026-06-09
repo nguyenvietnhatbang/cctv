@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Edit, Eye, Trash2, Plus, Search, MapPin, Filter } from "lucide-react";
 import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer } from "@/components/ops/types";
+import { displayCustomerContacts } from "@/components/ops/app-utils";
 
 export function CustomersScreen({
   customers,
@@ -29,7 +30,11 @@ export function CustomersScreen({
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.phone.includes(searchQuery) ||
       customer.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (customer.address_note && customer.address_note.toLowerCase().includes(searchQuery.toLowerCase()))
+      (customer.address_note && customer.address_note.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      displayCustomerContacts(customer).some((contact) => (
+        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.phone.includes(searchQuery)
+      ))
     );
   });
   const safePage = clampTablePage(page, filteredCustomers.length);
@@ -86,6 +91,7 @@ export function CustomersScreen({
               <tr>
                 <th className="w-[250px]">Khách hàng</th>
                 <th>Số điện thoại</th>
+                <th>Người liên hệ</th>
                 <th>Địa chỉ</th>
                 <th>Ghi chú địa chỉ</th>
                 <th />
@@ -114,6 +120,18 @@ export function CustomersScreen({
                       </div>
                     </td>
                     <td className="font-medium text-zinc-700">{customer.phone}</td>
+                    <td>
+                      <div className="grid gap-1 text-xs text-zinc-600">
+                        {displayCustomerContacts(customer).slice(0, 2).map((contact) => (
+                          <p key={contact.id} className="font-medium">
+                            {contact.name} · {contact.phone}
+                          </p>
+                        ))}
+                        {displayCustomerContacts(customer).length > 2 ? (
+                          <p className="text-zinc-400">+{displayCustomerContacts(customer).length - 2} liên hệ khác</p>
+                        ) : null}
+                      </div>
+                    </td>
                     <td>
                       <div className="flex items-center gap-1.5 text-zinc-600 text-sm">
                         <MapPin size={13} className="text-zinc-400 shrink-0" />

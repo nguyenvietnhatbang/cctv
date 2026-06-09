@@ -1,4 +1,4 @@
-import type { Filters, SessionUser, WorkOrderListItem } from "@/components/ops/types";
+import type { CustomerContact, Filters, SessionUser, WorkOrderListItem } from "@/components/ops/types";
 
 export function filtersFromSearchParams(searchParams: { get: (key: string) => string | null }): Filters {
   return {
@@ -30,6 +30,31 @@ export function replaceById<T extends { id: string }>(items: T[], item: T) {
 
 export function removeById<T extends { id: string }>(items: T[], id: string) {
   return items.filter((current) => current.id !== id);
+}
+
+export function customerContactsFromFormData(formData: FormData) {
+  const names = formData.getAll("contactName");
+  const phones = formData.getAll("contactPhone");
+  const notes = formData.getAll("contactNote");
+
+  return names
+    .map((name, index) => ({
+      name: String(name).trim(),
+      phone: String(phones[index] ?? "").trim(),
+      note: String(notes[index] ?? "").trim() || null,
+    }))
+    .filter((contact) => contact.name && contact.phone);
+}
+
+export function displayCustomerContacts(customer: { name: string; phone: string; contacts?: CustomerContact[] }) {
+  return customer.contacts?.length ? customer.contacts : [{
+    id: "primary",
+    customer_id: "",
+    name: customer.name,
+    phone: customer.phone,
+    note: null,
+    is_primary: true,
+  }];
 }
 
 function dateInVietnam(value: string) {

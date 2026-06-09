@@ -6,6 +6,7 @@ import { apiFetch } from "@/components/ops/api";
 import { AuthScreen } from "@/components/ops/auth-screen";
 import { emptyData, tabs, type PendingAction, type TabId } from "@/components/ops/app-config";
 import {
+  customerContactsFromFormData,
   filtersFromSearchParams,
   orderMatchesFilters,
   prependById,
@@ -462,6 +463,7 @@ export function OpsApp() {
           phone: formData.get("phone"),
           address: formData.get("address"),
           addressNote: formData.get("addressNote") || null,
+          contacts: customerContactsFromFormData(formData),
         }),
       });
       setData((current) => ({ ...current, customers: prependById(current.customers, payload.customer) }));
@@ -569,6 +571,7 @@ export function OpsApp() {
     event.preventDefault();
     if (!detail) return;
     const formData = new FormData(event.currentTarget);
+    const billFile = formData.get("billFile");
     await apiFetch(`/api/work-orders/${detail.workOrder.id}/payment`, {
       method: "PATCH",
       body: JSON.stringify({
@@ -579,6 +582,15 @@ export function OpsApp() {
         note: formData.get("note") || null,
       }),
     });
+    if (billFile instanceof File && billFile.size > 0) {
+      const uploadData = new FormData();
+      uploadData.set("purpose", "bill");
+      uploadData.set("file", billFile);
+      await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, {
+        method: "POST",
+        body: uploadData,
+      });
+    }
     await afterMutation();
     if (closeAfterSubmit) closeInlineModal();
   }
@@ -660,6 +672,7 @@ export function OpsApp() {
         }}
         onEditUser={(item) => setModal({ type: "user-edit", item })}
         onDeleteUser={(item) => setModal({ type: "user-delete", item })}
+        onViewUserAssignmentHistory={(item) => setModal({ type: "user-assignment-history", item })}
         onOpenCreateModal={(type) => setModal({ type: type === "user" ? "user-create" : "customer-create" })}
       />
     </OpsShell>

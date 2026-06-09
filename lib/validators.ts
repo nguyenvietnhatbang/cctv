@@ -39,6 +39,11 @@ export const createCustomerSchema = z.object({
   phone: requiredText,
   address: requiredText,
   addressNote: optionalText,
+  contacts: z.array(z.object({
+    name: requiredText,
+    phone: requiredText,
+    note: optionalText,
+  })).optional(),
 });
 
 export const createTechnicianSchema = z.object({

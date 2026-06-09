@@ -7,6 +7,7 @@ import { dateTime, money } from "@/components/ops/format";
 import { Modal, StatusBadge } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
+import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 
 type PaymentTab = "summary" | "customer" | "costs" | "history";
 
@@ -70,6 +71,7 @@ export function PaymentDetailModal({
       .some((value) => value.toLowerCase().includes(normalizedHistoryQuery));
   });
   const visibleHistory = pageItems(filteredHistory, clampPage(historyPage, filteredHistory.length));
+  const billFiles = detail.files.filter((file) => file.purpose === "bill");
 
   return (
     <Modal title={`Xem thanh toán ${detail.workOrder.code}`} size="xl" onClose={onClose}>
@@ -117,6 +119,12 @@ export function PaymentDetailModal({
             <div className="detail-card md:col-span-2">
               <p className="detail-label">Ghi chú thanh toán</p>
               <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.payment_note ?? "Chưa có ghi chú"}</p>
+            </div>
+            <div className="detail-card md:col-span-2">
+              <p className="detail-label">Ảnh bill</p>
+              <div className="mt-2 grid gap-2">
+                {billFiles.length === 0 ? <p className="detail-value">Chưa có ảnh bill</p> : <WorkFileGallery files={billFiles} />}
+              </div>
             </div>
           </section>
         ) : null}

@@ -20,7 +20,7 @@ create type work_order_status as enum (
 );
 create type payment_status as enum ('unpaid', 'paid', 'debt');
 create type payment_method as enum ('cash', 'bank_transfer', 'debt');
-create type work_order_file_purpose as enum ('initial', 'before', 'after', 'signature');
+create type work_order_file_purpose as enum ('initial', 'before', 'after', 'signature', 'bill');
 
 create table users (
   id uuid primary key default gen_random_uuid(),
@@ -47,6 +47,24 @@ create table customers (
 );
 
 create index customers_phone_idx on customers(phone);
+
+create table customer_contacts (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references customers(id) on delete cascade,
+  name text not null,
+  phone text not null,
+  note text,
+  is_primary boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index customer_contacts_customer_idx on customer_contacts(customer_id);
+create index customer_contacts_phone_idx on customer_contacts(phone);
+
+create unique index customer_contacts_one_primary_idx
+  on customer_contacts(customer_id)
+  where is_primary;
 
 create table technicians (
   id uuid primary key default gen_random_uuid(),
@@ -182,6 +200,10 @@ for each row execute function touch_updated_at();
 
 create trigger customers_touch_updated_at
 before update on customers
+for each row execute function touch_updated_at();
+
+create trigger customer_contacts_touch_updated_at
+before update on customer_contacts
 for each row execute function touch_updated_at();
 
 create trigger technicians_touch_updated_at

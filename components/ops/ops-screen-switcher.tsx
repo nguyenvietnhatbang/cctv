@@ -41,6 +41,7 @@ type OpsScreenSwitcherProps = {
   onReadNotification: (id: string) => Promise<void>;
   onEditUser: (item: AppData["users"][number]) => void;
   onDeleteUser: (item: AppData["users"][number]) => void;
+  onViewUserAssignmentHistory: (item: AppData["users"][number]) => void;
   onOpenCreateModal: (type: "user" | "customer") => void;
 };
 
@@ -71,6 +72,7 @@ export function OpsScreenSwitcher({
   onReadNotification,
   onEditUser,
   onDeleteUser,
+  onViewUserAssignmentHistory,
   onOpenCreateModal,
 }: OpsScreenSwitcherProps) {
   if (section === "dashboard") {
@@ -144,6 +146,7 @@ export function OpsScreenSwitcher({
         onCreate={onCreateUser}
         onEdit={onEditUser}
         onDelete={onDeleteUser}
+        onViewAssignmentHistory={onViewUserAssignmentHistory}
         onTriggerCreate={() => onOpenCreateModal("user")}
       />
     );

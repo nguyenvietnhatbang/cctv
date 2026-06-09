@@ -5,6 +5,8 @@ import { CreditCard } from "lucide-react";
 import { money } from "@/components/ops/format";
 import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
+import { ImageUploadField } from "@/components/ops/image-upload-field";
+import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 
 export function PaymentForm({
   detail,
@@ -58,7 +60,14 @@ export function PaymentForm({
         <input name="transactionRef" className="input" defaultValue={detail.workOrder.transaction_ref ?? ""} placeholder="Mã giao dịch" disabled={!canSubmit || isSubmitting || status === "debt"} />
         <input name="debtDueDate" className="input" type="date" defaultValue={detail.workOrder.debt_due_date ?? ""} disabled={!canSubmit || isSubmitting || status !== "debt"} />
         <input name="note" className="input" defaultValue={detail.workOrder.payment_note ?? ""} placeholder={status === "debt" ? "Ghi chú công nợ hoặc ngày hẹn" : "Ghi chú"} disabled={!canSubmit || isSubmitting} />
+        <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+          Ảnh bill
+          <ImageUploadField name="billFile" capture="environment" disabled={!canSubmit || isSubmitting} previewLabel="Xem trước ảnh bill" />
+        </label>
         <PendingButton className="btn-primary h-10" type="submit" disabled={!canSubmit} pending={isSubmitting} pendingLabel="Đang cập nhật..."><CreditCard size={15} />Xác nhận</PendingButton>
+        {detail.files.some((file) => file.purpose === "bill") ? (
+          <WorkFileGallery files={detail.files.filter((file) => file.purpose === "bill")} />
+        ) : null}
       </div>
     </ValidatedForm>
   );

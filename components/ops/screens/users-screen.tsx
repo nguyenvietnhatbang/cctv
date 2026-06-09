@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
+import { Edit, History, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { AppUser } from "@/components/ops/types";
@@ -10,6 +10,7 @@ export function UsersScreen({
   users,
   onEdit,
   onDelete,
+  onViewAssignmentHistory,
   onTriggerCreate,
 }: {
   users: AppUser[];
@@ -17,6 +18,7 @@ export function UsersScreen({
   onCreate: (event: React.FormEvent<HTMLFormElement>) => void;
   onEdit: (item: AppUser) => void;
   onDelete: (item: AppUser) => void;
+  onViewAssignmentHistory: (item: AppUser) => void;
   onTriggerCreate: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -160,6 +162,16 @@ export function UsersScreen({
                         >
                           <Edit size={15} />
                         </button>
+                        {item.technician_id ? (
+                          <button
+                            className="icon-button"
+                            onClick={() => onViewAssignmentHistory(item)}
+                            type="button"
+                            aria-label="Xem lịch sử phân công"
+                          >
+                            <History size={15} />
+                          </button>
+                        ) : null}
                         {item.status === "active" ? (
                           <button
                             className="icon-button hover:text-red-600 hover:border-red-200"

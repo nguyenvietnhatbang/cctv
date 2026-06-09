@@ -42,6 +42,16 @@ export type Customer = {
   address: string;
   address_note: string | null;
   created_at: string;
+  contacts: CustomerContact[];
+};
+
+export type CustomerContact = {
+  id: string;
+  customer_id: string;
+  name: string;
+  phone: string;
+  note: string | null;
+  is_primary: boolean;
 };
 
 export type Technician = {
@@ -80,6 +90,22 @@ export type WorkFile = {
   original_name: string;
   purpose: string;
   signed_url: string | null;
+};
+
+export type AssignmentHistoryItem = {
+  id: string;
+  work_order_id: string;
+  code: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_address: string;
+  work_order_status: WorkOrderStatus;
+  technician_id: string;
+  technician_name: string;
+  assigned_by_name: string | null;
+  assigned_at: string;
+  unassigned_at: string | null;
+  note: string | null;
 };
 
 export type HistoryItem = {
@@ -166,6 +192,7 @@ export type ModalState =
   | { type: "user-create" }
   | { type: "user-edit"; item: AppUser }
   | { type: "user-delete"; item: AppUser }
+  | { type: "user-assignment-history"; item: AppUser }
   | { type: "technician-edit"; item: Technician }
   | { type: "technician-delete"; item: Technician }
   | null;

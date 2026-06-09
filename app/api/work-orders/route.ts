@@ -6,6 +6,26 @@ import { changeWorkOrderStatus, getTechnicianIdForUser, makeWorkOrderCode } from
 
 export const runtime = "nodejs";
 
+const customerSelect = `
+  select c.id, c.name, c.phone, c.address, c.address_note, c.created_at,
+         coalesce((
+           select jsonb_agg(
+             jsonb_build_object(
+               'id', cc.id,
+               'customer_id', cc.customer_id,
+               'name', cc.name,
+               'phone', cc.phone,
+               'note', cc.note,
+               'is_primary', cc.is_primary
+             )
+             order by cc.is_primary desc, cc.created_at asc
+           )
+           from customer_contacts cc
+           where cc.customer_id = c.id
+         ), '[]'::jsonb) as contacts
+  from customers c
+`;
+
 export async function GET(request: Request) {
   try {
     const user = await requireUser();
@@ -116,7 +136,7 @@ export async function POST(request: Request) {
         const customerResult = await client.query(
           `insert into customers (name, phone, address, address_note, created_by)
            values ($1, $2, $3, $4, $5)
-           returning id, name, phone, address, address_note, created_at`,
+           returning id`,
           [
             body.customer.name,
             body.customer.phone,
@@ -125,8 +145,14 @@ export async function POST(request: Request) {
             user.id,
           ],
         );
-        customer = customerResult.rows[0];
-        customerId = customer.id;
+        customerId = customerResult.rows[0].id;
+        await client.query(
+          `insert into customer_contacts (customer_id, name, phone, is_primary)
+           values ($1, $2, $3, true)`,
+          [customerId, body.customer.name, body.customer.phone],
+        );
+        const createdCustomerResult = await client.query(`${customerSelect} where c.id = $1`, [customerId]);
+        customer = createdCustomerResult.rows[0];
       }
 
       const workOrderResult = await client.query(

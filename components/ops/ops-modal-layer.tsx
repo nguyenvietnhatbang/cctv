@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { apiFetch } from "@/components/ops/api";
-import { removeById, replaceById } from "@/components/ops/app-utils";
-import type { AppData, AppUser, Customer, ModalState, Role, Technician, WorkOrderDetail } from "@/components/ops/types";
+import { customerContactsFromFormData, removeById, replaceById } from "@/components/ops/app-utils";
+import type { AppData, AppUser, AssignmentHistoryItem, Customer, ModalState, Role, Technician, WorkOrderDetail } from "@/components/ops/types";
+import { AssignmentHistoryList } from "@/components/ops/assignment-history-list";
 import {
   CustomerCreateModal,
   CustomerDetailModal,
@@ -68,6 +69,31 @@ export function OpsModalLayer({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [materialPendingAction, setMaterialPendingAction] = useState<{ type: "create" } | { type: "update" | "delete"; id: string } | null>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
+  const [uploadingBillOrderId, setUploadingBillOrderId] = useState<string | null>(null);
+  const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistoryItem[]>([]);
+  const [assignmentHistoryLoading, setAssignmentHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (modal?.type !== "user-assignment-history" || !modal.item.technician_id) return;
+
+    let cancelled = false;
+    setAssignmentHistoryLoading(true);
+    setAssignmentHistory([]);
+    apiFetch<{ assignmentHistory: AssignmentHistoryItem[] }>(`/api/assignment-history?technicianId=${modal.item.technician_id}`)
+      .then((payload) => {
+        if (!cancelled) setAssignmentHistory(payload.assignmentHistory);
+      })
+      .catch((reason) => {
+        if (!cancelled) setError(reason instanceof Error ? reason.message : "Không tải được lịch sử phân công");
+      })
+      .finally(() => {
+        if (!cancelled) setAssignmentHistoryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modal, setError]);
 
   async function runMutation(action: string, callback: () => Promise<void>) {
     setPendingAction(action);
@@ -190,19 +216,39 @@ export function OpsModalLayer({
       {modal?.type === "customer-edit" ? (
         <CustomerEditModal
           item={modal.item}
+          orders={data.orders}
           onClose={() => setModal(null)}
           isSubmitting={pendingAction === "customer-edit"}
+          uploadingBillOrderId={uploadingBillOrderId}
+          onBillUpload={(orderId, event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const formData = new FormData(form);
+            const file = formData.get("file");
+            if (!(file instanceof File) || file.size === 0) return;
+            setUploadingBillOrderId(orderId);
+            void runMutation("bill-upload", async () => {
+              const uploadData = new FormData();
+              uploadData.set("purpose", "bill");
+              uploadData.set("file", file);
+              await apiFetch(`/api/work-orders/${orderId}/files`, { method: "POST", body: uploadData });
+              form.reset();
+              await afterMutation();
+            }).finally(() => setUploadingBillOrderId(null));
+          }}
           onSubmit={(event) => runMutation("customer-edit", async () => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
+            const contacts = customerContactsFromFormData(formData);
+            const body: Record<string, unknown> = {};
+            if (formData.has("name")) body.name = formData.get("name");
+            if (formData.has("phone")) body.phone = formData.get("phone");
+            if (formData.has("address")) body.address = formData.get("address");
+            if (formData.has("addressNote")) body.addressNote = formData.get("addressNote") || null;
+            if (contacts.length) body.contacts = contacts;
             const payload = await apiFetch<{ customer: Customer }>(`/api/customers/${modal.item.id}`, {
               method: "PATCH",
-              body: JSON.stringify({
-                name: formData.get("name"),
-                phone: formData.get("phone"),
-                address: formData.get("address"),
-                addressNote: formData.get("addressNote") || null,
-              }),
+              body: JSON.stringify(body),
             });
             setData((current) => ({
               ...current,
@@ -270,6 +316,15 @@ export function OpsModalLayer({
         />
       ) : null}
       {modal?.type === "user-delete" ? <ConfirmModal title="Ngưng nhân viên" body={`Chuyển ${modal.item.full_name} sang trạng thái ngưng hoạt động?`} confirmLabel="Ngưng" onCancel={() => setModal(null)} onConfirm={() => deleteResource(`/api/users/${modal.item.id}`, async () => { setData((current) => ({ ...current, users: replaceById(current.users, { ...modal.item, status: "inactive" }) })); void refreshTechnicians(); void refreshOrders(); })} /> : null}
+      {modal?.type === "user-assignment-history" ? (
+        <Modal title={`Lịch sử phân công ${modal.item.full_name}`} size="xl" onClose={() => setModal(null)}>
+          {modal.item.technician_id ? (
+            <AssignmentHistoryList items={assignmentHistory} loading={assignmentHistoryLoading} />
+          ) : (
+            <p className="text-sm text-zinc-500">Nhân viên này không phải kỹ thuật viên.</p>
+          )}
+        </Modal>
+      ) : null}
 
       {modal?.type === "technician-edit" ? (
         <TechnicianEditModal

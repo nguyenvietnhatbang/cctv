@@ -1,10 +1,10 @@
 import { randomUUID } from "crypto";
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
-import { handleRouteError, jsonCreated } from "@/lib/http";
+import { handleRouteError, HttpError, jsonCreated } from "@/lib/http";
 import { getMaxUploadBytes, uploadWorkOrderFile } from "@/lib/storage";
 import { uploadPurposeSchema } from "@/lib/validators";
-import { assertCanMutateFieldWork } from "@/lib/work-orders";
+import { assertCanMutateFieldWork, assertCanReadWorkOrder } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,7 @@ function getExtension(name: string) {
 
 export async function POST(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician"]);
+    const user = await requireUser(["admin", "dispatcher", "technician", "accountant"]);
     const { id } = await context.params;
 
     const formData = await request.formData();
@@ -30,7 +30,14 @@ export async function POST(request: Request, context: Context) {
       return Response.json({ error: "Cần chọn file" }, { status: 422 });
     }
 
-    await assertCanMutateFieldWork(user, id);
+    if (purpose === "bill") {
+      if (!["admin", "dispatcher", "accountant"].includes(user.role)) {
+        throw new HttpError(403, "Bạn không có quyền upload bill thanh toán");
+      }
+      await assertCanReadWorkOrder(user, id);
+    } else {
+      await assertCanMutateFieldWork(user, id);
+    }
 
     if (file.size > getMaxUploadBytes()) {
       return Response.json({ error: "File vượt quá dung lượng cho phép" }, { status: 422 });

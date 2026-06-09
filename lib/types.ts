@@ -18,7 +18,7 @@ export const WORK_ORDER_STATUSES = [
 ] as const;
 export const PAYMENT_STATUSES = ["unpaid", "paid", "debt"] as const;
 export const PAYMENT_METHODS = ["cash", "bank_transfer", "debt"] as const;
-export const FILE_PURPOSES = ["initial", "before", "after", "signature"] as const;
+export const FILE_PURPOSES = ["initial", "before", "after", "signature", "bill"] as const;
 
 export type Role = (typeof ROLES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
@@ -29,6 +29,18 @@ export type WorkOrderStatus = (typeof WORK_ORDER_STATUSES)[number];
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export type FilePurpose = (typeof FILE_PURPOSES)[number];
+
+export const FILE_PURPOSE_LABELS: Record<FilePurpose, string> = {
+  initial: "Ảnh hiện trạng",
+  before: "Ảnh trước xử lý",
+  after: "Ảnh sau xử lý",
+  signature: "Chữ ký nghiệm thu",
+  bill: "Ảnh bill",
+};
+
+export function filePurposeLabel(value: string) {
+  return FILE_PURPOSE_LABELS[value as FilePurpose] ?? value;
+}
 
 export type SessionUser = {
   id: string;
@@ -158,4 +170,3 @@ export function getDisplayStatus(order: {
 
   return "todo";
 }
-

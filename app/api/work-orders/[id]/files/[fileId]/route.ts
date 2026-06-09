@@ -15,10 +15,8 @@ const LOCKED_FILE_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "deb
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician"]);
+    const user = await requireUser(["admin", "dispatcher", "technician", "accountant"]);
     const { id, fileId } = await context.params;
-
-    await assertCanMutateFieldWork(user, id);
 
     const result = await query<{
       path: string;
@@ -36,6 +34,14 @@ export async function DELETE(_request: Request, context: Context) {
     const file = result.rows[0];
     if (!file) {
       throw new HttpError(404, "Không tìm thấy file");
+    }
+
+    if (file.purpose === "bill") {
+      if (!["admin", "dispatcher", "accountant"].includes(user.role)) {
+        throw new HttpError(403, "Bạn không có quyền xóa bill thanh toán");
+      }
+    } else {
+      await assertCanMutateFieldWork(user, id);
     }
 
     if (user.role !== "admin" && (file.purpose === "signature" || LOCKED_FILE_STATUSES.has(file.status))) {
