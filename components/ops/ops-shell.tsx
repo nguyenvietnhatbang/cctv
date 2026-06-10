@@ -181,12 +181,23 @@ export function OpsShell({
             <Link
               href="/notifications"
               className="relative p-2 rounded-md hover:bg-zinc-50 text-zinc-500 hover:text-zinc-950 transition-colors"
+              aria-label="Thông báo"
             >
               <Bell size={17} />
               {unreadNotifications > 0 ? (
                 <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full ring-2 ring-white" />
               ) : null}
             </Link>
+
+            <button
+              className="mobile-logout-button p-2 rounded-md hover:bg-zinc-50 text-zinc-500 hover:text-zinc-950 transition-colors"
+              onClick={onLogout}
+              type="button"
+              title="Đăng xuất"
+              aria-label="Đăng xuất"
+            >
+              <LogOut size={17} />
+            </button>
 
             {/* Profile Initial Avatar */}
             <div className="flex items-center gap-2 border-l border-zinc-200 pl-3">

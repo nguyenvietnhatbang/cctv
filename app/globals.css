@@ -387,6 +387,10 @@ a {
   display: none;
 }
 
+.mobile-logout-button {
+  display: none;
+}
+
 .panel {
   border: 1px solid #e2e8f0;
   border-radius: 0.625rem;
@@ -609,6 +613,10 @@ a {
     background: rgba(255, 255, 255, 0.95);
     padding: 0.45rem 0.5rem max(0.45rem, env(safe-area-inset-bottom));
     backdrop-filter: blur(10px);
+  }
+
+  .mobile-logout-button {
+    display: inline-flex;
   }
 
   .mobile-nav-link {
