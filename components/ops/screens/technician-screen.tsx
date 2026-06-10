@@ -15,20 +15,41 @@ import {
   Route,
   ShieldCheck,
   Wrench,
-  type LucideIcon,
 } from "lucide-react";
 import { dateTime } from "@/components/ops/format";
-import { PendingButton, StatusBadge } from "@/components/ops/ui";
+import { DeadlineBadge, PendingButton, StageBadge, StatusBadge } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
-import { WORK_ORDER_TYPE_LABELS, type WorkOrderStatus } from "@/lib/types";
+import {
+  getAllowedWorkOrderTransitions,
+  WORK_ORDER_STATUS_DESCRIPTIONS,
+  WORK_ORDER_STATUS_ORDER,
+  WORK_ORDER_TYPE_LABELS,
+  type Role,
+  type WorkOrderStatus,
+} from "@/lib/types";
 
-const ACTIVE_STATUSES = new Set<WorkOrderStatus>(["assigned", "accepted", "traveling", "working", "awaiting_acceptance"]);
+const TECHNICIAN_ROLE: Role = "technician";
 
-const technicianNextActions: Partial<Record<WorkOrderStatus, { status: WorkOrderStatus; label: string; icon: LucideIcon }>> = {
-  assigned: { status: "accepted", label: "Nhận việc", icon: Play },
-  accepted: { status: "traveling", label: "Đang đi", icon: Navigation },
-  traveling: { status: "working", label: "Check-in", icon: MapPinned },
-  working: { status: "awaiting_acceptance", label: "Hoàn tất", icon: CheckCircle2 },
+const TECHNICIAN_WORK_STAGES: ReadonlyArray<{
+  id: string;
+  title: string;
+  description: string;
+  statuses: readonly WorkOrderStatus[];
+}> = [
+  { id: "assigned", title: "Cần nhận việc", description: "Phiếu đã giao, kỹ thuật viên cần xác nhận.", statuses: ["assigned"] },
+  { id: "accepted", title: "Chuẩn bị di chuyển", description: "Đã nhận việc, chuẩn bị tới địa điểm khách.", statuses: ["accepted"] },
+  { id: "traveling", title: "Đang di chuyển", description: "Đang tới địa điểm khách hàng.", statuses: ["traveling"] },
+  { id: "working", title: "Đang thi công", description: "Đã check-in và đang xử lý tại hiện trường.", statuses: ["working"] },
+  { id: "awaiting_acceptance", title: "Chờ nghiệm thu", description: "Đã xử lý xong, cần khách ký nghiệm thu.", statuses: ["awaiting_acceptance"] },
+];
+
+const ACTIVE_STATUSES = new Set<WorkOrderStatus>(TECHNICIAN_WORK_STAGES.flatMap((stage) => stage.statuses));
+const DONE_STATUSES = new Set<WorkOrderStatus>(["completed", "awaiting_payment", "paid", "debt"]);
+
+const TECHNICIAN_ACTION_ICONS: Partial<Record<WorkOrderStatus, typeof Play>> = {
+  accepted: Navigation,
+  traveling: MapPinned,
+  working: CheckCircle2,
 };
 
 function getCurrentPosition() {
@@ -52,28 +73,34 @@ function sortByNextWork(left: WorkOrderListItem, right: WorkOrderListItem) {
   return leftTime - rightTime;
 }
 
-function groupTitle(status: WorkOrderStatus) {
-  if (status === "assigned") return "Cần nhận việc";
-  if (status === "accepted") return "Chuẩn bị di chuyển";
-  if (status === "traveling") return "Đang di chuyển";
-  if (status === "working") return "Đang thi công";
-  if (status === "awaiting_acceptance") return "Chờ nghiệm thu";
-  return "Công việc khác";
-}
-
 function formatAddress(address: string) {
   const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
   if (parts.length <= 2) return address;
   return parts.slice(0, 2).join(", ");
 }
 
-function statusPriority(status: WorkOrderStatus) {
-  if (status === "working") return 1;
-  if (status === "traveling") return 2;
-  if (status === "accepted") return 3;
-  if (status === "assigned") return 4;
-  if (status === "awaiting_acceptance") return 5;
-  return 6;
+function technicianStageIndex(status: WorkOrderStatus) {
+  const index = TECHNICIAN_WORK_STAGES.findIndex((stage) => stage.statuses.includes(status));
+  return index >= 0 ? index : WORK_ORDER_STATUS_ORDER[status];
+}
+
+function getTechnicianPrimaryAction(order: WorkOrderListItem) {
+  if (order.status === "awaiting_acceptance") {
+    return { type: "edit" as const, label: "Nghiệm thu", icon: ClipboardCheck };
+  }
+
+  const transition = getAllowedWorkOrderTransitions(order.status, TECHNICIAN_ROLE)
+    .find((item) => item.intent === "field");
+  if (!transition) {
+    return { type: "edit" as const, label: "Chi tiết", icon: Wrench };
+  }
+
+  return {
+    type: "status" as const,
+    status: transition.status,
+    label: transition.label,
+    icon: TECHNICIAN_ACTION_ICONS[transition.status] ?? Play,
+  };
 }
 
 function MiniOrderRow({
@@ -91,7 +118,11 @@ function MiniOrderRow({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-bold uppercase text-zinc-500">{order.code}</span>
-        <StatusBadge status={order.status} />
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <StageBadge status={order.status} />
+          <StatusBadge order={order} />
+          <DeadlineBadge order={order} />
+        </div>
       </div>
       <p className="truncate text-sm font-semibold text-zinc-950">{order.customer_name}</p>
       <p className="truncate text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</p>
@@ -114,8 +145,8 @@ function TechnicianWorkCard({
   onEdit: (id: string) => void;
   onNextAction: (order: WorkOrderListItem) => void;
 }) {
-  const action = technicianNextActions[order.status];
-  const ActionIcon = action?.icon ?? Wrench;
+  const action = getTechnicianPrimaryAction(order);
+  const ActionIcon = action.icon;
   const appointmentLabel = dateTime(order.appointment_at ?? order.created_at);
 
   return (
@@ -135,10 +166,15 @@ function TechnicianWorkCard({
           </div>
           <h2 className="mt-1 truncate text-xl font-bold text-zinc-950">{order.customer_name}</h2>
         </div>
-        <StatusBadge status={order.status} />
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <StageBadge status={order.status} />
+          <StatusBadge order={order} />
+          <DeadlineBadge order={order} />
+        </div>
       </div>
       <div className="grid gap-2 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
         <p className="line-clamp-2 font-medium text-zinc-900">{order.description}</p>
+        <p className="text-xs font-medium text-zinc-500">{WORK_ORDER_STATUS_DESCRIPTIONS[order.status]}</p>
         <p className="flex items-start gap-2">
           <MapPinned size={15} className="mt-0.5 shrink-0 text-zinc-500" />
           <span>{formatAddress(order.customer_address)}</span>
@@ -165,10 +201,10 @@ function TechnicianWorkCard({
           className="btn-primary h-12"
           onClick={() => onNextAction(order)}
           type="button"
-          pending={pending}
+          pending={pending && action.type === "status"}
           pendingLabel="Đang lưu..."
         >
-          <ActionIcon size={15} />{action?.label ?? "Xử lý"}
+          <ActionIcon size={15} />{action.label}
         </PendingButton>
         <button className="btn-secondary h-12 px-4" onClick={() => onEdit(order.id)} type="button">
           <Wrench size={15} />Chi tiết
@@ -194,21 +230,21 @@ export function TechnicianScreen({
 
   const activeOrders = orders
     .filter((order) => ACTIVE_STATUSES.has(order.status))
-    .sort((left, right) => statusPriority(left.status) - statusPriority(right.status) || sortByNextWork(left, right));
-  const doneOrders = orders.filter((order) => ["completed", "awaiting_payment", "paid", "debt"].includes(order.status));
+    .sort((left, right) => technicianStageIndex(left.status) - technicianStageIndex(right.status) || sortByNextWork(left, right));
+  const doneOrders = orders.filter((order) => DONE_STATUSES.has(order.status));
+  const stageOrders = TECHNICIAN_WORK_STAGES.map((stage) => ({
+    ...stage,
+    orders: activeOrders.filter((order) => stage.statuses.includes(order.status)),
+  }));
   const waitingSignatureOrders = orders.filter((order) => order.status === "awaiting_acceptance");
   const movingOrders = orders.filter((order) => ["accepted", "traveling"].includes(order.status));
   const workingOrders = orders.filter((order) => order.status === "working");
+  const assignedOrders = orders.filter((order) => order.status === "assigned");
   const nextOrder = activeOrders[0] ?? null;
-  const groupedOrders = activeOrders.filter((order) => order.id !== nextOrder?.id).reduce<Record<string, WorkOrderListItem[]>>((groups, order) => {
-    const title = groupTitle(order.status);
-    groups[title] = [...(groups[title] ?? []), order];
-    return groups;
-  }, {});
 
   async function runNextAction(order: WorkOrderListItem) {
-    const action = technicianNextActions[order.status];
-    if (!action) {
+    const action = getTechnicianPrimaryAction(order);
+    if (action.type === "edit") {
       onEdit(order.id);
       return;
     }
@@ -233,26 +269,26 @@ export function TechnicianScreen({
           <div>
             <p className="text-xs font-bold uppercase text-zinc-500">Kỹ thuật viên</p>
             <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-zinc-950 lg:text-3xl">Việc ngoài hiện trường</h2>
-            <p className="mt-1 text-sm text-zinc-500">Theo dõi tuyến việc, thao tác nhanh và đối chiếu lịch sử trong cùng một màn.</p>
+            <p className="mt-1 text-sm text-zinc-500">Theo dõi đúng luồng: nhận việc, di chuyển, check-in, hoàn tất và nghiệm thu.</p>
           </div>
           <Route className="mt-1 text-zinc-400" size={24} />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:gap-3">
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-            <p className="text-[11px] font-bold uppercase text-zinc-500">Đang xử lý</p>
-            <p className="mt-1 text-2xl font-black text-zinc-950">{activeOrders.length}</p>
+            <p className="text-[11px] font-bold uppercase text-zinc-500">Cần nhận</p>
+            <p className="mt-1 text-2xl font-black text-zinc-950">{assignedOrders.length}</p>
           </div>
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-            <p className="text-[11px] font-bold uppercase text-zinc-500">Đang đi/làm</p>
-            <p className="mt-1 text-2xl font-black text-zinc-950">{movingOrders.length + workingOrders.length}</p>
+            <p className="text-[11px] font-bold uppercase text-zinc-500">Đã nhận/đang đi</p>
+            <p className="mt-1 text-2xl font-black text-zinc-950">{movingOrders.length}</p>
+          </div>
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+            <p className="text-[11px] font-bold uppercase text-zinc-500">Thi công</p>
+            <p className="mt-1 text-2xl font-black text-zinc-950">{workingOrders.length}</p>
           </div>
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <p className="text-[11px] font-bold uppercase text-zinc-500">Chờ ký</p>
             <p className="mt-1 text-2xl font-black text-zinc-950">{waitingSignatureOrders.length}</p>
-          </div>
-          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-            <p className="text-[11px] font-bold uppercase text-zinc-500">Đã xong</p>
-            <p className="mt-1 text-2xl font-black text-zinc-950">{doneOrders.length}</p>
           </div>
         </div>
       </div>
@@ -271,24 +307,36 @@ export function TechnicianScreen({
             </div>
           ) : null}
 
-          {Object.entries(groupedOrders).map(([title, groupOrders]) => (
-            <div key={title} className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-zinc-800">{title}</h3>
-                <span className="text-xs font-semibold text-zinc-500">{groupOrders.length} phiếu</span>
+          {stageOrders.map(({ id, title, description, orders: groupOrders }) => {
+            const visibleOrders = groupOrders.filter((order) => order.id !== nextOrder?.id);
+            if (visibleOrders.length === 0) return null;
+
+            return (
+              <div key={id} className="grid gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-800">{title}</h3>
+                    <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-500">{visibleOrders.length} phiếu</span>
+                </div>
+                <div className="grid gap-3 xl:grid-cols-2">
+                  {visibleOrders.map((order) => (
+                    <TechnicianWorkCard key={order.id} order={order} pending={pendingStatusOrderId === order.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
+                  ))}
+                </div>
               </div>
-              <div className="grid gap-3 xl:grid-cols-2">
-                {groupOrders.map((order) => (
-                  <TechnicianWorkCard key={order.id} order={order} pending={pendingStatusOrderId === order.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {activeOrders.length === 0 ? (
             <div className="rounded-lg border border-dashed border-zinc-300 bg-white p-6 text-center">
               <ClipboardCheck className="mx-auto text-zinc-400" size={28} />
               <p className="mt-3 text-sm font-semibold text-zinc-800">Chưa có việc cần xử lý</p>
-              <p className="mt-1 text-sm text-zinc-500">Khi điều phối giao phiếu, công việc sẽ xuất hiện ở đây.</p>
+              <p className="mt-1 text-sm text-zinc-500">
+                {orders.length === 0
+                  ? "Khi admin hoặc điều phối giao phiếu cho đúng hồ sơ kỹ thuật viên của bạn, công việc sẽ xuất hiện ở đây."
+                  : "Các phiếu đã xong vẫn nằm trong phần việc đã xong để tra cứu lại."}
+              </p>
             </div>
           ) : null}
         </div>
@@ -303,8 +351,12 @@ export function TechnicianScreen({
             </div>
             <div className="mt-3 grid gap-2">
               <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
-                <span className="text-zinc-600">Cần nhận / di chuyển</span>
-                <strong className="text-zinc-950">{orders.filter((order) => ["assigned", "accepted", "traveling"].includes(order.status)).length}</strong>
+                <span className="text-zinc-600">Cần nhận</span>
+                <strong className="text-zinc-950">{assignedOrders.length}</strong>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
+                <span className="text-zinc-600">Đã nhận / đang đi</span>
+                <strong className="text-zinc-950">{movingOrders.length}</strong>
               </div>
               <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
                 <span className="text-zinc-600">Đang thi công</span>

@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { CalendarClock, CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, Phone, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
 import { getAllowedWorkOrderTransitions, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
-import { DeadlineBadge, Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
+import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { Material, Role, Technician, WorkFile, WorkOrderDetail, WorkOrderStatus } from "@/components/ops/types";
 import { AssignmentForm } from "@/components/ops/modals/assignment-form";
 import { CostNoteForm } from "@/components/ops/modals/cost-note-form";
@@ -13,14 +13,15 @@ import { MaterialsForm } from "@/components/ops/modals/materials-form";
 import { PaymentForm } from "@/components/ops/modals/payment-form";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
 
-type EditTab = "basic" | "workflow" | "costs" | "resources" | "payment";
+type EditTab = "basic" | "workflow" | "costs" | "resources" | "acceptance" | "payment";
 
 const tabs: ReadonlyArray<{ id: EditTab; label: string; icon: LucideIcon }> = [
   { id: "basic", label: "Cơ bản", icon: ClipboardList },
-  { id: "workflow", label: "Điều phối", icon: MapPinned },
+  { id: "workflow", label: "Phân công", icon: MapPinned },
   { id: "costs", label: "Chi phí", icon: ReceiptText },
   { id: "resources", label: "Tệp & vật tư", icon: FileBox },
-  { id: "payment", label: "Thanh toán", icon: CreditCard },
+  { id: "acceptance", label: "Nghiệm thu", icon: CheckCircle2 },
+  { id: "payment", label: "Thu tiền", icon: CreditCard },
 ];
 
 const technicianTabs: ReadonlyArray<{ id: EditTab; label: string; icon: LucideIcon }> = [
@@ -28,7 +29,7 @@ const technicianTabs: ReadonlyArray<{ id: EditTab; label: string; icon: LucideIc
   { id: "workflow", label: "Tiến độ", icon: MapPinned },
   { id: "resources", label: "Ảnh & vật tư", icon: FileBox },
   { id: "costs", label: "Ghi chú/chi phí", icon: ReceiptText },
-  { id: "payment", label: "Nghiệm thu", icon: CheckCircle2 },
+  { id: "acceptance", label: "Nghiệm thu", icon: CheckCircle2 },
 ];
 
 const FINANCIAL_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "paid", "debt", "cancelled"];
@@ -46,6 +47,78 @@ function getCurrentPosition() {
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
     );
   });
+}
+
+function getInitialTab(role: Role, status: WorkOrderStatus): EditTab {
+  if (role === "technician") return "basic";
+  if (["pending_assignment", "assigned", "accepted", "traveling", "working"].includes(status)) return "workflow";
+  if (status === "awaiting_acceptance") return "acceptance";
+  if (["completed", "awaiting_payment", "debt"].includes(status)) return "payment";
+  return "basic";
+}
+
+function getAdminAction(status: WorkOrderStatus) {
+  if (status === "pending_assignment") {
+    return {
+      title: "Cần phân công kỹ thuật",
+      body: "Phiếu mới tạo chưa có người phụ trách. Chọn kỹ thuật viên phù hợp để bắt đầu xử lý.",
+      tab: "workflow" as EditTab,
+      label: "Phân công",
+      tone: "border-amber-200 bg-amber-50 text-amber-900",
+    };
+  }
+  if (["assigned", "accepted", "traveling", "working"].includes(status)) {
+    return {
+      title: "Đang ở bước hiện trường",
+      body: "Theo dõi kỹ thuật viên, đổi phân công nếu cần, hoặc hủy phiếu khi có lý do rõ ràng.",
+      tab: "workflow" as EditTab,
+      label: "Xem phân công",
+      tone: "border-blue-200 bg-blue-50 text-blue-900",
+    };
+  }
+  if (status === "awaiting_acceptance") {
+    return {
+      title: "Chờ nghiệm thu",
+      body: "Kỹ thuật đã báo hoàn tất xử lý. Cần khách ký nghiệm thu để chuyển sang bước thu tiền.",
+      tab: "acceptance" as EditTab,
+      label: "Nghiệm thu",
+      tone: "border-violet-200 bg-violet-50 text-violet-900",
+    };
+  }
+  if (status === "completed") {
+    return {
+      title: "Đã nghiệm thu, cần chốt thu tiền",
+      body: "Phiếu đã xong phần kỹ thuật. Xác nhận đã thu hoặc ghi công nợ để tránh treo phiếu.",
+      tab: "payment" as EditTab,
+      label: "Thu tiền",
+      tone: "border-rose-200 bg-rose-50 text-rose-900",
+    };
+  }
+  if (["awaiting_payment", "debt"].includes(status)) {
+    return {
+      title: status === "debt" ? "Đang theo dõi công nợ" : "Chờ thu tiền",
+      body: "Cập nhật thanh toán khi khách trả tiền hoặc bổ sung hạn/ghi chú công nợ.",
+      tab: "payment" as EditTab,
+      label: status === "debt" ? "Thu công nợ" : "Xử lý thanh toán",
+      tone: "border-red-200 bg-red-50 text-red-900",
+    };
+  }
+  if (status === "paid") {
+    return {
+      title: "Phiếu đã đóng",
+      body: "Phiếu đã được xác nhận thu tiền. Chỉ xem lại thông tin hoặc biên bản khi cần.",
+      tab: "basic" as EditTab,
+      label: "Xem thông tin",
+      tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    };
+  }
+  return {
+    title: "Phiếu đã hủy",
+    body: "Phiếu không còn bước xử lý tiếp theo. Xem lịch sử để biết lý do hủy.",
+    tab: "workflow" as EditTab,
+    label: "Xem lịch sử",
+    tone: "border-zinc-200 bg-zinc-50 text-zinc-700",
+  };
 }
 
 export function WorkOrderEditModal({
@@ -87,7 +160,7 @@ export function WorkOrderEditModal({
   materialPendingAction?: { type: "create" } | { type: "update" | "delete"; id: string } | null;
   deletingFileId?: string | null;
 }) {
-  const [activeTab, setActiveTab] = useState<EditTab>("basic");
+  const [activeTab, setActiveTab] = useState<EditTab>(() => getInitialTab(role, detail.workOrder.status));
   const [preparingStatus, setPreparingStatus] = useState(false);
   const nextAction = NEXT_STATUS_ACTIONS[detail.workOrder.status] ?? null;
   const canNext = nextAction?.roles.includes(role) ?? false;
@@ -99,6 +172,7 @@ export function WorkOrderEditModal({
   const financialLocked = FINANCIAL_LOCKED_STATUSES.includes(detail.workOrder.status) && role !== "admin";
   const signatureFile = detail.files.find((file) => file.purpose === "signature");
   const visibleTabs = role === "technician" ? technicianTabs : tabs;
+  const adminAction = role === "technician" ? null : getAdminAction(detail.workOrder.status);
 
   async function handleNextStatus() {
     if (!nextAction) return;
@@ -118,6 +192,7 @@ export function WorkOrderEditModal({
         <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
+            <StageBadge status={detail.workOrder.status} />
             <DeadlineBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
@@ -125,6 +200,20 @@ export function WorkOrderEditModal({
           <h3 className="mt-3 text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
           <p className="mt-2 text-sm text-zinc-500">Hẹn: {dateTime(detail.workOrder.appointment_at)}</p>
         </section>
+
+        {adminAction ? (
+          <section className={`rounded-md border p-4 ${adminAction.tone}`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold">{adminAction.title}</h3>
+                <p className="mt-1 text-sm leading-6">{adminAction.body}</p>
+              </div>
+              <button className="btn-secondary h-10 bg-white/80" type="button" onClick={() => setActiveTab(adminAction.tab)}>
+                {adminAction.label}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <nav className="modal-tabbar" aria-label={role === "technician" ? "Xử lý phiếu" : "Sửa phiếu"}>
           {visibleTabs.map((tab) => {
@@ -258,9 +347,8 @@ export function WorkOrderEditModal({
             </section>
           ) : null}
 
-          {activeTab === "payment" ? (
+          {activeTab === "acceptance" ? (
             <section className="grid gap-4 lg:grid-cols-2">
-              {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} /> : null}
               {detail.workOrder.status === "awaiting_acceptance" ? (
                 <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
               ) : detail.workOrder.accepted_at ? (
@@ -273,6 +361,17 @@ export function WorkOrderEditModal({
                   Phiếu chưa tới bước nghiệm thu.
                 </div>
               )}
+            </section>
+          ) : null}
+
+          {activeTab === "payment" ? (
+            <section className="grid gap-4 lg:grid-cols-2">
+              {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} /> : null}
+              {!canPay ? (
+                <div className="modal-section text-sm text-zinc-600">
+                  Tài khoản hiện tại không có quyền cập nhật thanh toán.
+                </div>
+              ) : null}
             </section>
           ) : null}
         </div>

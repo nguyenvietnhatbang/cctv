@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { CreditCard, FileText, History, MapPinned, Package, Phone, ReceiptText, UserRound, Wrench, type LucideIcon } from "lucide-react";
 import { filePurposeLabel, TECHNICIAN_STATUS_LABELS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { DeadlineBadge, Modal, StatusBadge } from "@/components/ops/ui";
+import { DeadlineBadge, Modal, StageBadge, StatusBadge } from "@/components/ops/ui";
 import type { Technician, WorkOrderDetail } from "@/components/ops/types";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
@@ -88,6 +88,7 @@ export function WorkOrderDetailModal({
         <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
+            <StageBadge status={detail.workOrder.status} />
             <DeadlineBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>

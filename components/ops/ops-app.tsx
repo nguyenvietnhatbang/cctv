@@ -311,7 +311,7 @@ export function OpsApp() {
     };
   }
 
-  async function openOrder(id: string, type: "order-detail" | "order-edit" = "order-detail") {
+  async function openOrder(id: string, type: "order-detail" | "order-edit" | "technician-job" = "order-detail") {
     try {
       setError(null);
       setModal({ type, id });
@@ -659,8 +659,8 @@ export function OpsApp() {
         onCreateOrder={handleCreateOrder}
         onCreateCustomer={handleCreateCustomer}
         onCreateUser={handleCreateUser}
-        onOpenOrder={(id) => openOrder(id)}
-        onEditOrder={(id) => openOrder(id, "order-edit")}
+        onOpenOrder={(id) => openOrder(id, user.role === "technician" ? "technician-job" : "order-detail")}
+        onEditOrder={(id) => openOrder(id, user.role === "technician" ? "technician-job" : "order-edit")}
         onTechnicianStatus={updateTechnicianStatus}
         onCancelOrder={(item) => setModal({ type: "order-cancel", item })}
         onViewCustomer={(item) => setModal({ type: "customer-detail", item })}

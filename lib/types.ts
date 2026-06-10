@@ -78,9 +78,9 @@ export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
   traveling: "Đang di chuyển",
   working: "Đang thi công",
   awaiting_acceptance: "Chờ nghiệm thu",
-  completed: "Hoàn thành",
-  awaiting_payment: "Chờ thanh toán",
-  paid: "Đã thanh toán",
+  completed: "Đã nghiệm thu",
+  awaiting_payment: "Chờ thu tiền",
+  paid: "Đã thu tiền",
   debt: "Công nợ",
   cancelled: "Hủy",
 };
@@ -106,9 +106,9 @@ export const WORK_ORDER_STATUS_DESCRIPTIONS: Record<WorkOrderStatus, string> = {
   traveling: "Kỹ thuật viên đang di chuyển tới địa điểm khách hàng.",
   working: "Kỹ thuật viên đã check-in và đang xử lý tại hiện trường.",
   awaiting_acceptance: "Kỹ thuật viên đã xử lý xong, đang chờ khách nghiệm thu.",
-  completed: "Khách đã nghiệm thu, phần kỹ thuật đã hoàn thành.",
-  awaiting_payment: "Phiếu đã hoàn thành kỹ thuật và đang chờ xử lý thanh toán.",
-  paid: "Phiếu đã được xác nhận thanh toán.",
+  completed: "Khách đã nghiệm thu, phần kỹ thuật đã hoàn thành, cần chốt thu tiền hoặc công nợ.",
+  awaiting_payment: "Phiếu đã bàn giao sang bước thu tiền, chưa xác nhận thanh toán.",
+  paid: "Phiếu đã được xác nhận thu tiền.",
   debt: "Phiếu đang được theo dõi công nợ.",
   cancelled: "Phiếu đã bị hủy.",
 };
@@ -162,12 +162,12 @@ export const WORK_ORDER_TRANSITIONS: Partial<Record<WorkOrderStatus, WorkOrderTr
     { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
   ],
   completed: [
-    { status: "awaiting_payment", label: "Chờ thanh toán", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
-    { status: "paid", label: "Đã thanh toán", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "awaiting_payment", label: "Chờ thu tiền", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "paid", label: "Đã thu tiền", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
     { status: "debt", label: "Ghi công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
   ],
   awaiting_payment: [
-    { status: "paid", label: "Đã thanh toán", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "paid", label: "Đã thu tiền", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
     { status: "debt", label: "Ghi công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
   ],
   debt: [
@@ -189,8 +189,59 @@ export const NEXT_STATUS_ACTIONS: Partial<Record<WorkOrderStatus, { status: Work
   accepted: { status: "traveling", label: "Đang di chuyển", roles: ["technician"] },
   traveling: { status: "working", label: "Check-in", roles: ["technician"] },
   working: { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: ["technician"] },
-  completed: { status: "awaiting_payment", label: "Chờ thanh toán", roles: ["dispatcher", "accountant", "admin"] },
+  completed: { status: "awaiting_payment", label: "Bàn giao thu tiền", roles: ["dispatcher", "accountant", "admin"] },
 };
+
+export type WorkOrderStage = "intake" | "dispatch" | "field" | "acceptance" | "payment" | "closed" | "cancelled";
+
+export const WORK_ORDER_STAGE_LABELS: Record<WorkOrderStage, string> = {
+  intake: "Tiếp nhận",
+  dispatch: "Phân công",
+  field: "Hiện trường",
+  acceptance: "Nghiệm thu",
+  payment: "Thu tiền",
+  closed: "Đóng phiếu",
+  cancelled: "Đã hủy",
+};
+
+export const WORK_ORDER_STAGE_DESCRIPTIONS: Record<WorkOrderStage, string> = {
+  intake: "Phiếu mới tạo, cần phân công kỹ thuật viên.",
+  dispatch: "Đã có người phụ trách, đang chờ kỹ thuật nhận việc.",
+  field: "Kỹ thuật viên đang thực hiện các bước ngoài hiện trường.",
+  acceptance: "Đã xử lý xong hoặc đã được khách nghiệm thu.",
+  payment: "Đang xử lý thu tiền, chuyển khoản hoặc công nợ.",
+  closed: "Đã thu tiền và đóng phiếu.",
+  cancelled: "Phiếu đã hủy, không còn bước xử lý tiếp theo.",
+};
+
+export const WORK_ORDER_STAGE_TONE: Record<WorkOrderStage, string> = {
+  intake: "bg-amber-50 text-amber-800 ring-amber-200",
+  dispatch: "bg-blue-50 text-blue-800 ring-blue-200",
+  field: "bg-cyan-50 text-cyan-800 ring-cyan-200",
+  acceptance: "bg-violet-50 text-violet-800 ring-violet-200",
+  payment: "bg-rose-50 text-rose-800 ring-rose-200",
+  closed: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
+};
+
+export const WORK_ORDER_STAGE_ORDER: readonly WorkOrderStage[] = [
+  "intake",
+  "dispatch",
+  "field",
+  "acceptance",
+  "payment",
+  "closed",
+];
+
+export function getWorkOrderStage(status: WorkOrderStatus): WorkOrderStage {
+  if (status === "cancelled") return "cancelled";
+  if (status === "pending_assignment") return "intake";
+  if (status === "assigned") return "dispatch";
+  if (["accepted", "traveling", "working"].includes(status)) return "field";
+  if (["awaiting_acceptance", "completed"].includes(status)) return "acceptance";
+  if (["awaiting_payment", "debt"].includes(status)) return "payment";
+  return "closed";
+}
 
 export type DisplayStatus = "todo" | "doing" | "doing_overdue" | "done" | "done_overdue" | "cancelled";
 
@@ -198,8 +249,8 @@ export const DISPLAY_STATUS_LABELS: Record<DisplayStatus, string> = {
   todo: "Chưa thi công",
   doing: "Đang xử lý",
   doing_overdue: "Đang xử lý quá hạn",
-  done: "Đã hoàn tất",
-  done_overdue: "Hoàn tất trễ",
+  done: "Xong kỹ thuật",
+  done_overdue: "Xong kỹ thuật trễ",
   cancelled: "Đã hủy",
 };
 
@@ -253,6 +304,6 @@ export function getWorkOrderDeadlineLabel(order: {
 }) {
   const displayStatus = getDisplayStatus(order);
   if (displayStatus === "doing_overdue") return "Quá hạn";
-  if (displayStatus === "done_overdue") return "Hoàn thành trễ";
+  if (displayStatus === "done_overdue") return "Xong trễ";
   return null;
 }

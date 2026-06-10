@@ -91,6 +91,7 @@ export function OpsScreenSwitcher({
         customers={data.customers}
         technicians={data.technicians}
         orders={data.orders}
+        role={role}
         canCreate={["admin", "dispatcher"].includes(role)}
         isCreating={pendingAction === "create-order"}
         onFilter={onFilter}

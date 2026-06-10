@@ -181,6 +181,7 @@ export type AppData = {
 export type ModalState =
   | { type: "order-detail"; id: string }
   | { type: "order-edit"; id: string }
+  | { type: "technician-job"; id: string }
   | { type: "dispatch-detail"; id: string }
   | { type: "dispatch-assignment"; id: string }
   | { type: "payment-detail"; id: string }

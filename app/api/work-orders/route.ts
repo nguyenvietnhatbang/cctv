@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
 import { createWorkOrderSchema } from "@/lib/validators";
-import { changeWorkOrderStatus, getTechnicianIdForUser, makeWorkOrderCode } from "@/lib/work-orders";
+import { changeWorkOrderStatus, makeWorkOrderCode, requireTechnicianIdForUser } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -52,6 +52,18 @@ export async function GET(request: Request) {
         filters.push(`wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and (wo.appointment_at is null or wo.updated_at <= wo.appointment_at)`);
       } else if (status === "done_overdue") {
         filters.push(`wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and wo.appointment_at is not null and wo.updated_at > wo.appointment_at`);
+      } else if (status === "intake") {
+        filters.push(`wo.status = 'pending_assignment'`);
+      } else if (status === "dispatch") {
+        filters.push(`wo.status = 'assigned'`);
+      } else if (status === "field") {
+        filters.push(`wo.status in ('accepted', 'traveling', 'working')`);
+      } else if (status === "acceptance") {
+        filters.push(`wo.status in ('awaiting_acceptance', 'completed')`);
+      } else if (status === "payment") {
+        filters.push(`wo.status in ('awaiting_payment', 'debt')`);
+      } else if (status === "closed") {
+        filters.push(`wo.status = 'paid'`);
       } else {
         params.push(status);
         filters.push(`wo.status = $${params.length}`);
@@ -89,8 +101,8 @@ export async function GET(request: Request) {
     }
 
     if (user.role === "technician") {
-      const ownTechnicianId = await getTechnicianIdForUser(user.id);
-      params.push(ownTechnicianId ?? "00000000-0000-0000-0000-000000000000");
+      const ownTechnicianId = await requireTechnicianIdForUser(user.id);
+      params.push(ownTechnicianId);
       filters.push(`woa.technician_id = $${params.length}`);
     }
 
@@ -203,7 +215,7 @@ export async function POST(request: Request) {
 
       const listResult = await client.query(
         `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
-                wo.appointment_at, woa.assigned_at, wo.created_at, wo.labor_cost, wo.vat_rate,
+                wo.appointment_at, woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
                 c.id as customer_id,
                 c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
                 t.id as technician_id, tu.full_name as technician_name,

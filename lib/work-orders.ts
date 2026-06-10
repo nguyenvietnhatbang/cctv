@@ -16,6 +16,15 @@ export async function getTechnicianIdForUser(userId: string) {
   return result.rows[0]?.id ?? null;
 }
 
+export async function requireTechnicianIdForUser(userId: string) {
+  const technicianId = await getTechnicianIdForUser(userId);
+  if (!technicianId) {
+    throw new HttpError(403, "Tài khoản kỹ thuật chưa được liên kết với hồ sơ kỹ thuật viên. Admin cần tạo hoặc gắn hồ sơ kỹ thuật trước khi giao việc.");
+  }
+
+  return technicianId;
+}
+
 export async function assertCanReadWorkOrder(user: SessionUser, workOrderId: string) {
   if (user.role !== "technician") {
     return;
@@ -68,6 +77,37 @@ export async function assertCanEditFinancials(user: SessionUser, workOrderId: st
 
 export function isFinancialLockedStatus(status: WorkOrderStatus) {
   return FINANCIAL_LOCKED_STATUSES.has(status);
+}
+
+export async function syncTechnicianStatuses(client: PoolClient, technicianIds: string[]) {
+  const uniqueIds = [...new Set(technicianIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
+
+  await client.query(
+    `update technicians t
+     set status = case
+       when exists (
+         select 1
+         from work_order_assignments woa
+         join work_orders wo on wo.id = woa.work_order_id
+         where woa.technician_id = t.id
+           and woa.unassigned_at is null
+           and wo.status in ('working', 'awaiting_acceptance')
+       ) then 'working'::technician_status
+       when exists (
+         select 1
+         from work_order_assignments woa
+         join work_orders wo on wo.id = woa.work_order_id
+         where woa.technician_id = t.id
+           and woa.unassigned_at is null
+           and wo.status = 'traveling'
+       ) then 'traveling'::technician_status
+       when t.status = 'off' then 'off'::technician_status
+       else 'available'::technician_status
+     end
+     where t.id = any($1::uuid[])`,
+    [uniqueIds],
+  );
 }
 
 export function assertStatusTransition(from: WorkOrderStatus, to: WorkOrderStatus, user: SessionUser) {
@@ -124,6 +164,14 @@ export async function changeWorkOrderStatus(
      values ($1, $2, $3, $4, $5)`,
     [workOrderId, current.status, nextStatus, user.id, note],
   );
+
+  const assignmentResult = await client.query<{ technician_id: string }>(
+    `select technician_id
+     from work_order_assignments
+     where work_order_id = $1 and unassigned_at is null`,
+    [workOrderId],
+  );
+  await syncTechnicianStatuses(client, assignmentResult.rows.map((row) => row.technician_id));
 }
 
 export async function syncWorkOrderPaymentAmounts(client: PoolClient, workOrderId: string) {

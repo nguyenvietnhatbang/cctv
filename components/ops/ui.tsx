@@ -8,7 +8,10 @@ import {
   DISPLAY_STATUS_LABELS,
   DISPLAY_STATUS_TONE,
   getDisplayStatus,
+  getWorkOrderStage,
   getWorkOrderDeadlineLabel,
+  WORK_ORDER_STAGE_LABELS,
+  WORK_ORDER_STAGE_TONE,
   type WorkOrderStatus,
 } from "@/lib/types";
 
@@ -157,6 +160,20 @@ export function DeadlineBadge({
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${DISPLAY_STATUS_TONE[displayStatus]}`}>
       {label}
+    </span>
+  );
+}
+
+export function StageBadge({
+  status,
+}: {
+  status: WorkOrderStatus;
+}) {
+  const stage = getWorkOrderStage(status);
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${WORK_ORDER_STAGE_TONE[stage]}`}>
+      {WORK_ORDER_STAGE_LABELS[stage]}
     </span>
   );
 }

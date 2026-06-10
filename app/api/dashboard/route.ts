@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
-import { getTechnicianIdForUser } from "@/lib/work-orders";
+import { requireTechnicianIdForUser } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const user = await requireUser();
 
-    const technicianId = user.role === "technician" ? await getTechnicianIdForUser(user.id) : null;
+    const technicianId = user.role === "technician" ? await requireTechnicianIdForUser(user.id) : null;
     const params: unknown[] = [];
     const technicianFilter = technicianId
       ? `and exists (

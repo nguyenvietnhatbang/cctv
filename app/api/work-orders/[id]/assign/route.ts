@@ -3,7 +3,7 @@ import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import type { WorkOrderStatus } from "@/lib/types";
 import { assignWorkOrderSchema } from "@/lib/validators";
-import { changeWorkOrderStatus } from "@/lib/work-orders";
+import { changeWorkOrderStatus, syncTechnicianStatuses } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -30,10 +30,11 @@ export async function POST(request: Request, context: Context) {
         throw new HttpError(422, "Không thể đổi phân công sau khi phiếu đã khóa");
       }
 
-      await client.query(
+      const oldAssignments = await client.query<{ technician_id: string }>(
         `update work_order_assignments
          set unassigned_at = now()
-         where work_order_id = $1 and unassigned_at is null`,
+         where work_order_id = $1 and unassigned_at is null
+         returning technician_id`,
         [id],
       );
       await client.query(
@@ -51,15 +52,23 @@ export async function POST(request: Request, context: Context) {
 
       if (current.status === "pending_assignment") {
         await changeWorkOrderStatus(client, id, "assigned", user, body.note ?? "Phân công kỹ thuật viên");
+        await syncTechnicianStatuses(client, [
+          ...oldAssignments.rows.map((assignment) => assignment.technician_id),
+          body.technicianId,
+        ]);
         return;
       }
 
       await client.query(
         `insert into work_order_status_history
            (work_order_id, from_status, to_status, changed_by, note)
-         values ($1, $2, $2, $3, $4)`,
+        values ($1, $2, $2, $3, $4)`,
         [id, current.status, user.id, body.note ?? "Đổi kỹ thuật viên phụ trách"],
       );
+      await syncTechnicianStatuses(client, [
+        ...oldAssignments.rows.map((assignment) => assignment.technician_id),
+        body.technicianId,
+      ]);
     });
 
     return jsonOk({ ok: true });

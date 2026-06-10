@@ -2,17 +2,40 @@
 
 import { useState } from "react";
 import { Edit, Eye, Plus, XCircle, Search } from "lucide-react";
-import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_TONE, getDisplayStatus, WORK_ORDER_STATUS_LABELS, WORK_ORDER_STATUSES, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES, type DisplayStatus } from "@/lib/types";
+import {
+  DISPLAY_STATUS_LABELS,
+  DISPLAY_STATUS_TONE,
+  getAllowedWorkOrderTransitions,
+  getDisplayStatus,
+  getWorkOrderStage,
+  PAYMENT_STATUSES,
+  WORK_ORDER_STAGE_LABELS,
+  WORK_ORDER_STAGE_ORDER,
+  WORK_ORDER_STAGE_TONE,
+  WORK_ORDER_STATUS_LABELS,
+  WORK_ORDER_STATUSES,
+  WORK_ORDER_TYPE_LABELS,
+  WORK_ORDER_TYPES,
+  type DisplayStatus,
+  type WorkOrderStage,
+} from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { DeadlineBadge, EmptyState, StageBadge, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import { WorkOrderCreateModal } from "@/components/ops/modals";
-import type { Customer, Filters, Technician, WorkOrderListItem } from "@/components/ops/types";
+import type { Customer, Filters, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  unpaid: "Chưa thu",
+  paid: "Đã thu",
+  debt: "Công nợ",
+};
 
 export function OrdersScreen({
   filters,
   customers,
   technicians,
   orders,
+  role,
   canCreate,
   isCreating,
   onFilter,
@@ -25,6 +48,7 @@ export function OrdersScreen({
   customers: Customer[];
   technicians: Technician[];
   orders: WorkOrderListItem[];
+  role: Role;
   canCreate: boolean;
   isCreating: boolean;
   onFilter: (filters: Filters) => void;
@@ -50,6 +74,30 @@ export function OrdersScreen({
       cancelled: 0,
     },
   );
+  const stageSummary = orders.reduce<Record<WorkOrderStage, number>>(
+    (summary, order) => {
+      const stage = getWorkOrderStage(order.status);
+      summary[stage] += 1;
+      return summary;
+    },
+    {
+      intake: 0,
+      dispatch: 0,
+      field: 0,
+      acceptance: 0,
+      payment: 0,
+      closed: 0,
+      cancelled: 0,
+    },
+  );
+  const paymentSummary = orders.reduce<Record<string, number>>(
+    (summary, order) => {
+      const status = order.payment_status ?? "unpaid";
+      summary[status] = (summary[status] ?? 0) + 1;
+      return summary;
+    },
+    {},
+  );
   const safePage = clampTablePage(page, orders.length);
   const visibleOrders = getPageItems(orders, safePage);
 
@@ -72,6 +120,22 @@ export function OrdersScreen({
             Tạo công việc
           </button>
         ) : null}
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+        {WORK_ORDER_STAGE_ORDER.map((stage) => (
+          <button
+            key={stage}
+            className={`rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 ${filters.status === stage ? "ring-2 ring-zinc-900" : ""}`}
+            onClick={() => applyFilter({ ...filters, status: filters.status === stage ? "" : stage })}
+            type="button"
+          >
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${WORK_ORDER_STAGE_TONE[stage]}`}>
+              {WORK_ORDER_STAGE_LABELS[stage]}
+            </span>
+            <p className="mt-2 text-2xl font-bold text-zinc-950">{stageSummary[stage]}</p>
+          </button>
+        ))}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
@@ -104,6 +168,13 @@ export function OrdersScreen({
                 {Object.entries(DISPLAY_STATUS_LABELS).map(([status, label]) => (
                   <option key={status} value={status}>
                     {label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Giai đoạn nghiệp vụ">
+                {WORK_ORDER_STAGE_ORDER.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {WORK_ORDER_STAGE_LABELS[stage]}
                   </option>
                 ))}
               </optgroup>
@@ -183,7 +254,9 @@ export function OrdersScreen({
                 <th>Khách hàng</th>
                 <th>Loại việc</th>
                 <th>Kỹ thuật</th>
+                <th>Giai đoạn</th>
                 <th>Trạng thái</th>
+                <th>Thanh toán</th>
                 <th>Hẹn/Tạo</th>
                 <th className="text-right">Tổng</th>
                 <th />
@@ -206,10 +279,18 @@ export function OrdersScreen({
                   </td>
                   <td className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
                   <td>
+                    <StageBadge status={order.status} />
+                  </td>
+                  <td>
                     <div className="flex flex-wrap gap-1.5">
                       <StatusBadge order={order} />
                       <DeadlineBadge order={order} />
                     </div>
+                  </td>
+                  <td>
+                    <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200">
+                      {PAYMENT_STATUS_LABELS[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thu"}
+                    </span>
                   </td>
                   <td className="text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</td>
                   <td className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
@@ -223,22 +304,26 @@ export function OrdersScreen({
                       >
                         <Eye size={15} />
                       </button>
-                      <button
-                        className="icon-button"
-                        onClick={() => onEdit(order.id)}
-                        type="button"
-                        aria-label="Sửa"
-                      >
-                        <Edit size={15} />
-                      </button>
-                      <button
-                        className="icon-button hover:text-red-600 hover:border-red-200"
-                        onClick={() => onCancel(order)}
-                        type="button"
-                        aria-label="Hủy công việc"
-                      >
-                        <XCircle size={15} />
-                      </button>
+                      {["admin", "dispatcher"].includes(role) ? (
+                        <button
+                          className="icon-button"
+                          onClick={() => onEdit(order.id)}
+                          type="button"
+                          aria-label="Sửa"
+                        >
+                          <Edit size={15} />
+                        </button>
+                      ) : null}
+                      {getAllowedWorkOrderTransitions(order.status, role).some((transition) => transition.status === "cancelled") ? (
+                        <button
+                          className="icon-button hover:text-red-600 hover:border-red-200"
+                          onClick={() => onCancel(order)}
+                          type="button"
+                          aria-label="Hủy công việc"
+                        >
+                          <XCircle size={15} />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -248,6 +333,15 @@ export function OrdersScreen({
         )}
         <TablePagination page={safePage} total={orders.length} onPageChange={setPage} />
       </TableShell>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {PAYMENT_STATUSES.map((status) => (
+          <div key={status} className="rounded-md border border-zinc-200 bg-white p-3 shadow-sm">
+            <p className="text-xs font-bold uppercase text-zinc-500">{PAYMENT_STATUS_LABELS[status]}</p>
+            <p className="mt-1 text-2xl font-black text-zinc-950">{paymentSummary[status] ?? 0}</p>
+          </div>
+        ))}
+      </div>
 
       {creating ? (
         <WorkOrderCreateModal
