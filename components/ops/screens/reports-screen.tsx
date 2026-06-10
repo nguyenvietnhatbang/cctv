@@ -40,9 +40,11 @@ function shortDate(value: string) {
 
 export function ReportsScreen({
   report,
+  loading,
   onSubmit,
 }: {
   report: ReportData | null;
+  loading: boolean;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
 }) {
   const today = todayInVietnam();
@@ -140,6 +142,20 @@ export function ReportsScreen({
           </p>
         ) : null}
       </section>
+
+      {!report ? (
+        <section className="panel flex min-h-[280px] flex-col items-center justify-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
+            <BarChart3 size={22} />
+          </div>
+          <div>
+            <h3 className="text-base font-black text-zinc-950">{loading ? "Đang tải dữ liệu báo cáo" : "Chưa có dữ liệu báo cáo"}</h3>
+            <p className="mt-1 text-sm text-zinc-500">
+              {loading ? "Hệ thống đang tổng hợp số liệu trong kỳ hiện tại." : "Chọn khoảng ngày rồi bấm Xem báo cáo để tổng hợp số liệu."}
+            </p>
+          </div>
+        </section>
+      ) : null}
 
       {report ? (
         <>

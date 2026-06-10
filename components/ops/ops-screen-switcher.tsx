@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import dynamic from "next/dynamic";
 import { defaultFilters, type PendingAction, type TabId } from "@/components/ops/app-config";
 import type { AppData, Customer, Filters, ReportData, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 import { DashboardScreen } from "@/components/ops/screens/dashboard-screen";
@@ -11,15 +12,32 @@ import { AssignmentHistoryScreen } from "@/components/ops/screens/assignment-his
 import { TechnicianScreen } from "@/components/ops/screens/technician-screen";
 import { TechniciansScreen } from "@/components/ops/screens/technicians-screen";
 import { PaymentsScreen } from "@/components/ops/screens/payments-screen";
-import { ReportsScreen } from "@/components/ops/screens/reports-screen";
 import { NotificationsScreen } from "@/components/ops/screens/notifications-screen";
 import { UsersScreen } from "@/components/ops/screens/users-screen";
+
+type ReportsScreenProps = {
+  report: ReportData | null;
+  loading: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+};
+
+const ReportsScreen = dynamic<ReportsScreenProps>(
+  () => import("@/components/ops/screens/reports-screen").then((mod) => mod.ReportsScreen),
+  {
+    loading: () => (
+      <div className="panel flex min-h-[240px] items-center justify-center text-sm font-semibold text-zinc-500">
+        Đang tải màn hình báo cáo...
+      </div>
+    ),
+  },
+);
 
 type OpsScreenSwitcherProps = {
   section: TabId;
   role: Role;
   data: AppData;
   filters: Filters;
+  reportLoading: boolean;
   pendingAction: PendingAction;
   onFilter: (filters: Filters) => void;
   onCreateOrder: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -53,6 +71,7 @@ export function OpsScreenSwitcher({
   role,
   data,
   filters,
+  reportLoading,
   pendingAction,
   onFilter,
   onCreateOrder,
@@ -141,7 +160,7 @@ export function OpsScreenSwitcher({
     return <PaymentsScreen orders={data.orders} onView={onOpenPayment} onPayment={onPaymentAction} />;
   }
 
-  if (section === "reports") return <ReportsScreen report={data.report as ReportData | null} onSubmit={onReportSubmit} />;
+  if (section === "reports") return <ReportsScreen report={data.report as ReportData | null} loading={reportLoading} onSubmit={onReportSubmit} />;
 
   if (section === "notifications") {
     return <NotificationsScreen notifications={data.notifications} onOpen={onOpenNotification} onRead={onReadNotification} />;

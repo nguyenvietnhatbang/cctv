@@ -32,6 +32,8 @@ import { OpsScreenSwitcher } from "@/components/ops/ops-screen-switcher";
 import { OpsShell } from "@/components/ops/ops-shell";
 import { LoadingScreen } from "@/components/ops/ui";
 
+const ORDER_BACKED_SECTIONS = new Set<TabId>(["dashboard", "orders", "dispatch", "technician", "payments"]);
+
 export function OpsApp() {
   const pathname = usePathname();
   const router = useRouter();
@@ -44,6 +46,7 @@ export function OpsApp() {
   const [modal, setModal] = useState<ModalState>(null);
   const [detail, setDetail] = useState<WorkOrderDetail | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
   const ordersCacheRef = useRef<Record<string, WorkOrderListItem[]>>({});
   const initialLoadedRef = useRef<boolean>(false);
@@ -131,6 +134,19 @@ export function OpsApp() {
     return payload.customers;
   }, []);
 
+  const refreshDefaultReport = useCallback(async () => {
+    const today = todayInVietnam();
+    const monthStart = monthStartInVietnam();
+    setReportLoading(true);
+    try {
+      const report = await apiFetch<ReportData>(`/api/reports?from=${monthStart}&to=${today}`);
+      setData((current) => ({ ...current, report }));
+      return report;
+    } finally {
+      setReportLoading(false);
+    }
+  }, []);
+
   const refreshOpenDetail = useCallback(async () => {
     const currentId = detail?.workOrder.id;
     if (!currentId) return null;
@@ -151,16 +167,13 @@ export function OpsApp() {
     const ordersRequest = workOrderListRequest();
     const canManageOps = ["admin", "dispatcher"].includes(currentUser.role);
     const canBackOffice = ["admin", "dispatcher", "accountant"].includes(currentUser.role);
-    const today = todayInVietnam();
-    const monthStart = monthStartInVietnam();
 
-    const [dashboard, orders, notifications, technicians, customers, report, users] = await Promise.all([
+    const [dashboard, orders, notifications, technicians, customers, users] = await Promise.all([
       apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard"),
       apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url),
       apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications"),
       canManageOps ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
       canBackOffice ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
-      canBackOffice ? apiFetch<ReportData>(`/api/reports?from=${monthStart}&to=${today}`) : Promise.resolve(null),
       currentUser.role === "admin" ? apiFetch<{ users: AppUser[] }>("/api/users") : Promise.resolve(null),
     ]);
 
@@ -170,7 +183,7 @@ export function OpsApp() {
       notifications: notifications.notifications,
       technicians: technicians?.technicians ?? [],
       customers: customers?.customers ?? [],
-      report,
+      report: null,
       users: users?.users ?? [],
     });
 
@@ -211,7 +224,7 @@ export function OpsApp() {
         loadDataForUser(user).catch((reason) => {
           setError(reason instanceof Error ? reason.message : "Không tải được dữ liệu");
         });
-      } else {
+      } else if (ORDER_BACKED_SECTIONS.has(section)) {
         const request = workOrderListRequest();
         const cached = ordersCacheRef.current[request.key];
         if (cached) {
@@ -223,6 +236,14 @@ export function OpsApp() {
       }
     }
   }, [filters, loading, section, user, loadDataForUser, refreshOrders, workOrderListRequest]);
+
+  useEffect(() => {
+    const canViewReports = ["admin", "dispatcher", "accountant"].includes(user?.role ?? "");
+    if (loading || !canViewReports || section !== "reports" || data.report || reportLoading) return;
+    refreshDefaultReport().catch((reason) => {
+      setError(reason instanceof Error ? reason.message : "Không tải được báo cáo");
+    });
+  }, [data.report, loading, refreshDefaultReport, reportLoading, section, user?.role]);
 
   useEffect(() => {
     const nextFilters = filtersFromSearchParams(searchParams);
@@ -368,6 +389,7 @@ export function OpsApp() {
 
   async function afterMutation() {
     ordersCacheRef.current = {};
+    setData((current) => ({ ...current, report: null }));
     await refreshOrderContext();
   }
 
@@ -655,6 +677,7 @@ export function OpsApp() {
         role={user.role}
         data={data}
         filters={filters}
+        reportLoading={reportLoading}
         pendingAction={pendingAction}
         onFilter={updateOrderFilters}
         onCreateOrder={handleCreateOrder}
@@ -678,8 +701,13 @@ export function OpsApp() {
           const formData = new FormData(event.currentTarget);
           const from = String(formData.get("from"));
           const to = String(formData.get("to") || from);
-          const report = await apiFetch<ReportData>(`/api/reports?from=${from}&to=${to}`);
-          setData((current) => ({ ...current, report }));
+          setReportLoading(true);
+          try {
+            const report = await apiFetch<ReportData>(`/api/reports?from=${from}&to=${to}`);
+            setData((current) => ({ ...current, report }));
+          } finally {
+            setReportLoading(false);
+          }
         }}
         onOpenNotification={(id) => openOrder(id)}
         onReadNotification={async (id) => {
