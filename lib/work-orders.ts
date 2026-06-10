@@ -3,19 +3,7 @@ import "server-only";
 import type { PoolClient } from "pg";
 import { query } from "@/lib/db";
 import { HttpError } from "@/lib/http";
-import type { SessionUser, WorkOrderStatus } from "@/lib/types";
-
-const ALLOWED_TRANSITIONS: Partial<Record<WorkOrderStatus, WorkOrderStatus[]>> = {
-  pending_assignment: ["assigned", "cancelled"],
-  assigned: ["accepted", "pending_assignment", "cancelled"],
-  accepted: ["traveling", "cancelled"],
-  traveling: ["working", "cancelled"],
-  working: ["awaiting_acceptance", "cancelled"],
-  awaiting_acceptance: ["completed", "working", "cancelled"],
-  completed: ["awaiting_payment", "paid", "debt", "cancelled"],
-  awaiting_payment: ["paid", "debt"],
-  debt: ["paid"],
-};
+import { canTransitionWorkOrderStatus, ROLE_LABELS, WORK_ORDER_STATUS_LABELS, type SessionUser, type WorkOrderStatus } from "@/lib/types";
 
 const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "debt", "cancelled"]);
 
@@ -82,14 +70,16 @@ export function isFinancialLockedStatus(status: WorkOrderStatus) {
   return FINANCIAL_LOCKED_STATUSES.has(status);
 }
 
-export function assertStatusTransition(from: WorkOrderStatus, to: WorkOrderStatus) {
+export function assertStatusTransition(from: WorkOrderStatus, to: WorkOrderStatus, user: SessionUser) {
   if (from === to) {
     return;
   }
 
-  const allowed = ALLOWED_TRANSITIONS[from] ?? [];
-  if (!allowed.includes(to)) {
-    throw new HttpError(422, "Trạng thái không đúng thứ tự xử lý");
+  if (!canTransitionWorkOrderStatus(from, to, user.role)) {
+    throw new HttpError(
+      422,
+      `${ROLE_LABELS[user.role]} không được chuyển phiếu từ "${WORK_ORDER_STATUS_LABELS[from]}" sang "${WORK_ORDER_STATUS_LABELS[to]}".`,
+    );
   }
 }
 
@@ -111,7 +101,7 @@ export async function changeWorkOrderStatus(
     throw new HttpError(404, "Không tìm thấy phiếu");
   }
 
-  assertStatusTransition(current.status, nextStatus);
+  assertStatusTransition(current.status, nextStatus, user);
 
   const setCheckIn = nextStatus === "working";
   const acceptedAt = nextStatus === "completed" ? ", accepted_at = coalesce(accepted_at, now())" : "";

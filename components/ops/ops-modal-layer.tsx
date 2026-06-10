@@ -325,6 +325,119 @@ export function OpsModalLayer({
           )}
         </Modal>
       ) : null}
+      {modal?.type === "own-password" ? (
+        <Modal title="Đổi mật khẩu" size="sm" onClose={() => setModal(null)}>
+          <ValidatedForm
+            onSubmit={(event) => runMutation("own-password", async () => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const formData = new FormData(form);
+              const newPassword = String(formData.get("newPassword") ?? "");
+              const confirmPassword = String(formData.get("confirmPassword") ?? "");
+              if (newPassword !== confirmPassword) {
+                setError("Mật khẩu mới nhập lại chưa khớp");
+                return;
+              }
+              await apiFetch("/api/auth/password", {
+                method: "PATCH",
+                body: JSON.stringify({
+                  currentPassword: formData.get("currentPassword"),
+                  newPassword,
+                }),
+              });
+              form.reset();
+              setModal(null);
+            })}
+            aria-busy={pendingAction === "own-password"}
+            className="grid gap-3"
+          >
+            <input
+              name="currentPassword"
+              type="password"
+              className="input"
+              placeholder="Mật khẩu hiện tại"
+              autoComplete="current-password"
+              required
+              disabled={pendingAction === "own-password"}
+            />
+            <input
+              name="newPassword"
+              type="password"
+              className="input"
+              placeholder="Mật khẩu mới"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              disabled={pendingAction === "own-password"}
+            />
+            <input
+              name="confirmPassword"
+              type="password"
+              className="input"
+              placeholder="Nhập lại mật khẩu mới"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              disabled={pendingAction === "own-password"}
+            />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary h-10" onClick={() => setModal(null)} type="button" disabled={pendingAction === "own-password"}>Đóng</button>
+              <PendingButton className="btn-primary h-10" type="submit" pending={pendingAction === "own-password"} pendingLabel="Đang lưu...">Lưu mật khẩu</PendingButton>
+            </div>
+          </ValidatedForm>
+        </Modal>
+      ) : null}
+      {modal?.type === "user-reset-password" ? (
+        <Modal title={`Đặt lại mật khẩu ${modal.item.full_name}`} size="sm" onClose={() => setModal(null)}>
+          <ValidatedForm
+            onSubmit={(event) => runMutation("user-reset-password", async () => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const formData = new FormData(form);
+              const newPassword = String(formData.get("newPassword") ?? "");
+              const confirmPassword = String(formData.get("confirmPassword") ?? "");
+              if (newPassword !== confirmPassword) {
+                setError("Mật khẩu mới nhập lại chưa khớp");
+                return;
+              }
+              await apiFetch(`/api/users/${modal.item.id}/password`, {
+                method: "PATCH",
+                body: JSON.stringify({ newPassword }),
+              });
+              form.reset();
+              setModal(null);
+            })}
+            aria-busy={pendingAction === "user-reset-password"}
+            className="grid gap-3"
+          >
+            <p className="text-sm leading-6 text-zinc-600">Admin sẽ đặt mật khẩu mới cho tài khoản này. Nhân viên có thể đăng nhập bằng mật khẩu mới ngay sau khi lưu.</p>
+            <input
+              name="newPassword"
+              type="password"
+              className="input"
+              placeholder="Mật khẩu mới"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              disabled={pendingAction === "user-reset-password"}
+            />
+            <input
+              name="confirmPassword"
+              type="password"
+              className="input"
+              placeholder="Nhập lại mật khẩu mới"
+              autoComplete="new-password"
+              minLength={8}
+              required
+              disabled={pendingAction === "user-reset-password"}
+            />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary h-10" onClick={() => setModal(null)} type="button" disabled={pendingAction === "user-reset-password"}>Đóng</button>
+              <PendingButton className="btn-primary h-10" type="submit" pending={pendingAction === "user-reset-password"} pendingLabel="Đang lưu...">Đặt lại mật khẩu</PendingButton>
+            </div>
+          </ValidatedForm>
+        </Modal>
+      ) : null}
 
       {modal?.type === "technician-edit" ? (
         <TechnicianEditModal

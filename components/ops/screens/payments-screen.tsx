@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CreditCard, Eye, Coins, Search } from "lucide-react";
 import { money } from "@/components/ops/format";
-import { EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
 
 export function PaymentsScreen({
@@ -113,7 +113,10 @@ export function PaymentsScreen({
                     <p className="text-xs text-zinc-500 mt-1">{order.customer_phone}</p>
                   </td>
                   <td>
-                    <StatusBadge order={order} />
+                    <div className="flex flex-wrap gap-1.5">
+                      <StatusBadge order={order} />
+                      <DeadlineBadge order={order} />
+                    </div>
                   </td>
                   <td className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
                   <td>

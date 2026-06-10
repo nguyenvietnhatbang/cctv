@@ -2,6 +2,7 @@ import {
   Bell,
   ClipboardList,
   CreditCard,
+  History,
   LayoutDashboard,
   MapPinned,
   ReceiptText,
@@ -17,6 +18,7 @@ export type TabId =
   | "orders"
   | "customers"
   | "dispatch"
+  | "assignment-history"
   | "technician"
   | "technicians"
   | "payments"
@@ -25,11 +27,12 @@ export type TabId =
   | "users";
 
 export const tabs: ReadonlyArray<{ id: TabId; label: string; roles: readonly Role[] }> = [
-  { id: "dashboard", label: "Tổng quan", roles: ["admin", "dispatcher", "accountant", "technician"] },
-  { id: "orders", label: "Công việc", roles: ["admin", "dispatcher", "accountant", "technician"] },
+  { id: "dashboard", label: "Tổng quan", roles: ["admin", "dispatcher", "accountant"] },
+  { id: "orders", label: "Công việc", roles: ["admin", "dispatcher", "accountant"] },
   { id: "customers", label: "Khách hàng", roles: ["admin", "dispatcher", "accountant"] },
   { id: "dispatch", label: "Phân công", roles: ["admin", "dispatcher"] },
   { id: "technician", label: "Kỹ thuật", roles: ["dispatcher", "technician"] },
+  { id: "assignment-history", label: "Lịch sử", roles: ["technician"] },
   { id: "technicians", label: "DS kỹ thuật", roles: ["dispatcher"] },
   { id: "payments", label: "Thanh toán", roles: ["admin", "dispatcher", "accountant"] },
   { id: "reports", label: "Báo cáo", roles: ["admin", "dispatcher", "accountant"] },
@@ -42,6 +45,7 @@ export const tabIcons: Record<TabId, LucideIcon> = {
   orders: ClipboardList,
   customers: Users,
   dispatch: MapPinned,
+  "assignment-history": History,
   technician: Wrench,
   technicians: UserCog,
   payments: CreditCard,

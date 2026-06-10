@@ -2,9 +2,9 @@
 
 import { useState, type ReactNode } from "react";
 import { CreditCard, FileText, History, MapPinned, Package, Phone, ReceiptText, UserRound, Wrench, type LucideIcon } from "lucide-react";
-import { filePurposeLabel, TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
+import { filePurposeLabel, TECHNICIAN_STATUS_LABELS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { Modal, StatusBadge } from "@/components/ops/ui";
+import { DeadlineBadge, Modal, StatusBadge } from "@/components/ops/ui";
 import type { Technician, WorkOrderDetail } from "@/components/ops/types";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
@@ -88,6 +88,7 @@ export function WorkOrderDetailModal({
         <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
+            <DeadlineBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
           </div>
@@ -166,6 +167,13 @@ export function WorkOrderDetailModal({
 
         {activeTab === "progress" ? (
           <section className="grid gap-3">
+            <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={detail.workOrder.status} />
+                <span className="font-semibold text-zinc-900">{WORK_ORDER_STATUS_LABELS[detail.workOrder.status]}</span>
+              </div>
+              <p className="mt-2 leading-6 text-zinc-600">{WORK_ORDER_STATUS_DESCRIPTIONS[detail.workOrder.status]}</p>
+            </div>
             <ModalListControls
               query={historyQuery}
               onQueryChange={(nextQuery) => {

@@ -7,6 +7,7 @@ import { DashboardScreen } from "@/components/ops/screens/dashboard-screen";
 import { OrdersScreen } from "@/components/ops/screens/orders-screen";
 import { CustomersScreen } from "@/components/ops/screens/customers-screen";
 import { DispatchScreen } from "@/components/ops/screens/dispatch-screen";
+import { AssignmentHistoryScreen } from "@/components/ops/screens/assignment-history-screen";
 import { TechnicianScreen } from "@/components/ops/screens/technician-screen";
 import { TechniciansScreen } from "@/components/ops/screens/technicians-screen";
 import { PaymentsScreen } from "@/components/ops/screens/payments-screen";
@@ -43,6 +44,7 @@ type OpsScreenSwitcherProps = {
   onEditUser: (item: AppData["users"][number]) => void;
   onDeleteUser: (item: AppData["users"][number]) => void;
   onViewUserAssignmentHistory: (item: AppData["users"][number]) => void;
+  onResetUserPassword: (item: AppData["users"][number]) => void;
   onOpenCreateModal: (type: "user" | "customer") => void;
 };
 
@@ -75,6 +77,7 @@ export function OpsScreenSwitcher({
   onEditUser,
   onDeleteUser,
   onViewUserAssignmentHistory,
+  onResetUserPassword,
   onOpenCreateModal,
 }: OpsScreenSwitcherProps) {
   if (section === "dashboard") {
@@ -127,6 +130,8 @@ export function OpsScreenSwitcher({
 
   if (section === "technician") return <TechnicianScreen orders={data.orders} onView={onOpenOrder} onEdit={onEditOrder} onStatus={onTechnicianStatus} />;
 
+  if (section === "assignment-history") return <AssignmentHistoryScreen />;
+
   if (section === "technicians") {
     return <TechniciansScreen technicians={data.technicians} onEdit={onEditTechnician} onDelete={onDeleteTechnician} />;
   }
@@ -150,6 +155,7 @@ export function OpsScreenSwitcher({
         onEdit={onEditUser}
         onDelete={onDeleteUser}
         onViewAssignmentHistory={onViewUserAssignmentHistory}
+        onResetPassword={onResetUserPassword}
         onTriggerCreate={() => onOpenCreateModal("user")}
       />
     );

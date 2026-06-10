@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { StatusBadge } from "@/components/ops/ui";
+import { DeadlineBadge, StatusBadge } from "@/components/ops/ui";
 import { money } from "@/components/ops/format";
 import type { Metrics, WorkOrderListItem } from "@/components/ops/types";
 import { ChevronDown, Filter, TrendingUp } from "lucide-react";
@@ -19,11 +19,11 @@ export function DashboardScreen({
 
   const cards = [
     ["Công việc hôm nay", metrics?.total_today ?? "0", ""],
-    ["Việc chưa làm", metrics?.todo ?? "0", "todo"],
-    ["Đang làm", metrics?.doing ?? "0", "doing"],
-    ["Đang làm quá hạn", metrics?.doing_overdue ?? "0", "doing_overdue"],
-    ["Hoàn thành", metrics?.done ?? "0", "done"],
-    ["Hoàn thành quá hạn", metrics?.done_overdue ?? "0", "done_overdue"],
+    ["Chưa thi công", metrics?.todo ?? "0", "todo"],
+    ["Đang xử lý", metrics?.doing ?? "0", "doing"],
+    ["Đang xử lý quá hạn", metrics?.doing_overdue ?? "0", "doing_overdue"],
+    ["Đã hoàn tất", metrics?.done ?? "0", "done"],
+    ["Hoàn tất trễ", metrics?.done_overdue ?? "0", "done_overdue"],
     ["Đã thu hôm nay", money(metrics?.paid_today), ""],
     ["Công nợ mở", money(metrics?.open_debt), "debt"],
   ] as const;
@@ -248,7 +248,10 @@ export function DashboardScreen({
                     </p>
                     <p className="text-xs text-zinc-500 mt-1 truncate max-w-[200px]">{order.customer_address}</p>
                   </div>
-                  <StatusBadge order={order} />
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    <StatusBadge order={order} />
+                    <DeadlineBadge order={order} />
+                  </div>
                 </div>
               ))}
             </div>

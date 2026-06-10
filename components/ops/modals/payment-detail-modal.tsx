@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { CreditCard, History, ReceiptText, UserRound, type LucideIcon } from "lucide-react";
 import { WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { Modal, StatusBadge } from "@/components/ops/ui";
+import { DeadlineBadge, Modal, StatusBadge } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
@@ -79,6 +79,7 @@ export function PaymentDetailModal({
         <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
+            <DeadlineBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
           </div>

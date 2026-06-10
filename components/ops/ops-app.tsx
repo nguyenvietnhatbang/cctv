@@ -624,6 +624,7 @@ export function OpsApp() {
       unreadNotifications={unreadNotifications}
       error={error}
       onLogout={handleLogout}
+      onChangePassword={() => setModal({ type: "own-password" })}
       modals={(
         <OpsModalLayer
           modal={modal}
@@ -690,6 +691,7 @@ export function OpsApp() {
         onEditUser={(item) => setModal({ type: "user-edit", item })}
         onDeleteUser={(item) => setModal({ type: "user-delete", item })}
         onViewUserAssignmentHistory={(item) => setModal({ type: "user-assignment-history", item })}
+        onResetUserPassword={(item) => setModal({ type: "user-reset-password", item })}
         onOpenCreateModal={(type) => setModal({ type: type === "user" ? "user-create" : "customer-create" })}
       />
     </OpsShell>

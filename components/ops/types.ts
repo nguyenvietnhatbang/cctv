@@ -194,6 +194,8 @@ export type ModalState =
   | { type: "user-edit"; item: AppUser }
   | { type: "user-delete"; item: AppUser }
   | { type: "user-assignment-history"; item: AppUser }
+  | { type: "user-reset-password"; item: AppUser }
+  | { type: "own-password" }
   | { type: "technician-edit"; item: Technician }
   | { type: "technician-delete"; item: Technician }
   | null;

@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
+import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
 import { changeStatusSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork, changeWorkOrderStatus } from "@/lib/work-orders";
 
@@ -29,10 +30,6 @@ export async function POST(request: Request, context: Context) {
       }
     }
 
-    if (user.role === "accountant" && body.status !== "awaiting_payment") {
-      return Response.json({ error: "Kế toán chỉ cập nhật trạng thái thanh toán" }, { status: 403 });
-    }
-
     if (user.role === "technician") {
       await assertCanMutateFieldWork(user, id);
     }
@@ -47,7 +44,7 @@ export async function POST(request: Request, context: Context) {
          select u.id, $1, 'Phiếu đã đổi trạng thái', $2
          from users u
          where u.role in ('admin', 'dispatcher') and u.status = 'active'`,
-        [id, `Trạng thái mới: ${body.status}`],
+        [id, `Trạng thái mới: ${WORK_ORDER_STATUS_LABELS[body.status]}`],
       );
     });
 

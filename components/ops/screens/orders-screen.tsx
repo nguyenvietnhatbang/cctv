@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Edit, Eye, Plus, XCircle, Search } from "lucide-react";
-import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_TONE, getDisplayStatus, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES, type DisplayStatus } from "@/lib/types";
+import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_TONE, getDisplayStatus, WORK_ORDER_STATUS_LABELS, WORK_ORDER_STATUSES, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES, type DisplayStatus } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import { WorkOrderCreateModal } from "@/components/ops/modals";
 import type { Customer, Filters, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -100,11 +100,20 @@ export function OrdersScreen({
               className="input !w-[160px] bg-white h-9 py-1 text-xs shrink-0"
             >
               <option value="">Trạng thái: Tất cả</option>
-              {Object.entries(DISPLAY_STATUS_LABELS).map(([status, label]) => (
-                <option key={status} value={status}>
-                  {label}
-                </option>
-              ))}
+              <optgroup label="Nhóm vận hành">
+                {Object.entries(DISPLAY_STATUS_LABELS).map(([status, label]) => (
+                  <option key={status} value={status}>
+                    {label}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Trạng thái nghiệp vụ">
+                {WORK_ORDER_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {WORK_ORDER_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </optgroup>
             </select>
             <select
               value={filters.type}
@@ -197,7 +206,10 @@ export function OrdersScreen({
                   </td>
                   <td className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
                   <td>
-                    <StatusBadge order={order} />
+                    <div className="flex flex-wrap gap-1.5">
+                      <StatusBadge order={order} />
+                      <DeadlineBadge order={order} />
+                    </div>
                   </td>
                   <td className="text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</td>
                   <td className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>

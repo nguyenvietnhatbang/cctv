@@ -132,6 +132,15 @@ export const updateUserSchema = z.object({
   status: z.enum(USER_STATUSES).optional(),
 });
 
+export const changeOwnPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Bắt buộc nhập mật khẩu hiện tại"),
+  newPassword: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+});
+
+export const adminResetPasswordSchema = z.object({
+  newPassword: z.string().min(8, "Mật khẩu tối thiểu 8 ký tự"),
+});
+
 export const updateTechnicianSchema = z.object({
   serviceArea: optionalText,
   status: z.enum(TECHNICIAN_STATUSES).optional(),

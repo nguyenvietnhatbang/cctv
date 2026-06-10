@@ -99,33 +99,108 @@ export const WORK_ORDER_STATUS_TONE: Record<WorkOrderStatus, string> = {
   cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
 };
 
-export const NEXT_STATUS_ACTIONS: Partial<
-  Record<WorkOrderStatus, { status: WorkOrderStatus; label: string; roles: Role[] }>
-> = {
+export const WORK_ORDER_STATUS_DESCRIPTIONS: Record<WorkOrderStatus, string> = {
+  pending_assignment: "Phiếu đã tạo, chưa có kỹ thuật viên phụ trách.",
+  assigned: "Điều phối đã gán kỹ thuật viên, đang chờ kỹ thuật nhận việc.",
+  accepted: "Kỹ thuật viên đã nhận việc và chuẩn bị di chuyển.",
+  traveling: "Kỹ thuật viên đang di chuyển tới địa điểm khách hàng.",
+  working: "Kỹ thuật viên đã check-in và đang xử lý tại hiện trường.",
+  awaiting_acceptance: "Kỹ thuật viên đã xử lý xong, đang chờ khách nghiệm thu.",
+  completed: "Khách đã nghiệm thu, phần kỹ thuật đã hoàn thành.",
+  awaiting_payment: "Phiếu đã hoàn thành kỹ thuật và đang chờ xử lý thanh toán.",
+  paid: "Phiếu đã được xác nhận thanh toán.",
+  debt: "Phiếu đang được theo dõi công nợ.",
+  cancelled: "Phiếu đã bị hủy.",
+};
+
+export const WORK_ORDER_STATUS_ORDER: Record<WorkOrderStatus, number> = {
+  pending_assignment: 10,
+  assigned: 20,
+  accepted: 30,
+  traveling: 40,
+  working: 50,
+  awaiting_acceptance: 60,
+  completed: 70,
+  awaiting_payment: 80,
+  paid: 90,
+  debt: 90,
+  cancelled: 99,
+};
+
+export type WorkOrderTransition = {
+  status: WorkOrderStatus;
+  label: string;
+  roles: Role[];
+  intent: "assign" | "field" | "acceptance" | "payment" | "cancel";
+};
+
+export const WORK_ORDER_TRANSITIONS: Partial<Record<WorkOrderStatus, WorkOrderTransition[]>> = {
+  pending_assignment: [
+    { status: "assigned", label: "Phân công", roles: ["admin", "dispatcher"], intent: "assign" },
+    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+  ],
+  assigned: [
+    { status: "accepted", label: "Nhận việc", roles: ["technician"], intent: "field" },
+    { status: "pending_assignment", label: "Bỏ phân công", roles: ["admin", "dispatcher"], intent: "assign" },
+    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+  ],
+  accepted: [
+    { status: "traveling", label: "Đang di chuyển", roles: ["technician"], intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+  ],
+  traveling: [
+    { status: "working", label: "Check-in", roles: ["technician"], intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+  ],
+  working: [
+    { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: ["technician"], intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+  ],
+  awaiting_acceptance: [
+    { status: "completed", label: "Khách nghiệm thu", roles: ["admin", "dispatcher", "technician"], intent: "acceptance" },
+    { status: "working", label: "Làm lại", roles: ["admin", "dispatcher", "technician"], intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+  ],
+  completed: [
+    { status: "awaiting_payment", label: "Chờ thanh toán", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "paid", label: "Đã thanh toán", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "debt", label: "Ghi công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+  ],
+  awaiting_payment: [
+    { status: "paid", label: "Đã thanh toán", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "debt", label: "Ghi công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+  ],
+  debt: [
+    { status: "paid", label: "Thu công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+  ],
+};
+
+export function getAllowedWorkOrderTransitions(status: WorkOrderStatus, role: Role) {
+  return (WORK_ORDER_TRANSITIONS[status] ?? []).filter((transition) => transition.roles.includes(role));
+}
+
+export function canTransitionWorkOrderStatus(from: WorkOrderStatus, to: WorkOrderStatus, role: Role) {
+  if (from === to) return true;
+  return getAllowedWorkOrderTransitions(from, role).some((transition) => transition.status === to);
+}
+
+export const NEXT_STATUS_ACTIONS: Partial<Record<WorkOrderStatus, { status: WorkOrderStatus; label: string; roles: Role[] }>> = {
   assigned: { status: "accepted", label: "Nhận việc", roles: ["technician"] },
   accepted: { status: "traveling", label: "Đang di chuyển", roles: ["technician"] },
   traveling: { status: "working", label: "Check-in", roles: ["technician"] },
-  working: {
-    status: "awaiting_acceptance",
-    label: "Hoàn tất xử lý",
-    roles: ["technician"],
-  },
-  completed: {
-    status: "awaiting_payment",
-    label: "Chờ thanh toán",
-    roles: ["dispatcher", "accountant", "admin"],
-  },
+  working: { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: ["technician"] },
+  completed: { status: "awaiting_payment", label: "Chờ thanh toán", roles: ["dispatcher", "accountant", "admin"] },
 };
 
 export type DisplayStatus = "todo" | "doing" | "doing_overdue" | "done" | "done_overdue" | "cancelled";
 
 export const DISPLAY_STATUS_LABELS: Record<DisplayStatus, string> = {
-  todo: "Việc chưa làm",
-  doing: "Đang làm",
-  doing_overdue: "Đang làm quá hạn",
-  done: "Hoàn thành",
-  done_overdue: "Hoàn thành quá hạn",
-  cancelled: "Hủy",
+  todo: "Chưa thi công",
+  doing: "Đang xử lý",
+  doing_overdue: "Đang xử lý quá hạn",
+  done: "Đã hoàn tất",
+  done_overdue: "Hoàn tất trễ",
+  cancelled: "Đã hủy",
 };
 
 export const DISPLAY_STATUS_TONE: Record<DisplayStatus, string> = {
@@ -169,4 +244,15 @@ export function getDisplayStatus(order: {
   }
 
   return "todo";
+}
+
+export function getWorkOrderDeadlineLabel(order: {
+  status: string;
+  appointment_at: string | null;
+  updated_at?: string;
+}) {
+  const displayStatus = getDisplayStatus(order);
+  if (displayStatus === "doing_overdue") return "Quá hạn";
+  if (displayStatus === "done_overdue") return "Hoàn thành trễ";
+  return null;
 }

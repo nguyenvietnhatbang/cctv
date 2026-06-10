@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { CreditCard, FileText, MapPinned, Phone, Plus, Trash2, Upload, UserRound, type LucideIcon } from "lucide-react";
 import { ROLE_LABELS, TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
+import { DeadlineBadge, Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { AppUser, Customer, CustomerContact, Technician, WorkOrderListItem } from "@/components/ops/types";
 import { displayCustomerContacts } from "@/components/ops/app-utils";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
@@ -213,7 +213,10 @@ export function CustomerDetailModal({
                     <p className="font-bold text-zinc-950">{order.code}</p>
                     <p className="mt-1 text-zinc-500">{WORK_ORDER_TYPE_LABELS[order.type]} · {dateTime(order.appointment_at ?? order.created_at)}</p>
                   </div>
-                  <StatusBadge order={order} />
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    <StatusBadge order={order} />
+                    <DeadlineBadge order={order} />
+                  </div>
                 </div>
                 <p className="mt-2 text-zinc-600">{order.description}</p>
               </div>
@@ -245,7 +248,10 @@ export function CustomerDetailModal({
                   <p className="font-bold text-zinc-950">{order.code}</p>
                   <p className="mt-1 text-zinc-500">{paymentLabels[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thanh toán"}</p>
                 </div>
-                <StatusBadge order={order} />
+                <div className="flex flex-wrap justify-end gap-1.5">
+                  <StatusBadge order={order} />
+                  <DeadlineBadge order={order} />
+                </div>
                 <p className="font-bold text-zinc-950 md:text-right">{money(order.total_amount)}</p>
               </div>
             ))}

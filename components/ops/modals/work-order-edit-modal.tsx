@@ -1,10 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
-import { NEXT_STATUS_ACTIONS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
+import { CalendarClock, CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, Phone, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
+import { getAllowedWorkOrderTransitions, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
-import { Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
+import { DeadlineBadge, Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { Material, Role, Technician, WorkFile, WorkOrderDetail, WorkOrderStatus } from "@/components/ops/types";
 import { AssignmentForm } from "@/components/ops/modals/assignment-form";
 import { CostNoteForm } from "@/components/ops/modals/cost-note-form";
@@ -21,6 +21,14 @@ const tabs: ReadonlyArray<{ id: EditTab; label: string; icon: LucideIcon }> = [
   { id: "costs", label: "Chi phí", icon: ReceiptText },
   { id: "resources", label: "Tệp & vật tư", icon: FileBox },
   { id: "payment", label: "Thanh toán", icon: CreditCard },
+];
+
+const technicianTabs: ReadonlyArray<{ id: EditTab; label: string; icon: LucideIcon }> = [
+  { id: "basic", label: "Việc", icon: ClipboardList },
+  { id: "workflow", label: "Tiến độ", icon: MapPinned },
+  { id: "resources", label: "Ảnh & vật tư", icon: FileBox },
+  { id: "costs", label: "Ghi chú/chi phí", icon: ReceiptText },
+  { id: "payment", label: "Nghiệm thu", icon: CheckCircle2 },
 ];
 
 const FINANCIAL_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "paid", "debt", "cancelled"];
@@ -83,12 +91,14 @@ export function WorkOrderEditModal({
   const [preparingStatus, setPreparingStatus] = useState(false);
   const nextAction = NEXT_STATUS_ACTIONS[detail.workOrder.status] ?? null;
   const canNext = nextAction?.roles.includes(role) ?? false;
-  const canAssign = ["admin", "dispatcher"].includes(role);
+  const canAssign = ["admin", "dispatcher"].includes(role)
+    && ["pending_assignment", "assigned", "accepted", "traveling", "working", "awaiting_acceptance"].includes(detail.workOrder.status);
   const canPay = ["admin", "dispatcher", "accountant"].includes(role);
-  const canCancel = ["admin", "dispatcher"].includes(role)
-    && !["completed", "paid", "debt", "cancelled"].includes(detail.workOrder.status);
+  const allowedTransitions = getAllowedWorkOrderTransitions(detail.workOrder.status, role);
+  const canCancel = allowedTransitions.some((transition) => transition.status === "cancelled");
   const financialLocked = FINANCIAL_LOCKED_STATUSES.includes(detail.workOrder.status) && role !== "admin";
   const signatureFile = detail.files.find((file) => file.purpose === "signature");
+  const visibleTabs = role === "technician" ? technicianTabs : tabs;
 
   async function handleNextStatus() {
     if (!nextAction) return;
@@ -103,11 +113,12 @@ export function WorkOrderEditModal({
   }
 
   return (
-    <Modal title={`Sửa phiếu ${detail.workOrder.code}`} size="xl" onClose={onClose}>
+    <Modal title={`${role === "technician" ? "Xử lý phiếu" : "Sửa phiếu"} ${detail.workOrder.code}`} size="xl" onClose={onClose}>
       <div className="grid gap-4">
         <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
+            <DeadlineBadge order={detail.workOrder} />
             <span className="text-sm font-semibold text-zinc-500">{WORK_ORDER_TYPE_LABELS[detail.workOrder.type]}</span>
             <span className="text-sm font-semibold text-zinc-400">{detail.workOrder.code}</span>
           </div>
@@ -115,8 +126,8 @@ export function WorkOrderEditModal({
           <p className="mt-2 text-sm text-zinc-500">Hẹn: {dateTime(detail.workOrder.appointment_at)}</p>
         </section>
 
-        <nav className="modal-tabbar" aria-label="Sửa phiếu">
-          {tabs.map((tab) => {
+        <nav className="modal-tabbar" aria-label={role === "technician" ? "Xử lý phiếu" : "Sửa phiếu"}>
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
@@ -133,7 +144,48 @@ export function WorkOrderEditModal({
         </nav>
 
         <div className="modal-edit-shell">
-          {activeTab === "basic" ? (
+          {activeTab === "basic" && role === "technician" ? (
+            <section className="modal-section grid gap-4">
+              <h3 className="section-title">Thông tin đi làm</h3>
+              <div className="grid gap-3 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
+                <p className="font-semibold text-zinc-950">{detail.workOrder.description}</p>
+                <p className="flex items-start gap-2">
+                  <MapPinned size={15} className="mt-0.5 shrink-0 text-zinc-500" />
+                  <span>{detail.workOrder.customer_address}</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <CalendarClock size={15} className="shrink-0 text-zinc-500" />
+                  <span>{dateTime(detail.workOrder.appointment_at ?? detail.workOrder.created_at)}</span>
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <a className="btn-primary h-11" href={`tel:${detail.workOrder.customer_phone}`}><Phone size={15} />Gọi khách</a>
+                <a
+                  className="btn-secondary h-11"
+                  href={`https://maps.google.com/?q=${encodeURIComponent(detail.workOrder.customer_address)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <MapPinned size={15} />Bản đồ
+                </a>
+              </div>
+              <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="grid gap-3">
+                <textarea
+                  name="completionNote"
+                  className="input min-h-28"
+                  defaultValue={detail.workOrder.completion_note ?? ""}
+                  placeholder="Ghi chú xử lý, phát sinh, nội dung đã làm"
+                  disabled={pendingAction === "update"}
+                />
+                <div className="flex justify-end gap-2">
+                  <button className="btn-secondary h-10" onClick={onClose} type="button">Đóng</button>
+                  <PendingButton className="btn-primary h-10" type="submit" pending={pendingAction === "update"} pendingLabel="Đang lưu...">Lưu ghi chú</PendingButton>
+                </div>
+              </ValidatedForm>
+            </section>
+          ) : null}
+
+          {activeTab === "basic" && role !== "technician" ? (
             <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="modal-section grid gap-4">
               <h3 className="section-title">Thông tin cơ bản</h3>
               <fieldset disabled={pendingAction === "update"} className="contents">
@@ -153,6 +205,14 @@ export function WorkOrderEditModal({
 
           {activeTab === "workflow" ? (
             <section className="grid gap-4 lg:grid-cols-2">
+              <div className="modal-section">
+                <h3 className="section-title">Trạng thái hiện tại</h3>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <StatusBadge status={detail.workOrder.status} />
+                  <span className="text-sm font-semibold text-zinc-900">{WORK_ORDER_STATUS_LABELS[detail.workOrder.status]}</span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">{WORK_ORDER_STATUS_DESCRIPTIONS[detail.workOrder.status]}</p>
+              </div>
               {canNext && nextAction ? (
                 <div className="modal-section">
                   <h3 className="section-title">Chuyển trạng thái</h3>
@@ -160,6 +220,11 @@ export function WorkOrderEditModal({
                   <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>
                     <CheckCircle2 size={15} />{nextAction.label}
                   </PendingButton>
+                </div>
+              ) : null}
+              {role === "technician" && !canNext ? (
+                <div className="modal-section text-sm leading-6 text-zinc-600">
+                  Phiếu hiện không có bước trạng thái tiếp theo cho kỹ thuật viên. Nếu đã xử lý xong, chuyển sang tab nghiệm thu để khách ký xác nhận.
                 </div>
               ) : null}
               {canAssign ? <AssignmentForm detail={detail} technicians={technicians} onSubmit={onAssign} isSubmitting={pendingAction === "assign"} /> : null}

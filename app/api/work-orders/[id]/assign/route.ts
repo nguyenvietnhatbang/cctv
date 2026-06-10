@@ -26,7 +26,7 @@ export async function POST(request: Request, context: Context) {
       if (!current) {
         throw new HttpError(404, "Không tìm thấy phiếu");
       }
-      if (["completed", "paid", "debt", "cancelled"].includes(current.status)) {
+      if (["completed", "awaiting_payment", "paid", "debt", "cancelled"].includes(current.status)) {
         throw new HttpError(422, "Không thể đổi phân công sau khi phiếu đã khóa");
       }
 

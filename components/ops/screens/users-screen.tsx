@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, History, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
+import { Edit, History, KeyRound, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { AppUser } from "@/components/ops/types";
@@ -11,6 +11,7 @@ export function UsersScreen({
   onEdit,
   onDelete,
   onViewAssignmentHistory,
+  onResetPassword,
   onTriggerCreate,
 }: {
   users: AppUser[];
@@ -19,6 +20,7 @@ export function UsersScreen({
   onEdit: (item: AppUser) => void;
   onDelete: (item: AppUser) => void;
   onViewAssignmentHistory: (item: AppUser) => void;
+  onResetPassword: (item: AppUser) => void;
   onTriggerCreate: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -172,6 +174,14 @@ export function UsersScreen({
                             <History size={15} />
                           </button>
                         ) : null}
+                        <button
+                          className="icon-button"
+                          onClick={() => onResetPassword(item)}
+                          type="button"
+                          aria-label="Đặt lại mật khẩu"
+                        >
+                          <KeyRound size={15} />
+                        </button>
                         {item.status === "active" ? (
                           <button
                             className="icon-button hover:text-red-600 hover:border-red-200"

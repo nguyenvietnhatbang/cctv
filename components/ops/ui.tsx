@@ -8,6 +8,7 @@ import {
   DISPLAY_STATUS_LABELS,
   DISPLAY_STATUS_TONE,
   getDisplayStatus,
+  getWorkOrderDeadlineLabel,
   type WorkOrderStatus,
 } from "@/lib/types";
 
@@ -116,10 +117,10 @@ export function StatusBadge({
   order?: { status: string; appointment_at: string | null; updated_at?: string };
 }) {
   if (order) {
-    const disp = getDisplayStatus(order);
+    const s = order.status as WorkOrderStatus;
     return (
-      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${DISPLAY_STATUS_TONE[disp]}`}>
-        {DISPLAY_STATUS_LABELS[disp]}
+      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${WORK_ORDER_STATUS_TONE[s] ?? "bg-zinc-100 text-zinc-700 ring-zinc-200"}`}>
+        {WORK_ORDER_STATUS_LABELS[s] ?? order.status}
       </span>
     );
   }
@@ -142,6 +143,22 @@ export function StatusBadge({
   }
 
   return null;
+}
+
+export function DeadlineBadge({
+  order,
+}: {
+  order: { status: string; appointment_at: string | null; updated_at?: string };
+}) {
+  const label = getWorkOrderDeadlineLabel(order);
+  if (!label) return null;
+  const displayStatus = getDisplayStatus(order);
+
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${DISPLAY_STATUS_TONE[displayStatus]}`}>
+      {label}
+    </span>
+  );
 }
 
 export function Modal({

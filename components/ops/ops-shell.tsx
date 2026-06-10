@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Bell, LogOut, ChevronsUpDown, Sun, Search } from "lucide-react";
+import { Bell, KeyRound, LogOut, ChevronsUpDown, Sun, Search } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { tabIcons, type TabId } from "@/components/ops/app-config";
 import type { SessionUser } from "@/components/ops/types";
@@ -15,11 +15,12 @@ type OpsShellProps = {
   unreadNotifications: number;
   error: string | null;
   onLogout: () => void;
+  onChangePassword: () => void;
   modals?: ReactNode;
   children: ReactNode;
 };
 
-const BUSINESS_TABS: readonly string[] = ["dashboard", "orders", "customers", "dispatch", "technicians", "technician"];
+const BUSINESS_TABS: readonly string[] = ["dashboard", "orders", "customers", "dispatch", "technicians", "technician", "assignment-history"];
 const ACCOUNTING_TABS: readonly string[] = ["payments", "reports"];
 const MANAGEMENT_TABS: readonly string[] = ["users", "notifications"];
 
@@ -31,6 +32,7 @@ export function OpsShell({
   unreadNotifications,
   error,
   onLogout,
+  onChangePassword,
   modals,
   children,
 }: OpsShellProps) {
@@ -122,14 +124,24 @@ export function OpsShell({
               <p className="text-zinc-500 leading-none truncate mt-0.5">{ROLE_LABELS[user.role]}</p>
             </div>
           </div>
-          <button
-            onClick={onLogout}
-            className="text-zinc-400 hover:text-zinc-950 p-1.5 rounded-md hover:bg-zinc-100 transition-colors shrink-0"
-            title="Đăng xuất"
-            type="button"
-          >
-            <LogOut size={16} />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              onClick={onChangePassword}
+              className="text-zinc-400 hover:text-zinc-950 p-1.5 rounded-md hover:bg-zinc-100 transition-colors"
+              title="Đổi mật khẩu"
+              type="button"
+            >
+              <KeyRound size={16} />
+            </button>
+            <button
+              onClick={onLogout}
+              className="text-zinc-400 hover:text-zinc-950 p-1.5 rounded-md hover:bg-zinc-100 transition-colors"
+              title="Đăng xuất"
+              type="button"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -178,14 +190,19 @@ export function OpsShell({
 
             {/* Profile Initial Avatar */}
             <div className="flex items-center gap-2 border-l border-zinc-200 pl-3">
-              <div className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-[11px] border border-zinc-200">
+              <button
+                className="w-8 h-8 rounded-full bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-[11px] border border-zinc-200 hover:bg-zinc-200"
+                onClick={onChangePassword}
+                type="button"
+                title="Đổi mật khẩu"
+              >
                 {user.fullName
                   .split(" ")
                   .map((n) => n[0])
                   .join("")
                   .substring(0, 2)
                   .toUpperCase()}
-              </div>
+              </button>
             </div>
           </div>
         </header>
