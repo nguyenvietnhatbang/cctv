@@ -6,14 +6,91 @@ import { defaultFilters, type PendingAction, type TabId } from "@/components/ops
 import type { AppData, Customer, Filters, ReportData, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 import { DashboardScreen } from "@/components/ops/screens/dashboard-screen";
 import { OrdersScreen } from "@/components/ops/screens/orders-screen";
-import { CustomersScreen } from "@/components/ops/screens/customers-screen";
-import { DispatchScreen } from "@/components/ops/screens/dispatch-screen";
-import { AssignmentHistoryScreen } from "@/components/ops/screens/assignment-history-screen";
 import { TechnicianScreen } from "@/components/ops/screens/technician-screen";
-import { TechniciansScreen } from "@/components/ops/screens/technicians-screen";
-import { PaymentsScreen } from "@/components/ops/screens/payments-screen";
-import { NotificationsScreen } from "@/components/ops/screens/notifications-screen";
-import { UsersScreen } from "@/components/ops/screens/users-screen";
+
+function ScreenLoading({ label = "Đang tải màn hình..." }: { label?: string }) {
+  return (
+    <div className="panel flex min-h-[240px] items-center justify-center text-sm font-semibold text-zinc-500">
+      {label}
+    </div>
+  );
+}
+
+type CustomersScreenProps = {
+  customers: Customer[];
+  isCreating: boolean;
+  onCreate: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onView: (item: Customer) => void;
+  onEdit: (item: Customer) => void;
+  onDelete: (item: Customer) => void;
+  onTriggerCreate: () => void;
+};
+
+type DispatchScreenProps = {
+  orders: WorkOrderListItem[];
+  customers: Customer[];
+  technicians: Technician[];
+  onView: (id: string) => void;
+  onAssign: (id: string) => void;
+};
+
+type TechniciansScreenProps = {
+  technicians: Technician[];
+  onEdit: (item: Technician) => void;
+  onDelete: (item: Technician) => void;
+};
+
+type PaymentsScreenProps = {
+  orders: WorkOrderListItem[];
+  onView: (id: string) => void;
+  onPayment: (id: string) => void;
+};
+
+type NotificationsScreenProps = {
+  notifications: AppData["notifications"];
+  onOpen: (id: string) => void;
+  onRead: (id: string) => Promise<void>;
+};
+
+type UsersScreenProps = {
+  users: AppData["users"];
+  isCreating: boolean;
+  onCreate: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  onEdit: (item: AppData["users"][number]) => void;
+  onDelete: (item: AppData["users"][number]) => void;
+  onViewAssignmentHistory: (item: AppData["users"][number]) => void;
+  onResetPassword: (item: AppData["users"][number]) => void;
+  onTriggerCreate: () => void;
+};
+
+const CustomersScreen = dynamic<CustomersScreenProps>(
+  () => import("@/components/ops/screens/customers-screen").then((mod) => mod.CustomersScreen),
+  { loading: () => <ScreenLoading label="Đang tải khách hàng..." /> },
+);
+const DispatchScreen = dynamic<DispatchScreenProps>(
+  () => import("@/components/ops/screens/dispatch-screen").then((mod) => mod.DispatchScreen),
+  { loading: () => <ScreenLoading label="Đang tải phân công..." /> },
+);
+const AssignmentHistoryScreen = dynamic(
+  () => import("@/components/ops/screens/assignment-history-screen").then((mod) => mod.AssignmentHistoryScreen),
+  { loading: () => <ScreenLoading label="Đang tải lịch sử..." /> },
+);
+const TechniciansScreen = dynamic<TechniciansScreenProps>(
+  () => import("@/components/ops/screens/technicians-screen").then((mod) => mod.TechniciansScreen),
+  { loading: () => <ScreenLoading label="Đang tải kỹ thuật viên..." /> },
+);
+const PaymentsScreen = dynamic<PaymentsScreenProps>(
+  () => import("@/components/ops/screens/payments-screen").then((mod) => mod.PaymentsScreen),
+  { loading: () => <ScreenLoading label="Đang tải thanh toán..." /> },
+);
+const NotificationsScreen = dynamic<NotificationsScreenProps>(
+  () => import("@/components/ops/screens/notifications-screen").then((mod) => mod.NotificationsScreen),
+  { loading: () => <ScreenLoading label="Đang tải thông báo..." /> },
+);
+const UsersScreen = dynamic<UsersScreenProps>(
+  () => import("@/components/ops/screens/users-screen").then((mod) => mod.UsersScreen),
+  { loading: () => <ScreenLoading label="Đang tải nhân viên..." /> },
+);
 
 type ReportsScreenProps = {
   report: ReportData | null;
@@ -23,13 +100,7 @@ type ReportsScreenProps = {
 
 const ReportsScreen = dynamic<ReportsScreenProps>(
   () => import("@/components/ops/screens/reports-screen").then((mod) => mod.ReportsScreen),
-  {
-    loading: () => (
-      <div className="panel flex min-h-[240px] items-center justify-center text-sm font-semibold text-zinc-500">
-        Đang tải màn hình báo cáo...
-      </div>
-    ),
-  },
+  { loading: () => <ScreenLoading label="Đang tải màn hình báo cáo..." /> },
 );
 
 type OpsScreenSwitcherProps = {

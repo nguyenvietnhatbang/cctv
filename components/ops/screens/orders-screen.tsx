@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Edit, Eye, Plus, XCircle, Search } from "lucide-react";
 import {
   DISPLAY_STATUS_LABELS,
@@ -16,7 +17,6 @@ import {
 } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
-import { WorkOrderCreateModal } from "@/components/ops/modals";
 import type { Customer, Filters, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -24,6 +24,27 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   paid: "Đã thu",
   debt: "Công nợ",
 };
+
+type WorkOrderCreateModalProps = {
+  customers: Customer[];
+  technicians: Technician[];
+  isSubmitting: boolean;
+  onClose: () => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+};
+
+const WorkOrderCreateModal = dynamic<WorkOrderCreateModalProps>(
+  () => import("@/components/ops/modals/work-order-create-modal").then((mod) => mod.WorkOrderCreateModal),
+  {
+    loading: () => (
+      <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/45 p-3">
+        <div className="rounded-lg border border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-600 shadow-xl">
+          Đang tải form tạo phiếu...
+        </div>
+      </div>
+    ),
+  },
+);
 
 export function OrdersScreen({
   filters,
@@ -54,36 +75,56 @@ export function OrdersScreen({
 }) {
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
-  const statusSummary = orders.reduce<Record<DisplayStatus, number>>(
-    (summary, order) => {
-      const status = getDisplayStatus(order);
-      summary[status] += 1;
-      return summary;
-    },
-    {
-      todo: 0,
-      doing: 0,
-      doing_overdue: 0,
-      done: 0,
-      done_overdue: 0,
-      cancelled: 0,
-    },
+  const [queryDraft, setQueryDraft] = useState(filters.q);
+  const statusSummary = useMemo(
+    () => orders.reduce<Record<DisplayStatus, number>>(
+      (summary, order) => {
+        const status = getDisplayStatus(order);
+        summary[status] += 1;
+        return summary;
+      },
+      {
+        todo: 0,
+        doing: 0,
+        doing_overdue: 0,
+        done: 0,
+        done_overdue: 0,
+        cancelled: 0,
+      },
+    ),
+    [orders],
   );
-  const paymentSummary = orders.reduce<Record<string, number>>(
-    (summary, order) => {
-      const status = order.payment_status ?? "unpaid";
-      summary[status] = (summary[status] ?? 0) + 1;
-      return summary;
-    },
-    {},
+  const paymentSummary = useMemo(
+    () => orders.reduce<Record<string, number>>(
+      (summary, order) => {
+        const status = order.payment_status ?? "unpaid";
+        summary[status] = (summary[status] ?? 0) + 1;
+        return summary;
+      },
+      {},
+    ),
+    [orders],
   );
   const safePage = clampTablePage(page, orders.length);
-  const visibleOrders = getPageItems(orders, safePage);
+  const visibleOrders = useMemo(() => getPageItems(orders, safePage), [orders, safePage]);
 
   function applyFilter(nextFilters: Filters) {
     setPage(1);
     onFilter(nextFilters);
   }
+
+  useEffect(() => {
+    setQueryDraft(filters.q);
+  }, [filters.q]);
+
+  useEffect(() => {
+    if (queryDraft === filters.q) return;
+    const timeout = window.setTimeout(() => {
+      applyFilter({ ...filters, q: queryDraft });
+    }, 320);
+    return () => window.clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryDraft, filters]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -196,8 +237,8 @@ export function OrdersScreen({
           <div className="relative flex items-center !w-60 shrink-0">
             <Search size={13} className="search-field-icon" />
             <input
-              value={filters.q}
-              onChange={(event) => applyFilter({ ...filters, q: event.target.value })}
+              value={queryDraft}
+              onChange={(event) => setQueryDraft(event.target.value)}
               className="input search-field-input h-9 !w-full py-1 text-xs"
               placeholder="Tìm kiếm công việc..."
             />

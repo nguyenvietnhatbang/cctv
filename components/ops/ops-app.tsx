@@ -32,7 +32,21 @@ import { OpsScreenSwitcher } from "@/components/ops/ops-screen-switcher";
 import { OpsShell } from "@/components/ops/ops-shell";
 import { LoadingScreen } from "@/components/ops/ui";
 
-const ORDER_BACKED_SECTIONS = new Set<TabId>(["dashboard", "orders", "dispatch", "technician", "payments"]);
+const ORDER_BACKED_SECTIONS = new Set<TabId>(["dashboard", "orders", "customers", "dispatch", "technician", "payments"]);
+const CUSTOMER_BACKED_SECTIONS = new Set<TabId>(["orders", "customers", "dispatch"]);
+const TECHNICIAN_BACKED_SECTIONS = new Set<TabId>(["orders", "dispatch", "technicians"]);
+
+function needsCustomers(section: TabId, role: Role) {
+  return ["admin", "dispatcher", "accountant"].includes(role) && CUSTOMER_BACKED_SECTIONS.has(section);
+}
+
+function needsTechnicians(section: TabId, role: Role) {
+  return ["admin", "dispatcher"].includes(role) && TECHNICIAN_BACKED_SECTIONS.has(section);
+}
+
+function needsUsers(section: TabId, role: Role) {
+  return role === "admin" && section === "users";
+}
 
 export function OpsApp() {
   const pathname = usePathname();
@@ -49,6 +63,7 @@ export function OpsApp() {
   const [reportLoading, setReportLoading] = useState(false);
   const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
   const ordersCacheRef = useRef<Record<string, WorkOrderListItem[]>>({});
+  const resourcesLoadedRef = useRef({ customers: false, technicians: false, users: false });
   const initialLoadedRef = useRef<boolean>(false);
 
   const section = useMemo<TabId>(() => {
@@ -125,12 +140,14 @@ export function OpsApp() {
   const refreshTechnicians = useCallback(async () => {
     const payload = await apiFetch<{ technicians: Technician[] }>("/api/technicians");
     setData((current) => ({ ...current, technicians: payload.technicians }));
+    resourcesLoadedRef.current.technicians = true;
     return payload.technicians;
   }, []);
 
   const refreshCustomers = useCallback(async () => {
     const payload = await apiFetch<{ customers: Customer[] }>("/api/customers");
     setData((current) => ({ ...current, customers: payload.customers }));
+    resourcesLoadedRef.current.customers = true;
     return payload.customers;
   }, []);
 
@@ -165,21 +182,23 @@ export function OpsApp() {
 
   const loadDataForUser = useCallback(async (currentUser: SessionUser) => {
     const ordersRequest = workOrderListRequest();
-    const canManageOps = ["admin", "dispatcher"].includes(currentUser.role);
-    const canBackOffice = ["admin", "dispatcher", "accountant"].includes(currentUser.role);
+    const shouldLoadOrders = ORDER_BACKED_SECTIONS.has(section);
+    const shouldLoadTechnicians = needsTechnicians(section, currentUser.role);
+    const shouldLoadCustomers = needsCustomers(section, currentUser.role);
+    const shouldLoadUsers = needsUsers(section, currentUser.role);
 
     const [dashboard, orders, notifications, technicians, customers, users] = await Promise.all([
       apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard"),
-      apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url),
+      shouldLoadOrders ? apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url) : Promise.resolve(null),
       apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications"),
-      canManageOps ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
-      canBackOffice ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
-      currentUser.role === "admin" ? apiFetch<{ users: AppUser[] }>("/api/users") : Promise.resolve(null),
+      shouldLoadTechnicians ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
+      shouldLoadCustomers ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
+      shouldLoadUsers ? apiFetch<{ users: AppUser[] }>("/api/users") : Promise.resolve(null),
     ]);
 
     setData({
       metrics: dashboard.metrics,
-      orders: orders.workOrders,
+      orders: orders?.workOrders ?? [],
       notifications: notifications.notifications,
       technicians: technicians?.technicians ?? [],
       customers: customers?.customers ?? [],
@@ -187,9 +206,14 @@ export function OpsApp() {
       users: users?.users ?? [],
     });
 
-    ordersCacheRef.current[ordersRequest.key] = orders.workOrders;
+    if (orders) ordersCacheRef.current[ordersRequest.key] = orders.workOrders;
+    resourcesLoadedRef.current = {
+      customers: Boolean(customers),
+      technicians: Boolean(technicians),
+      users: Boolean(users),
+    };
     initialLoadedRef.current = true;
-  }, [workOrderListRequest]);
+  }, [section, workOrderListRequest]);
 
   const loadData = useCallback(async (nextUser?: SessionUser | null) => {
     const currentUser = nextUser ?? user;
@@ -236,6 +260,34 @@ export function OpsApp() {
       }
     }
   }, [filters, loading, section, user, loadDataForUser, refreshOrders, workOrderListRequest]);
+
+  useEffect(() => {
+    if (loading || !user || !initialLoadedRef.current) return;
+    const resources = resourcesLoadedRef.current;
+
+    if (needsCustomers(section, user.role) && !resources.customers) {
+      refreshCustomers().catch((reason) => {
+        setError(reason instanceof Error ? reason.message : "Không tải được khách hàng");
+      });
+    }
+
+    if (needsTechnicians(section, user.role) && !resources.technicians) {
+      refreshTechnicians().catch((reason) => {
+        setError(reason instanceof Error ? reason.message : "Không tải được kỹ thuật viên");
+      });
+    }
+
+    if (needsUsers(section, user.role) && !resources.users) {
+      apiFetch<{ users: AppUser[] }>("/api/users")
+        .then((payload) => {
+          resourcesLoadedRef.current.users = true;
+          setData((current) => ({ ...current, users: payload.users }));
+        })
+        .catch((reason) => {
+          setError(reason instanceof Error ? reason.message : "Không tải được nhân viên");
+        });
+    }
+  }, [loading, refreshCustomers, refreshTechnicians, section, user]);
 
   useEffect(() => {
     const canViewReports = ["admin", "dispatcher", "accountant"].includes(user?.role ?? "");
@@ -408,6 +460,7 @@ export function OpsApp() {
       setUser(payload.user);
       router.push(payload.user.role === "technician" ? "/technician" : "/dashboard");
       initialLoadedRef.current = false;
+      resourcesLoadedRef.current = { customers: false, technicians: false, users: false };
       ordersCacheRef.current = {};
       detailsCacheRef.current = {};
       await loadData(payload.user);
@@ -426,6 +479,7 @@ export function OpsApp() {
       setDetail(null);
       setModal(null);
       initialLoadedRef.current = false;
+      resourcesLoadedRef.current = { customers: false, technicians: false, users: false };
       ordersCacheRef.current = {};
       detailsCacheRef.current = {};
       router.push("/dashboard");

@@ -1,28 +1,172 @@
 "use client";
 
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
+import dynamic from "next/dynamic";
 import { apiFetch } from "@/components/ops/api";
 import { customerContactsFromFormData, removeById, replaceById } from "@/components/ops/app-utils";
 import type { AppData, AppUser, AssignmentHistoryItem, Customer, ModalState, Role, Technician, WorkOrderDetail } from "@/components/ops/types";
 import { AssignmentHistoryList } from "@/components/ops/assignment-history-list";
-import {
-  CustomerCreateModal,
-  CustomerDetailModal,
-  CustomerEditModal,
-  TechnicianEditModal,
-  UserCreateModal,
-  UserEditModal,
-} from "@/components/ops/entity-modals";
 import { ConfirmModal, Modal, PendingButton, ValidatedForm } from "@/components/ops/ui";
-import {
-  DispatchAssignmentModal,
-  DispatchDetailModal,
-  PaymentActionModal,
-  PaymentDetailModal,
-  TechnicianJobModal,
-  WorkOrderDetailModal,
-  WorkOrderEditModal,
-} from "@/components/ops/modals";
+
+type MaterialPendingAction = { type: "create" } | { type: "update" | "delete"; id: string } | null;
+type CheckInPayload = { checkInLat?: number; checkInLng?: number };
+type AcceptancePayload = { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string };
+type MaterialItem = WorkOrderDetail["materials"][number];
+type FileItem = WorkOrderDetail["files"][number];
+
+function ModalChunkFallback() {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/45 p-3">
+      <div className="rounded-lg border border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-600 shadow-xl">
+        Đang tải khung thao tác...
+      </div>
+    </div>
+  );
+}
+
+type WorkOrderDetailModalProps = {
+  detail: WorkOrderDetail;
+  technicians: Technician[];
+  onClose: () => void;
+};
+
+type WorkOrderEditModalProps = WorkOrderDetailModalProps & {
+  role: Role;
+  pendingAction: string | null;
+  materialPendingAction: MaterialPendingAction;
+  deletingFileId: string | null;
+  onStatus: (status: WorkOrderDetail["workOrder"]["status"], checkIn?: CheckInPayload) => void | Promise<void>;
+  onCancel: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onAssign: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialUpdate: (material: MaterialItem, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialDelete: (material: MaterialItem) => void | Promise<void>;
+  onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onFileDelete: (file: FileItem) => void | Promise<void>;
+  onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onAcceptance: (payload: AcceptancePayload) => void | Promise<void>;
+};
+
+type TechnicianJobModalProps = {
+  detail: WorkOrderDetail;
+  onClose: () => void;
+  pendingAction: string | null;
+  materialPendingAction: MaterialPendingAction;
+  deletingFileId: string | null;
+  onStatus: (status: WorkOrderDetail["workOrder"]["status"], checkIn?: CheckInPayload) => void | Promise<void>;
+  onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialUpdate: (material: MaterialItem, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialDelete: (material: MaterialItem) => void | Promise<void>;
+  onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onFileDelete: (file: FileItem) => void | Promise<void>;
+  onAcceptance: (payload: AcceptancePayload) => void | Promise<void>;
+};
+
+type DispatchAssignmentModalProps = WorkOrderDetailModalProps & {
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  isSubmitting: boolean;
+};
+
+type PaymentDetailModalProps = {
+  detail: WorkOrderDetail;
+  onClose: () => void;
+};
+
+type PaymentActionModalProps = PaymentDetailModalProps & {
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  isSubmitting: boolean;
+};
+
+type CustomerEntityModalProps = {
+  onClose: () => void;
+  isSubmitting: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+};
+
+type CustomerDetailModalProps = {
+  item: Customer;
+  orders: AppData["orders"];
+  onClose: () => void;
+};
+
+type CustomerEditModalProps = CustomerDetailModalProps & {
+  isSubmitting: boolean;
+  uploadingBillOrderId: string | null;
+  onBillUpload: (orderId: string, event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+};
+
+type UserEntityModalProps = {
+  onClose: () => void;
+  isSubmitting: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+};
+
+type UserEditModalProps = UserEntityModalProps & {
+  item: AppUser;
+};
+
+type TechnicianEditModalProps = {
+  item: Technician;
+  onClose: () => void;
+  isSubmitting: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+};
+
+const WorkOrderDetailModal = dynamic<WorkOrderDetailModalProps>(
+  () => import("@/components/ops/modals/work-order-detail-modal").then((mod) => mod.WorkOrderDetailModal),
+  { loading: ModalChunkFallback },
+);
+const WorkOrderEditModal = dynamic<WorkOrderEditModalProps>(
+  () => import("@/components/ops/modals/work-order-edit-modal").then((mod) => mod.WorkOrderEditModal),
+  { loading: ModalChunkFallback },
+);
+const TechnicianJobModal = dynamic<TechnicianJobModalProps>(
+  () => import("@/components/ops/modals/technician-job-modal").then((mod) => mod.TechnicianJobModal),
+  { loading: ModalChunkFallback },
+);
+const DispatchDetailModal = dynamic<WorkOrderDetailModalProps>(
+  () => import("@/components/ops/modals/dispatch-detail-modal").then((mod) => mod.DispatchDetailModal),
+  { loading: ModalChunkFallback },
+);
+const DispatchAssignmentModal = dynamic<DispatchAssignmentModalProps>(
+  () => import("@/components/ops/modals/dispatch-assignment-modal").then((mod) => mod.DispatchAssignmentModal),
+  { loading: ModalChunkFallback },
+);
+const PaymentDetailModal = dynamic<PaymentDetailModalProps>(
+  () => import("@/components/ops/modals/payment-detail-modal").then((mod) => mod.PaymentDetailModal),
+  { loading: ModalChunkFallback },
+);
+const PaymentActionModal = dynamic<PaymentActionModalProps>(
+  () => import("@/components/ops/modals/payment-action-modal").then((mod) => mod.PaymentActionModal),
+  { loading: ModalChunkFallback },
+);
+const CustomerCreateModal = dynamic<CustomerEntityModalProps>(
+  () => import("@/components/ops/entity-modals").then((mod) => mod.CustomerCreateModal),
+  { loading: ModalChunkFallback },
+);
+const CustomerDetailModal = dynamic<CustomerDetailModalProps>(
+  () => import("@/components/ops/entity-modals").then((mod) => mod.CustomerDetailModal),
+  { loading: ModalChunkFallback },
+);
+const CustomerEditModal = dynamic<CustomerEditModalProps>(
+  () => import("@/components/ops/entity-modals").then((mod) => mod.CustomerEditModal),
+  { loading: ModalChunkFallback },
+);
+const UserCreateModal = dynamic<UserEntityModalProps>(
+  () => import("@/components/ops/entity-modals").then((mod) => mod.UserCreateModal),
+  { loading: ModalChunkFallback },
+);
+const UserEditModal = dynamic<UserEditModalProps>(
+  () => import("@/components/ops/entity-modals").then((mod) => mod.UserEditModal),
+  { loading: ModalChunkFallback },
+);
+const TechnicianEditModal = dynamic<TechnicianEditModalProps>(
+  () => import("@/components/ops/entity-modals").then((mod) => mod.TechnicianEditModal),
+  { loading: ModalChunkFallback },
+);
 
 type OpsModalLayerProps = {
   modal: ModalState;
@@ -68,7 +212,7 @@ export function OpsModalLayer({
   onCreateUser,
 }: OpsModalLayerProps) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [materialPendingAction, setMaterialPendingAction] = useState<{ type: "create" } | { type: "update" | "delete"; id: string } | null>(null);
+  const [materialPendingAction, setMaterialPendingAction] = useState<MaterialPendingAction>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [uploadingBillOrderId, setUploadingBillOrderId] = useState<string | null>(null);
   const [assignmentHistory, setAssignmentHistory] = useState<AssignmentHistoryItem[]>([]);
@@ -108,7 +252,7 @@ export function OpsModalLayer({
     }
   }
 
-  async function runMaterialMutation(action: { type: "create" } | { type: "update" | "delete"; id: string }, callback: () => Promise<void>) {
+  async function runMaterialMutation(action: Exclude<MaterialPendingAction, null>, callback: () => Promise<void>) {
     setMaterialPendingAction(action);
     setError(null);
     try {
