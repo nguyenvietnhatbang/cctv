@@ -246,11 +246,11 @@ export function getWorkOrderStage(status: WorkOrderStatus): WorkOrderStage {
 export type DisplayStatus = "todo" | "doing" | "doing_overdue" | "done" | "done_overdue" | "cancelled";
 
 export const DISPLAY_STATUS_LABELS: Record<DisplayStatus, string> = {
-  todo: "Chưa thi công",
-  doing: "Đang xử lý",
-  doing_overdue: "Đang xử lý quá hạn",
-  done: "Xong kỹ thuật",
-  done_overdue: "Xong kỹ thuật trễ",
+  todo: "Việc chưa làm",
+  doing: "Đang làm",
+  doing_overdue: "Đang làm quá hạn",
+  done: "Hoàn thành",
+  done_overdue: "Hoàn thành quá hạn",
   cancelled: "Đã hủy",
 };
 
@@ -304,6 +304,6 @@ export function getWorkOrderDeadlineLabel(order: {
 }) {
   const displayStatus = getDisplayStatus(order);
   if (displayStatus === "doing_overdue") return "Quá hạn";
-  if (displayStatus === "done_overdue") return "Xong trễ";
+  if (displayStatus === "done_overdue") return "Hoàn thành quá hạn";
   return null;
 }

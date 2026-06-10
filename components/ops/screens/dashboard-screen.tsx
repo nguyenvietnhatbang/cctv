@@ -19,11 +19,11 @@ export function DashboardScreen({
 
   const cards = [
     ["Công việc hôm nay", metrics?.total_today ?? "0", ""],
-    ["Chưa thi công", metrics?.todo ?? "0", "todo"],
-    ["Đang xử lý", metrics?.doing ?? "0", "doing"],
-    ["Đang xử lý quá hạn", metrics?.doing_overdue ?? "0", "doing_overdue"],
-    ["Đã hoàn tất", metrics?.done ?? "0", "done"],
-    ["Hoàn tất trễ", metrics?.done_overdue ?? "0", "done_overdue"],
+    ["Việc chưa làm", metrics?.todo ?? "0", "todo"],
+    ["Đang làm", metrics?.doing ?? "0", "doing"],
+    ["Đang làm quá hạn", metrics?.doing_overdue ?? "0", "doing_overdue"],
+    ["Hoàn thành", metrics?.done ?? "0", "done"],
+    ["Hoàn thành quá hạn", metrics?.done_overdue ?? "0", "done_overdue"],
     ["Đã thu hôm nay", money(metrics?.paid_today), ""],
     ["Công nợ mở", money(metrics?.open_debt), "debt"],
   ] as const;

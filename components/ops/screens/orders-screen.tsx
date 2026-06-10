@@ -7,20 +7,15 @@ import {
   DISPLAY_STATUS_TONE,
   getAllowedWorkOrderTransitions,
   getDisplayStatus,
-  getWorkOrderStage,
   PAYMENT_STATUSES,
-  WORK_ORDER_STAGE_LABELS,
-  WORK_ORDER_STAGE_ORDER,
-  WORK_ORDER_STAGE_TONE,
   WORK_ORDER_STATUS_LABELS,
   WORK_ORDER_STATUSES,
   WORK_ORDER_TYPE_LABELS,
   WORK_ORDER_TYPES,
   type DisplayStatus,
-  type WorkOrderStage,
 } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
-import { DeadlineBadge, EmptyState, StageBadge, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import { WorkOrderCreateModal } from "@/components/ops/modals";
 import type { Customer, Filters, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -74,22 +69,6 @@ export function OrdersScreen({
       cancelled: 0,
     },
   );
-  const stageSummary = orders.reduce<Record<WorkOrderStage, number>>(
-    (summary, order) => {
-      const stage = getWorkOrderStage(order.status);
-      summary[stage] += 1;
-      return summary;
-    },
-    {
-      intake: 0,
-      dispatch: 0,
-      field: 0,
-      acceptance: 0,
-      payment: 0,
-      closed: 0,
-      cancelled: 0,
-    },
-  );
   const paymentSummary = orders.reduce<Record<string, number>>(
     (summary, order) => {
       const status = order.payment_status ?? "unpaid";
@@ -122,24 +101,9 @@ export function OrdersScreen({
         ) : null}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-        {WORK_ORDER_STAGE_ORDER.map((stage) => (
-          <button
-            key={stage}
-            className={`rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 ${filters.status === stage ? "ring-2 ring-zinc-900" : ""}`}
-            onClick={() => applyFilter({ ...filters, status: filters.status === stage ? "" : stage })}
-            type="button"
-          >
-            <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${WORK_ORDER_STAGE_TONE[stage]}`}>
-              {WORK_ORDER_STAGE_LABELS[stage]}
-            </span>
-            <p className="mt-2 text-2xl font-bold text-zinc-950">{stageSummary[stage]}</p>
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {(Object.entries(DISPLAY_STATUS_LABELS) as Array<[DisplayStatus, string]>).map(([status, label]) => (
+          status === "cancelled" ? null : (
           <button
             key={status}
             className={`rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 ${filters.status === status ? "ring-2 ring-zinc-900" : ""}`}
@@ -151,6 +115,7 @@ export function OrdersScreen({
             </span>
             <p className="mt-2 text-2xl font-bold text-zinc-950">{statusSummary[status]}</p>
           </button>
+          )
         ))}
       </div>
 
@@ -166,16 +131,11 @@ export function OrdersScreen({
               <option value="">Trạng thái: Tất cả</option>
               <optgroup label="Nhóm vận hành">
                 {Object.entries(DISPLAY_STATUS_LABELS).map(([status, label]) => (
+                  status === "cancelled" ? null : (
                   <option key={status} value={status}>
                     {label}
                   </option>
-                ))}
-              </optgroup>
-              <optgroup label="Giai đoạn nghiệp vụ">
-                {WORK_ORDER_STAGE_ORDER.map((stage) => (
-                  <option key={stage} value={stage}>
-                    {WORK_ORDER_STAGE_LABELS[stage]}
-                  </option>
+                  )
                 ))}
               </optgroup>
               <optgroup label="Trạng thái nghiệp vụ">
@@ -254,7 +214,6 @@ export function OrdersScreen({
                 <th>Khách hàng</th>
                 <th>Loại việc</th>
                 <th>Kỹ thuật</th>
-                <th>Giai đoạn</th>
                 <th>Trạng thái</th>
                 <th>Thanh toán</th>
                 <th>Hẹn/Tạo</th>
@@ -278,9 +237,6 @@ export function OrdersScreen({
                     </span>
                   </td>
                   <td className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
-                  <td>
-                    <StageBadge status={order.status} />
-                  </td>
                   <td>
                     <div className="flex flex-wrap gap-1.5">
                       <StatusBadge order={order} />
