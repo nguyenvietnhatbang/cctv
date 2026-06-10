@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const from = searchParams.get("from") || today;
     const to = searchParams.get("to") || today;
 
-    const [summary, byStatus, byTechnician, materials] = await Promise.all([
+    const [summary, byDisplayStatus, daily, byStatus, byTechnician, materials] = await Promise.all([
       query(
         `select
            count(*) as order_count,
@@ -23,6 +23,89 @@ export async function GET(request: Request) {
          from work_orders wo
          left join payments p on p.work_order_id = wo.id
          where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date`,
+        [from, to],
+      ),
+      query(
+        `with scoped as (
+           select wo.*
+           from work_orders wo
+           where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+         ),
+         buckets as (
+           select 'todo' as status, 'Việc chưa làm' as label,
+                  count(*) filter (where status in ('pending_assignment', 'assigned', 'accepted', 'traveling')) as count
+           from scoped
+           union all
+           select 'doing', 'Đang làm',
+                  count(*) filter (where status in ('working', 'awaiting_acceptance') and (appointment_at is null or appointment_at >= now()))
+           from scoped
+           union all
+           select 'doing_overdue', 'Đang làm quá hạn',
+                  count(*) filter (where status in ('working', 'awaiting_acceptance') and appointment_at < now())
+           from scoped
+           union all
+           select 'done', 'Hoàn thành',
+                  count(*) filter (where status in ('completed', 'awaiting_payment', 'paid', 'debt') and (appointment_at is null or updated_at <= appointment_at))
+           from scoped
+           union all
+           select 'done_overdue', 'Hoàn thành quá hạn',
+                  count(*) filter (where status in ('completed', 'awaiting_payment', 'paid', 'debt') and appointment_at is not null and updated_at > appointment_at)
+           from scoped
+         ),
+         totals as (
+           select count(*) as total from scoped where status <> 'cancelled'
+         )
+         select b.status, b.label, b.count, t.total,
+                case when t.total = 0 then 0 else round(b.count * 100.0 / t.total, 1) end as percent
+         from buckets b cross join totals t
+         order by case b.status
+           when 'doing' then 1
+           when 'doing_overdue' then 2
+           when 'done' then 3
+           when 'done_overdue' then 4
+           when 'todo' then 5
+           else 6
+         end`,
+        [from, to],
+      ),
+      query(
+        `with days as (
+           select generate_series($1::date, $2::date, interval '1 day')::date as day
+         ),
+         created_orders as (
+           select (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date as day,
+                  count(*) as created_count
+           from work_orders wo
+           where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+           group by 1
+         ),
+         completed_orders as (
+           select (wo.updated_at at time zone 'Asia/Ho_Chi_Minh')::date as day,
+                  count(*) as completed_count
+           from work_orders wo
+           where wo.status in ('completed', 'awaiting_payment', 'paid', 'debt')
+             and (wo.updated_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+           group by 1
+         ),
+         paid as (
+           select (p.confirmed_at at time zone 'Asia/Ho_Chi_Minh')::date as day,
+                  coalesce(sum(p.total_amount) filter (where p.status = 'paid'), 0) as paid_revenue,
+                  coalesce(sum(p.total_amount) filter (where p.status = 'debt'), 0) as open_debt
+           from payments p
+           where p.confirmed_at is not null
+             and (p.confirmed_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+           group by 1
+         )
+         select d.day::text as date,
+                coalesce(co.created_count, 0) as created_count,
+                coalesce(c.completed_count, 0) as completed_count,
+                coalesce(p.paid_revenue, 0) as paid_revenue,
+                coalesce(p.open_debt, 0) as open_debt
+         from days d
+         left join created_orders co on co.day = d.day
+         left join completed_orders c on c.day = d.day
+         left join paid p on p.day = d.day
+         order by d.day`,
         [from, to],
       ),
       query(
@@ -62,6 +145,8 @@ export async function GET(request: Request) {
     return jsonOk({
       range: { from, to },
       summary: summary.rows[0],
+      byDisplayStatus: byDisplayStatus.rows,
+      daily: daily.rows,
       byStatus: byStatus.rows,
       byTechnician: byTechnician.rows,
       materials: materials.rows,

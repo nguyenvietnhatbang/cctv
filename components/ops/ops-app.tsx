@@ -13,7 +13,7 @@ import {
   sameFilters,
   sameSessionUser,
 } from "@/components/ops/app-utils";
-import { todayInVietnam } from "@/components/ops/format";
+import { monthStartInVietnam, todayInVietnam } from "@/components/ops/format";
 import type {
   AppData,
   AppUser,
@@ -152,6 +152,7 @@ export function OpsApp() {
     const canManageOps = ["admin", "dispatcher"].includes(currentUser.role);
     const canBackOffice = ["admin", "dispatcher", "accountant"].includes(currentUser.role);
     const today = todayInVietnam();
+    const monthStart = monthStartInVietnam();
 
     const [dashboard, orders, notifications, technicians, customers, report, users] = await Promise.all([
       apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard"),
@@ -159,7 +160,7 @@ export function OpsApp() {
       apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications"),
       canManageOps ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
       canBackOffice ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
-      canBackOffice ? apiFetch<ReportData>(`/api/reports?from=${today}&to=${today}`) : Promise.resolve(null),
+      canBackOffice ? apiFetch<ReportData>(`/api/reports?from=${monthStart}&to=${today}`) : Promise.resolve(null),
       currentUser.role === "admin" ? apiFetch<{ users: AppUser[] }>("/api/users") : Promise.resolve(null),
     ]);
 

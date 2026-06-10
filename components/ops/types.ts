@@ -154,6 +154,20 @@ export type ReportData = {
     open_debt: string;
     gross_amount: string;
   };
+  byDisplayStatus: Array<{
+    status: "todo" | "doing" | "doing_overdue" | "done" | "done_overdue";
+    label: string;
+    count: string;
+    total: string;
+    percent: string;
+  }>;
+  daily: Array<{
+    date: string;
+    created_count: string;
+    completed_count: string;
+    paid_revenue: string;
+    open_debt: string;
+  }>;
   byStatus: Array<{ status: WorkOrderStatus; count: string }>;
   byTechnician: Array<{ technician_name: string; order_count: string; paid_revenue: string }>;
   materials: Array<{ name: string; quantity: string; total_amount: string }>;

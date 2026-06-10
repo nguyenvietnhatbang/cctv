@@ -3,7 +3,7 @@ values (
   'Admin',
   'admin@example.com',
   null,
-  crypt('ChangeMe123!', gen_salt('bf', 12)),
+  crypt('admin123', gen_salt('bf', 12)),
   'admin',
   'active'
 )

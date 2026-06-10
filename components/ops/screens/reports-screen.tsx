@@ -1,11 +1,42 @@
 "use client";
 
-import { useState } from "react";
-import { BarChart3, TrendingUp, Users2, PackageCheck, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { BarChart3, CalendarDays, ClipboardCheck, CreditCard, PackageCheck, Search, TrendingUp, Users2 } from "lucide-react";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
-import { money, todayInVietnam } from "@/components/ops/format";
+import { money, monthStartInVietnam, todayInVietnam } from "@/components/ops/format";
 import { PendingButton, StatusBadge, TablePagination, ValidatedForm, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { ReportData } from "@/components/ops/types";
+
+const DISPLAY_STATUS_TONE: Record<string, { accent: string; bg: string; text: string }> = {
+  doing: { accent: "#0ea5e9", bg: "bg-sky-50", text: "text-sky-900" },
+  doing_overdue: { accent: "#f43f5e", bg: "bg-rose-50", text: "text-rose-900" },
+  done: { accent: "#10b981", bg: "bg-emerald-50", text: "text-emerald-900" },
+  done_overdue: { accent: "#f59e0b", bg: "bg-amber-50", text: "text-amber-900" },
+  todo: { accent: "#eab308", bg: "bg-yellow-50", text: "text-yellow-900" },
+};
+
+function asNumber(value: string | number | null | undefined) {
+  return Number(value ?? 0);
+}
+
+function shortDate(value: string) {
+  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(value));
+}
 
 export function ReportsScreen({
   report,
@@ -15,11 +46,33 @@ export function ReportsScreen({
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
 }) {
   const today = todayInVietnam();
+  const monthStart = monthStartInVietnam();
   const [submitting, setSubmitting] = useState(false);
   const [technicianQuery, setTechnicianQuery] = useState("");
   const [technicianPage, setTechnicianPage] = useState(1);
   const [materialQuery, setMaterialQuery] = useState("");
   const [materialPage, setMaterialPage] = useState(1);
+
+  const dailyChartData = useMemo(
+    () => report?.daily.map((item) => ({
+      date: shortDate(item.date),
+      created: asNumber(item.created_count),
+      completed: asNumber(item.completed_count),
+      paid: asNumber(item.paid_revenue),
+      debt: asNumber(item.open_debt),
+    })) ?? [],
+    [report?.daily],
+  );
+
+  const displayStatusData = useMemo(
+    () => report?.byDisplayStatus.map((item) => ({
+      ...item,
+      countValue: asNumber(item.count),
+      percentValue: asNumber(item.percent),
+    })) ?? [],
+    [report?.byDisplayStatus],
+  );
+
   const filteredTechnicians = report?.byTechnician.filter((item) => {
     const q = technicianQuery.trim().toLowerCase();
     if (!q) return true;
@@ -48,118 +101,176 @@ export function ReportsScreen({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Screen Title & Description */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Báo cáo doanh thu</h2>
-          <p className="text-xs text-zinc-500 mt-1">Truy xuất doanh thu đã thu, công nợ và thống kê vật tư sử dụng</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-950">Báo cáo hệ thống</h2>
+          <p className="mt-1 text-sm text-zinc-500">Tổng hợp công việc, tiến độ, doanh thu, công nợ, kỹ thuật viên và vật tư.</p>
         </div>
       </div>
 
-      {/* Compact Date Range Filter Card */}
-      <div className="panel bg-white border border-zinc-200 rounded-lg p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <section className="panel flex flex-wrap items-center justify-between gap-4">
         <ValidatedForm onSubmit={submit} aria-busy={submitting} className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500 bg-white border border-zinc-200 rounded-md px-2.5 h-9 shrink-0">
-            <span className="text-[10px] uppercase font-bold text-zinc-400">Từ:</span>
+          <div className="flex h-10 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 text-xs text-zinc-500">
+            <CalendarDays size={14} className="text-zinc-400" />
+            <span className="text-[10px] font-bold uppercase text-zinc-400">Từ</span>
             <input
               name="from"
               type="date"
-              className="border-none bg-transparent outline-none p-0 text-xs w-[120px]"
-              defaultValue={report?.range.from ?? today}
+              className="w-[120px] border-none bg-transparent p-0 text-xs outline-none"
+              defaultValue={report?.range.from ?? monthStart}
               disabled={submitting}
             />
-            <span className="text-zinc-255">|</span>
-            <span className="text-[10px] uppercase font-bold text-zinc-400">Đến:</span>
+            <span className="text-zinc-200">|</span>
+            <span className="text-[10px] font-bold uppercase text-zinc-400">Đến</span>
             <input
               name="to"
               type="date"
-              className="border-none bg-transparent outline-none p-0 text-xs w-[120px]"
+              className="w-[120px] border-none bg-transparent p-0 text-xs outline-none"
               defaultValue={report?.range.to ?? today}
               disabled={submitting}
             />
           </div>
-          <PendingButton
-            className="btn-primary h-9 text-xs px-3"
-            type="submit"
-            pending={submitting}
-            pendingLabel="Đang tải..."
-          >
-            <BarChart3 size={13} />
-            Xem báo cáo
+          <PendingButton className="btn-primary h-10" type="submit" pending={submitting} pendingLabel="Đang tải...">
+            <BarChart3 size={15} />Xem báo cáo
           </PendingButton>
         </ValidatedForm>
-      </div>
+        {report ? (
+          <p className="text-sm font-semibold text-zinc-500">
+            Kỳ báo cáo: {report.range.from} đến {report.range.to}
+          </p>
+        ) : null}
+      </section>
 
       {report ? (
         <>
-          {/* Metrics Summary */}
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="metric-card bg-white border border-zinc-200 rounded-lg p-4">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Số công việc</span>
-              <strong className="block text-2xl font-bold text-zinc-900 mt-2 leading-none">
-                {report.summary.order_count}
-              </strong>
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="metric-card">
+              <span>Số công việc</span>
+              <strong>{report.summary.order_count}</strong>
             </div>
-            <div className="metric-card bg-white border border-zinc-200 rounded-lg p-4">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Đã thu</span>
-              <strong className="block text-2xl font-bold text-zinc-900 mt-2 leading-none">
-                {money(report.summary.paid_revenue)}
-              </strong>
+            <div className="metric-card">
+              <span>Đã thu</span>
+              <strong>{money(report.summary.paid_revenue)}</strong>
             </div>
-            <div className="metric-card bg-white border border-zinc-200 rounded-lg p-4">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Công nợ</span>
-              <strong className="block text-2xl font-bold text-zinc-900 mt-2 leading-none">
-                {money(report.summary.open_debt)}
-              </strong>
+            <div className="metric-card">
+              <span>Công nợ</span>
+              <strong>{money(report.summary.open_debt)}</strong>
             </div>
-            <div className="metric-card bg-white border border-zinc-200 rounded-lg p-4">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Tổng phát sinh</span>
-              <strong className="block text-2xl font-bold text-zinc-900 mt-2 leading-none">
-                {money(report.summary.gross_amount)}
-              </strong>
+            <div className="metric-card">
+              <span>Tổng phát sinh</span>
+              <strong>{money(report.summary.gross_amount)}</strong>
             </div>
-          </div>
+          </section>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* By Status */}
-            <section className="panel bg-white border border-zinc-200 rounded-lg p-5 shadow-sm">
-              <div className="panel-heading mb-4 border-b border-zinc-100 pb-2">
-                <div>
-                  <h2 className="text-sm font-bold text-zinc-900 flex items-center gap-1.5">
-                    <TrendingUp size={15} className="text-zinc-500" />
-                    Theo trạng thái
-                  </h2>
-                </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 text-zinc-800">
-                  {report.byStatus.length} nhóm
-                </span>
-              </div>
-              <div className="grid gap-2 max-h-[300px] overflow-y-auto pr-1">
-                {report.byStatus.map((item) => (
-                  <div
-                    key={item.status}
-                    className="compact-row border border-zinc-100 rounded-md p-3 hover:bg-zinc-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <StatusBadge status={item.status} />
-                      <span className="text-xs text-zinc-500">{WORK_ORDER_STATUS_LABELS[item.status]}</span>
-                    </div>
-                    <strong className="text-sm text-zinc-900">{item.count} công việc</strong>
+          <section className="grid gap-3 lg:grid-cols-5">
+            {displayStatusData.map((item) => {
+              const tone = DISPLAY_STATUS_TONE[item.status] ?? DISPLAY_STATUS_TONE.todo;
+              return (
+                <div key={item.status} className={`rounded-lg border border-zinc-200 p-4 shadow-sm ${tone.bg}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className={`text-base font-black ${tone.text}`}>{item.label}</h3>
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: tone.accent }} />
                   </div>
-                ))}
-              </div>
-            </section>
-
-            {/* By Technician */}
-            <section className="panel bg-white border border-zinc-200 rounded-lg p-5 shadow-sm">
-              <div className="panel-heading mb-4 border-b border-zinc-100 pb-2">
-                <div>
-                  <h2 className="text-sm font-bold text-zinc-900 flex items-center gap-1.5">
-                    <Users2 size={15} className="text-zinc-500" />
-                    Theo kỹ thuật viên
-                  </h2>
+                  <p className="mt-4 text-2xl font-black text-zinc-950">
+                    {item.count}/{item.total}
+                    <span className="ml-2 text-sm font-semibold text-zinc-500">công việc</span>
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-zinc-700">{item.percent}% công việc</p>
                 </div>
-                <span className="text-xs font-semibold text-zinc-500">Doanh thu đã thu</span>
+              );
+            })}
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+            <div className="panel">
+              <div className="panel-heading">
+                <div>
+                  <h2 className="inline-flex items-center gap-2">
+                    <TrendingUp size={16} />Tiến độ theo ngày
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-500">Công việc tạo mới và hoàn thành trong kỳ.</p>
+                </div>
+              </div>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="created" name="Công việc nhận" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="completed" name="Hoàn thành" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="panel">
+              <div className="panel-heading">
+                <div>
+                  <h2 className="inline-flex items-center gap-2">
+                    <ClipboardCheck size={16} />Tỷ trọng trạng thái
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-500">Phân bổ theo 5 trạng thái trực quan.</p>
+                </div>
+              </div>
+              <div className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={displayStatusData}
+                      dataKey="countValue"
+                      nameKey="label"
+                      innerRadius={70}
+                      outerRadius={105}
+                      paddingAngle={2}
+                    >
+                      {displayStatusData.map((item) => (
+                        <Cell key={item.status} fill={DISPLAY_STATUS_TONE[item.status]?.accent ?? "#71717a"} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel-heading">
+              <div>
+                <h2 className="inline-flex items-center gap-2">
+                  <CreditCard size={16} />Dòng tiền theo ngày
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500">Đã thu và công nợ phát sinh trong kỳ.</p>
+              </div>
+            </div>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
+                  <Tooltip formatter={(value) => money(Number(value))} />
+                  <Legend />
+                  <Line type="monotone" dataKey="paid" name="Đã thu" stroke="#10b981" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="debt" name="Công nợ" stroke="#ef4444" strokeWidth={2.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="panel">
+              <div className="panel-heading">
+                <div>
+                  <h2 className="inline-flex items-center gap-2">
+                    <Users2 size={16} />Theo kỹ thuật viên
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-500">Số việc và doanh thu đã thu theo người phụ trách.</p>
+                </div>
               </div>
               <div className="mb-3">
                 <div className="relative flex items-center">
@@ -177,10 +288,7 @@ export function ReportsScreen({
               </div>
               <div className="grid gap-2">
                 {visibleTechnicians.map((item) => (
-                  <div
-                    key={item.technician_name}
-                    className="compact-row border border-zinc-100 rounded-md p-3 hover:bg-zinc-50 transition-colors"
-                  >
+                  <div key={item.technician_name} className="compact-row">
                     <div>
                       <p className="font-bold text-sm text-zinc-900 leading-snug">{item.technician_name}</p>
                       <p className="text-xs text-zinc-500 mt-1">{item.order_count} công việc</p>
@@ -192,18 +300,14 @@ export function ReportsScreen({
               <TablePagination page={safeTechnicianPage} total={filteredTechnicians.length} pageSize={8} onPageChange={setTechnicianPage} />
             </section>
 
-            {/* Materials Used */}
-            <section className="panel bg-white border border-zinc-200 rounded-lg p-5 shadow-sm md:col-span-2">
-              <div className="panel-heading mb-4 border-b border-zinc-100 pb-2">
+            <section className="panel">
+              <div className="panel-heading">
                 <div>
-                  <h2 className="text-sm font-bold text-zinc-900 flex items-center gap-1.5">
-                    <PackageCheck size={15} className="text-zinc-500" />
-                    Vật tư đã dùng
+                  <h2 className="inline-flex items-center gap-2">
+                    <PackageCheck size={16} />Vật tư đã dùng
                   </h2>
+                  <p className="mt-1 text-sm text-zinc-500">Tổng số lượng và giá trị vật tư theo kỳ.</p>
                 </div>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-zinc-100 text-zinc-800">
-                  {filteredMaterials.length} dòng
-                </span>
               </div>
               <div className="mb-3">
                 <div className="relative flex items-center">
@@ -221,10 +325,7 @@ export function ReportsScreen({
               </div>
               <div className="grid gap-2">
                 {visibleMaterials.map((item) => (
-                  <div
-                    key={item.name}
-                    className="compact-row border border-zinc-100 rounded-md p-3 hover:bg-zinc-50 transition-colors"
-                  >
+                  <div key={item.name} className="compact-row">
                     <div>
                       <p className="font-bold text-sm text-zinc-900 leading-snug">{item.name}</p>
                       <p className="text-xs text-zinc-500 mt-1">Số lượng: {item.quantity}</p>
@@ -236,6 +337,27 @@ export function ReportsScreen({
               <TablePagination page={safeMaterialPage} total={filteredMaterials.length} pageSize={8} onPageChange={setMaterialPage} />
             </section>
           </div>
+
+          <section className="panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Theo trạng thái nghiệp vụ</h2>
+                <p className="mt-1 text-sm text-zinc-500">Dùng để đối soát sâu khi cần xem trạng thái chi tiết.</p>
+              </div>
+              <span>{report.byStatus.length} nhóm</span>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {report.byStatus.map((item) => (
+                <div key={item.status} className="compact-row">
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={item.status} />
+                    <span className="text-xs text-zinc-500">{WORK_ORDER_STATUS_LABELS[item.status]}</span>
+                  </div>
+                  <strong className="text-sm text-zinc-900">{item.count} công việc</strong>
+                </div>
+              ))}
+            </div>
+          </section>
         </>
       ) : null}
     </div>

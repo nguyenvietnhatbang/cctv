@@ -36,3 +36,7 @@ export function todayInVietnam() {
 
   return `${values.year}-${values.month}-${values.day}`;
 }
+
+export function monthStartInVietnam() {
+  return `${todayInVietnam().slice(0, 8)}01`;
+}
