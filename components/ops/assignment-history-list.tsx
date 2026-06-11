@@ -46,14 +46,14 @@ export function AssignmentHistoryList({
 
   return (
     <section className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="table-toolbar">
         <div className="flex items-center gap-2 text-sm font-semibold text-zinc-700">
           <History size={15} />
           <span>{filteredItems.length} lần phân công</span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="table-filter-row">
           <select
-            className="input h-9 !w-40 py-1 text-xs"
+            className="input h-9 py-1 text-xs"
             value={statusFilter}
             onChange={(event) => {
               setStatusFilter(event.target.value);
@@ -65,7 +65,7 @@ export function AssignmentHistoryList({
             <option value="changed">Đã thay đổi</option>
           </select>
           <input
-            className="input h-9 !w-36 py-1 text-xs"
+            className="input h-9 py-1 text-xs"
             type="date"
             value={dateFrom}
             onChange={(event) => {
@@ -75,7 +75,7 @@ export function AssignmentHistoryList({
             aria-label="Từ ngày phân công"
           />
           <input
-            className="input h-9 !w-36 py-1 text-xs"
+            className="input h-9 py-1 text-xs"
             type="date"
             value={dateTo}
             onChange={(event) => {
@@ -84,7 +84,7 @@ export function AssignmentHistoryList({
             }}
             aria-label="Đến ngày phân công"
           />
-          <div className="relative flex items-center !w-64 max-w-full shrink-0">
+          <div className="table-search">
             <Search size={13} className="search-field-icon" />
             <input
               className="input search-field-input h-9 !w-full py-1 text-xs"

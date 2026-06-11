@@ -94,7 +94,7 @@ export function DashboardScreen({
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-950">Tổng quan</h2>
+          <h2 className="text-3xl font-extrabold tracking-normal text-zinc-950">Tổng quan</h2>
           <p className="mt-1 text-sm text-zinc-500">Các chức năng quản trị chính và tình hình công việc nhanh.</p>
         </div>
         <Link className="btn-primary h-10" href="/reports">

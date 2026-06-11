@@ -129,10 +129,10 @@ export function OrdersScreen({
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Action Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="screen-header">
         <div>
-          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Công việc</h2>
-          <p className="text-xs text-zinc-500 mt-1">Lập kế hoạch, theo dõi tiến độ thi công và xử lý sự cố kỹ thuật</p>
+          <h2>Công việc</h2>
+          <p>Lập kế hoạch, theo dõi tiến độ thi công và xử lý sự cố kỹ thuật</p>
         </div>
         {canCreate ? (
           <button className="btn-primary" onClick={() => setCreating(true)} type="button">
@@ -162,12 +162,12 @@ export function OrdersScreen({
 
       {/* Orders Table Shell with Compact Filter Header */}
       <TableShell>
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-zinc-200 bg-zinc-50/20">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="table-toolbar">
+          <div className="table-filter-row">
             <select
               value={filters.status}
               onChange={(event) => applyFilter({ ...filters, status: event.target.value })}
-              className="input !w-[160px] bg-white h-9 py-1 text-xs shrink-0"
+              className="input h-9 bg-white py-1 text-xs"
             >
               <option value="">Trạng thái: Tất cả</option>
               <optgroup label="Nhóm vận hành">
@@ -190,7 +190,7 @@ export function OrdersScreen({
             <select
               value={filters.type}
               onChange={(event) => applyFilter({ ...filters, type: event.target.value })}
-              className="input !w-[135px] bg-white h-9 py-1 text-xs shrink-0"
+              className="input h-9 bg-white py-1 text-xs"
             >
               <option value="">Loại việc: Tất cả</option>
               {WORK_ORDER_TYPES.map((type) => (
@@ -202,7 +202,7 @@ export function OrdersScreen({
             <select
               value={filters.technicianId}
               onChange={(event) => applyFilter({ ...filters, technicianId: event.target.value })}
-              className="input !w-[150px] bg-white h-9 py-1 text-xs shrink-0"
+              className="input h-9 bg-white py-1 text-xs"
             >
               <option value="">Kỹ thuật: Tất cả</option>
               {technicians.map((technician) => (
@@ -213,28 +213,26 @@ export function OrdersScreen({
             </select>
 
             {/* Combined Date Range Box */}
-            <div className="flex items-center gap-1.5 text-xs text-zinc-500 bg-white border border-zinc-200 rounded-md px-2.5 h-9 shrink-0">
+            <div className="date-range-control">
               <span className="text-[10px] uppercase font-bold text-zinc-400">Từ:</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(event) => applyFilter({ ...filters, dateFrom: event.target.value })}
-                className="border-none bg-transparent outline-none p-0 text-xs w-[110px]"
                 aria-label="Từ ngày"
               />
-              <span className="text-zinc-200">|</span>
+              <span className="date-separator text-zinc-200">|</span>
               <span className="text-[10px] uppercase font-bold text-zinc-400">Đến:</span>
               <input
                 type="date"
                 value={filters.dateTo}
                 onChange={(event) => applyFilter({ ...filters, dateTo: event.target.value })}
-                className="border-none bg-transparent outline-none p-0 text-xs w-[110px]"
                 aria-label="Đến ngày"
               />
             </div>
           </div>
 
-          <div className="relative flex items-center !w-60 shrink-0">
+          <div className="table-search">
             <Search size={13} className="search-field-icon" />
             <input
               value={queryDraft}
@@ -265,33 +263,33 @@ export function OrdersScreen({
             <tbody>
               {visibleOrders.map((order) => (
                 <tr key={order.id}>
-                  <td className="font-semibold">{order.code}</td>
-                  <td>
+                  <td data-label="Mã" className="font-semibold">{order.code}</td>
+                  <td data-label="Khách hàng">
                     <p className="font-semibold text-zinc-900 leading-tight">{order.customer_name}</p>
                     <p className="text-xs text-zinc-500 mt-1 truncate max-w-xs">
                       {order.customer_phone} · {order.customer_address}
                     </p>
                   </td>
-                  <td>
+                  <td data-label="Loại việc">
                     <span className="inline-flex px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 text-xs font-semibold">
                       {WORK_ORDER_TYPE_LABELS[order.type]}
                     </span>
                   </td>
-                  <td className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
-                  <td>
+                  <td data-label="Kỹ thuật" className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
+                  <td data-label="Trạng thái">
                     <div className="flex flex-wrap gap-1.5">
                       <StatusBadge order={order} />
                       <DeadlineBadge order={order} />
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Thanh toán">
                     <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200">
                       {PAYMENT_STATUS_LABELS[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thu"}
                     </span>
                   </td>
-                  <td className="text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</td>
-                  <td className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
-                  <td>
+                  <td data-label="Hẹn/Tạo" className="text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</td>
+                  <td data-label="Tổng" className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
+                  <td data-label="">
                     <div className="action-cell">
                       <button
                         className="icon-button"

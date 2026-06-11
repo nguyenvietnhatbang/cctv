@@ -43,10 +43,10 @@ export function CustomersScreen({
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Action Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="screen-header">
         <div>
-          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Khách hàng</h2>
-          <p className="text-xs text-zinc-500 mt-1">Quản lý danh sách, liên hệ và địa điểm lắp đặt</p>
+          <h2>Khách hàng</h2>
+          <p>Quản lý danh sách, liên hệ và địa điểm lắp đặt</p>
         </div>
         <button onClick={onTriggerCreate} className="btn-primary" type="button">
           <Plus size={16} />
@@ -56,14 +56,14 @@ export function CustomersScreen({
 
       {/* Customers Table Shell with Compact Filter Header */}
       <TableShell>
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-zinc-100 bg-zinc-50/20">
+        <div className="table-toolbar">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-zinc-500">
               Tổng số: {filteredCustomers.length} khách hàng
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex items-center !w-64 shrink-0">
+          <div className="table-filter-row">
+            <div className="table-search">
               <Search size={13} className="search-field-icon" />
               <input
                 type="text"
@@ -108,7 +108,7 @@ export function CustomersScreen({
 
                 return (
                   <tr key={customer.id}>
-                    <td>
+                    <td data-label="Khách hàng">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-zinc-100 text-zinc-800 flex items-center justify-center font-bold text-xs border border-zinc-200 shrink-0">
                           {initials}
@@ -119,8 +119,8 @@ export function CustomersScreen({
                         </div>
                       </div>
                     </td>
-                    <td className="font-medium text-zinc-700">{customer.phone}</td>
-                    <td>
+                    <td data-label="Số điện thoại" className="font-medium text-zinc-700">{customer.phone}</td>
+                    <td data-label="Liên hệ">
                       <div className="grid gap-1 text-xs text-zinc-600">
                         {displayCustomerContacts(customer).slice(0, 2).map((contact) => (
                           <p key={contact.id} className="font-medium">
@@ -132,16 +132,16 @@ export function CustomersScreen({
                         ) : null}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Địa chỉ">
                       <div className="flex items-center gap-1.5 text-zinc-600 text-sm">
                         <MapPin size={13} className="text-zinc-400 shrink-0" />
                         <span className="truncate max-w-xs">{customer.address}</span>
                       </div>
                     </td>
-                    <td className="text-zinc-500 text-xs italic">
+                    <td data-label="Ghi chú" className="text-zinc-500 text-xs italic">
                       {customer.address_note ?? "Chưa có ghi chú"}
                     </td>
-                    <td>
+                    <td data-label="">
                       <div className="action-cell">
                         <button
                           className="icon-button"

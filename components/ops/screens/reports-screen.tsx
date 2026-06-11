@@ -103,31 +103,29 @@ export function ReportsScreen({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="screen-header">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-950">Báo cáo hệ thống</h2>
-          <p className="mt-1 text-sm text-zinc-500">Tổng hợp công việc, tiến độ, doanh thu, công nợ, kỹ thuật viên và vật tư.</p>
+          <h2>Báo cáo hệ thống</h2>
+          <p>Tổng hợp công việc, tiến độ, doanh thu, công nợ, kỹ thuật viên và vật tư.</p>
         </div>
       </div>
 
       <section className="panel flex flex-wrap items-center justify-between gap-4">
-        <ValidatedForm onSubmit={submit} aria-busy={submitting} className="flex flex-wrap items-center gap-3">
-          <div className="flex h-10 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2.5 text-xs text-zinc-500">
+        <ValidatedForm onSubmit={submit} aria-busy={submitting} className="table-filter-row">
+          <div className="date-range-control">
             <CalendarDays size={14} className="text-zinc-400" />
             <span className="text-[10px] font-bold uppercase text-zinc-400">Từ</span>
             <input
               name="from"
               type="date"
-              className="w-[120px] border-none bg-transparent p-0 text-xs outline-none"
               defaultValue={report?.range.from ?? monthStart}
               disabled={submitting}
             />
-            <span className="text-zinc-200">|</span>
+            <span className="date-separator text-zinc-200">|</span>
             <span className="text-[10px] font-bold uppercase text-zinc-400">Đến</span>
             <input
               name="to"
               type="date"
-              className="w-[120px] border-none bg-transparent p-0 text-xs outline-none"
               defaultValue={report?.range.to ?? today}
               disabled={submitting}
             />
@@ -198,7 +196,7 @@ export function ReportsScreen({
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-            <div className="panel">
+            <div className="panel min-w-0">
               <div className="panel-heading">
                 <div>
                   <h2 className="inline-flex items-center gap-2">
@@ -207,8 +205,8 @@ export function ReportsScreen({
                   <p className="mt-1 text-sm text-zinc-500">Công việc tạo mới và hoàn thành trong kỳ.</p>
                 </div>
               </div>
-              <div className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[320px] min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={dailyChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
@@ -222,7 +220,7 @@ export function ReportsScreen({
               </div>
             </div>
 
-            <div className="panel">
+            <div className="panel min-w-0">
               <div className="panel-heading">
                 <div>
                   <h2 className="inline-flex items-center gap-2">
@@ -231,8 +229,8 @@ export function ReportsScreen({
                   <p className="mt-1 text-sm text-zinc-500">Phân bổ theo 5 trạng thái trực quan.</p>
                 </div>
               </div>
-              <div className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-[320px] min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <PieChart>
                     <Pie
                       data={displayStatusData}
@@ -263,8 +261,8 @@ export function ReportsScreen({
                 <p className="mt-1 text-sm text-zinc-500">Đã thu và công nợ phát sinh trong kỳ.</p>
               </div>
             </div>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-[300px] min-w-0">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart data={dailyChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="date" tick={{ fontSize: 12 }} />

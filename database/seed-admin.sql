@@ -1,9 +1,9 @@
 insert into users (full_name, email, phone, password_hash, role, status)
 values (
   'Admin',
-  'admin@example.com',
+  'cctvdragon@gmail.com',
   null,
-  crypt('admin123', gen_salt('bf', 12)),
+  crypt('cctv1234', gen_salt('bf', 12)),
   'admin',
   'active'
 )

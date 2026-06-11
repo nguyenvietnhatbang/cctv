@@ -74,8 +74,8 @@ export function DispatchScreen({
       <section className="grid gap-4">
         <Toolbar title="Điều phối công việc" subtitle="Theo dõi phiếu chưa gán, phiếu đã gán và tải việc kỹ thuật viên" />
         <TableShell>
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 bg-zinc-50/20 p-4">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="table-toolbar">
+            <div className="table-filter-row">
               <button
                 className={`btn-secondary h-9 text-xs ${orderScope === "active" ? "bg-zinc-900 text-white hover:bg-zinc-800" : ""}`}
                 onClick={() => {
@@ -107,7 +107,7 @@ export function DispatchScreen({
                 Đang điều phối {assignedCount}
               </button>
             </div>
-            <div className="grid w-full gap-2 md:grid-cols-[140px_140px_minmax(180px,260px)_auto_auto]">
+            <div className="table-filter-row">
               <input
                 className="input h-9 py-1 text-xs"
                 type="date"
@@ -167,9 +167,9 @@ export function DispatchScreen({
                 Tất cả ngày
               </button>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="table-filter-row">
               <span className="text-xs font-semibold text-zinc-500">Đang hiển thị: {filteredDispatchOrders.length} phiếu</span>
-              <div className="relative flex items-center !w-72 shrink-0">
+              <div className="table-search">
                 <Search size={13} className="search-field-icon" />
                 <input
                   value={orderQuery}
@@ -202,13 +202,13 @@ export function DispatchScreen({
               <tbody>
                 {visibleDispatchOrders.map((order) => (
                   <tr key={order.id}>
-                    <td>
+                    <td data-label="Phiếu">
                       <p className="font-semibold text-zinc-900">{order.code}</p>
                       <p className="mt-1 text-xs text-zinc-500">
                         {WORK_ORDER_TYPE_LABELS[order.type]} · {order.priority === "urgent" ? "Gấp" : "Bình thường"}
                       </p>
                     </td>
-                    <td>
+                    <td data-label="Khách hàng">
                       <p className="font-semibold text-zinc-900">{order.customer_name}</p>
                       <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-zinc-500">
                         <Phone size={12} />{order.customer_phone}
@@ -217,17 +217,17 @@ export function DispatchScreen({
                         <MapPinned size={12} className="mt-0.5 shrink-0" />{order.customer_address}
                       </p>
                     </td>
-                    <td>
+                    <td data-label="Lịch hẹn">
                       <p className="inline-flex items-center gap-1.5 text-sm text-zinc-700">
                         <Clock size={13} />{dateTime(order.appointment_at ?? order.created_at)}
                       </p>
                     </td>
-                    <td>
+                    <td data-label="Kỹ thuật">
                       <p className="font-semibold text-zinc-800">{order.technician_name ?? "Chưa phân công"}</p>
                       {order.assigned_at ? <p className="mt-1 text-xs text-zinc-500">Gán lúc {dateTime(order.assigned_at)}</p> : null}
                     </td>
-                    <td><StatusBadge status={order.status} /></td>
-                    <td>
+                    <td data-label="Trạng thái"><StatusBadge status={order.status} /></td>
+                    <td data-label="">
                       <div className="action-cell">
                         <button className="icon-button" onClick={() => onView(order.id)} type="button" aria-label="Xem công việc">
                           <Eye size={16} />

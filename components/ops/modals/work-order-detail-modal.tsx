@@ -250,23 +250,23 @@ export function WorkOrderDetailModal({
               {filteredMaterials.length === 0 ? (
                 <p className="mt-3 text-sm text-zinc-500">Không có vật tư phù hợp.</p>
               ) : (
-                <div className="mt-3 overflow-x-auto">
-                  <table className="min-w-full text-sm">
+                <div className="mt-3">
+                  <table className="data-table data-table-compact">
                     <thead>
-                      <tr className="border-b border-zinc-200 text-left text-xs uppercase text-zinc-500">
-                        <th className="py-2 pr-3 font-semibold">Tên vật tư</th>
-                        <th className="px-3 py-2 text-center font-semibold">SL</th>
-                        <th className="px-3 py-2 text-right font-semibold">Đơn giá</th>
-                        <th className="py-2 pl-3 text-right font-semibold">Thành tiền</th>
+                      <tr>
+                        <th>Tên vật tư</th>
+                        <th>SL</th>
+                        <th className="text-right">Đơn giá</th>
+                        <th className="text-right">Thành tiền</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100">
+                    <tbody>
                       {visibleMaterials.map((material) => (
                         <tr key={material.id}>
-                          <td className="py-2 pr-3 font-medium text-zinc-900">{material.name}</td>
-                          <td className="px-3 py-2 text-center text-zinc-700">{material.quantity}</td>
-                          <td className="px-3 py-2 text-right text-zinc-700">{money(material.unit_price)}</td>
-                          <td className="py-2 pl-3 text-right font-bold text-zinc-900">{money(material.line_total)}</td>
+                          <td data-label="Tên vật tư" className="font-medium text-zinc-900">{material.name}</td>
+                          <td data-label="SL" className="text-zinc-700">{material.quantity}</td>
+                          <td data-label="Đơn giá" className="text-right text-zinc-700">{money(material.unit_price)}</td>
+                          <td data-label="Thành tiền" className="text-right font-bold text-zinc-900">{money(material.line_total)}</td>
                         </tr>
                       ))}
                     </tbody>

@@ -40,17 +40,17 @@ export function PaymentsScreen({
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Description */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="screen-header">
         <div>
-          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Thanh toán & Công nợ</h2>
-          <p className="text-xs text-zinc-500 mt-1">Xác nhận thanh toán, theo dõi công nợ khách hàng và doanh thu điều phối</p>
+          <h2>Thanh toán & Công nợ</h2>
+          <p>Xác nhận thanh toán, theo dõi công nợ khách hàng và doanh thu điều phối</p>
         </div>
       </div>
 
       {/* Table Shell with Tabs Header */}
       <TableShell>
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-zinc-100 bg-zinc-50/20">
-          <div className="flex items-center gap-2">
+        <div className="table-toolbar">
+          <div className="table-filter-row">
             {[
               ["awaiting", "Chờ thanh toán"],
               ["paid", "Đã thanh toán"],
@@ -70,8 +70,8 @@ export function PaymentsScreen({
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative flex items-center !w-64 shrink-0">
+          <div className="table-filter-row">
+            <div className="table-search">
               <Search size={13} className="search-field-icon" />
               <input
                 value={searchQuery}
@@ -107,19 +107,19 @@ export function PaymentsScreen({
             <tbody>
               {visiblePaymentOrders.map((order) => (
                 <tr key={order.id}>
-                  <td className="font-semibold">{order.code}</td>
-                  <td>
+                  <td data-label="Mã" className="font-semibold">{order.code}</td>
+                  <td data-label="Khách hàng">
                     <p className="font-semibold text-zinc-900 leading-tight">{order.customer_name}</p>
                     <p className="text-xs text-zinc-500 mt-1">{order.customer_phone}</p>
                   </td>
-                  <td>
+                  <td data-label="Trạng thái">
                     <div className="flex flex-wrap gap-1.5">
                       <StatusBadge order={order} />
                       <DeadlineBadge order={order} />
                     </div>
                   </td>
-                  <td className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
-                  <td>
+                  <td data-label="Tổng tiền" className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
+                  <td data-label="Thanh toán">
                     {order.payment_status === "paid" ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                         Đã thanh toán
@@ -134,7 +134,7 @@ export function PaymentsScreen({
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="">
                     <div className="action-cell">
                       <button
                         className="icon-button"

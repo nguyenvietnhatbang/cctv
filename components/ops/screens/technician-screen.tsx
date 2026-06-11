@@ -268,7 +268,7 @@ export function TechnicianScreen({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase text-zinc-500">Kỹ thuật viên</p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-zinc-950 lg:text-3xl">Việc ngoài hiện trường</h2>
+            <h2 className="mt-1 text-2xl font-extrabold tracking-normal text-zinc-950 lg:text-3xl">Việc ngoài hiện trường</h2>
             <p className="mt-1 text-sm text-zinc-500">Theo dõi đúng luồng: nhận việc, di chuyển, check-in, hoàn tất và nghiệm thu.</p>
           </div>
           <Route className="mt-1 text-zinc-400" size={24} />

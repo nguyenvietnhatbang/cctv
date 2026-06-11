@@ -34,23 +34,23 @@ export function TechniciansScreen({
     <>
       <Toolbar title="Kỹ thuật viên" subtitle="Quản lý trạng thái, khu vực và hồ sơ kỹ thuật" />
       <TableShell>
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-100 bg-zinc-50/20 p-4">
+        <div className="table-toolbar">
           <span className="text-xs font-semibold text-zinc-500">Tổng số: {filteredTechnicians.length} kỹ thuật viên</span>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="table-filter-row">
             <select
               value={statusFilter}
               onChange={(event) => {
                 setStatusFilter(event.target.value);
                 setPage(1);
               }}
-              className="input h-9 !w-40 shrink-0 bg-white py-1 text-xs"
+              className="input h-9 bg-white py-1 text-xs"
             >
               <option value="">Tất cả trạng thái</option>
               {Object.entries(TECHNICIAN_STATUS_LABELS).map(([status, label]) => (
                 <option key={status} value={status}>{label}</option>
               ))}
             </select>
-            <div className="relative flex items-center !w-64 shrink-0">
+            <div className="table-search">
               <Search size={13} className="search-field-icon" />
               <input
                 value={searchQuery}
@@ -79,12 +79,12 @@ export function TechniciansScreen({
             <tbody>
               {visibleTechnicians.map((technician) => (
                 <tr key={technician.id}>
-                  <td className="font-semibold">{technician.full_name}</td>
-                  <td>{technician.phone ?? technician.email ?? ""}</td>
-                  <td>{technician.service_area ?? ""}</td>
-                  <td>{TECHNICIAN_STATUS_LABELS[technician.status]}</td>
-                  <td>{technician.jobs_today}</td>
-                  <td>
+                  <td data-label="Kỹ thuật viên" className="font-semibold">{technician.full_name}</td>
+                  <td data-label="Liên hệ">{technician.phone ?? technician.email ?? ""}</td>
+                  <td data-label="Khu vực">{technician.service_area ?? ""}</td>
+                  <td data-label="Trạng thái">{TECHNICIAN_STATUS_LABELS[technician.status]}</td>
+                  <td data-label="Việc hôm nay">{technician.jobs_today}</td>
+                  <td data-label="">
                     <div className="action-cell">
                       <button className="icon-button" onClick={() => onEdit(technician)} type="button" aria-label="Sửa">
                         <Edit size={16} />

@@ -42,10 +42,10 @@ export function UsersScreen({
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Action Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="screen-header">
         <div>
-          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Nhân viên</h2>
-          <p className="text-xs text-zinc-500 mt-1">Quản lý tài khoản nội bộ và phân quyền hệ thống</p>
+          <h2>Nhân viên</h2>
+          <p>Quản lý tài khoản nội bộ và phân quyền hệ thống</p>
         </div>
         <button onClick={onTriggerCreate} className="btn-primary" type="button">
           <Plus size={16} />
@@ -55,15 +55,15 @@ export function UsersScreen({
 
       {/* Users Table Shell with Compact Filter Header */}
       <TableShell>
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-zinc-100 bg-zinc-50/20">
-          <div className="flex items-center gap-2">
+        <div className="table-toolbar">
+          <div className="table-filter-row">
             <select
               value={roleFilter}
               onChange={(e) => {
                 setRoleFilter(e.target.value);
                 setPage(1);
               }}
-              className="input !w-40 bg-white h-9 py-1 text-xs shrink-0"
+              className="input h-9 bg-white py-1 text-xs"
             >
               <option value="">Tất cả vai trò</option>
               {Object.entries(ROLE_LABELS).map(([role, label]) => (
@@ -73,8 +73,8 @@ export function UsersScreen({
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex items-center !w-64 shrink-0">
+          <div className="table-filter-row">
+            <div className="table-search">
               <Search size={13} className="search-field-icon" />
               <input
                 type="text"
@@ -119,7 +119,7 @@ export function UsersScreen({
 
                 return (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label="Nhân viên">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-zinc-100 text-zinc-800 flex items-center justify-center font-bold text-xs border border-zinc-200 shrink-0">
                           {initials}
@@ -130,20 +130,20 @@ export function UsersScreen({
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Liên hệ">
                       <p className="text-sm font-medium text-zinc-700">{item.phone ?? "Chưa có SĐT"}</p>
                       <p className="text-xs text-zinc-400 mt-0.5">{item.email ?? "Chưa có email"}</p>
                     </td>
-                    <td>
+                    <td data-label="Vai trò">
                       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 text-zinc-800">
                         <UserCheck size={11} />
                         {ROLE_LABELS[item.role]}
                       </span>
                     </td>
-                    <td className="text-zinc-600 text-sm">
+                    <td data-label="Khu vực" className="text-zinc-600 text-sm">
                       {item.service_area ?? (item.role === "technician" ? "Chưa phân khu" : "Không áp dụng")}
                     </td>
-                    <td>
+                    <td data-label="Trạng thái">
                       {item.status === "active" ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                           Hoạt động
@@ -154,7 +154,7 @@ export function UsersScreen({
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="">
                       <div className="action-cell">
                         <button
                           className="icon-button"

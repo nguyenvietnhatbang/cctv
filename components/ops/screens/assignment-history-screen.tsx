@@ -35,7 +35,7 @@ export function AssignmentHistoryScreen() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase text-zinc-500">Kỹ thuật viên</p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-zinc-950 lg:text-3xl">Lịch sử phân công</h2>
+            <h2 className="mt-1 text-2xl font-extrabold tracking-normal text-zinc-950 lg:text-3xl">Lịch sử phân công</h2>
             <p className="mt-1 text-sm text-zinc-500">Tra cứu các phiếu từng được giao, thời điểm phân công và trạng thái thay đổi.</p>
           </div>
           <History className="mt-1 text-zinc-400" size={24} />

@@ -55,10 +55,10 @@ export function NotificationsScreen({
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Statistics Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="screen-header">
         <div>
-          <h2 className="text-3xl font-extrabold text-zinc-900 tracking-tight">Thông báo</h2>
-          <p className="text-xs text-zinc-500 mt-1">Các cập nhật trạng thái công việc và ghi chú quan trọng từ kỹ thuật</p>
+          <h2>Thông báo</h2>
+          <p>Các cập nhật trạng thái công việc và ghi chú quan trọng từ kỹ thuật</p>
         </div>
         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
           {unreadCount} chưa đọc
@@ -67,26 +67,26 @@ export function NotificationsScreen({
 
       {/* Notifications Table Shell with Compact Filter Header */}
       <TableShell>
-        <div className="flex flex-wrap items-center justify-between gap-4 p-4 border-b border-zinc-100 bg-zinc-50/20">
+        <div className="table-toolbar">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-zinc-500">
               Tổng số: {filteredNotifications.length} thông báo
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="table-filter-row">
             <select
               value={readFilter}
               onChange={(event) => {
                 setReadFilter(event.target.value as typeof readFilter);
                 setPage(1);
               }}
-              className="input h-9 !w-36 shrink-0 bg-white py-1 text-xs"
+              className="input h-9 bg-white py-1 text-xs"
             >
               <option value="all">Tất cả</option>
               <option value="unread">Chưa đọc</option>
               <option value="read">Đã đọc</option>
             </select>
-            <div className="relative flex items-center !w-64 shrink-0">
+            <div className="table-search">
               <Search size={13} className="search-field-icon" />
               <input
                 type="text"
@@ -131,10 +131,10 @@ export function NotificationsScreen({
                     key={item.id}
                     className={isUnread ? "bg-zinc-50/50 hover:bg-zinc-50/70" : "hover:bg-zinc-50/30"}
                   >
-                    <td className="text-center">
+                    <td data-label="" className="mobile-hidden text-center">
                       <input type="checkbox" className="rounded border-zinc-300" disabled />
                     </td>
-                    <td>
+                    <td data-label="Nội dung">
                       <div className="flex items-start gap-2.5">
                         <div
                           className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${isUnread ? "bg-blue-50 text-blue-600" : "bg-zinc-100 text-zinc-400"}`}
@@ -149,7 +149,7 @@ export function NotificationsScreen({
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Công việc">
                       {item.work_order_id ? (
                         <button
                           onClick={() => onOpen(item.work_order_id!)}
@@ -163,11 +163,11 @@ export function NotificationsScreen({
                         <span className="text-xs text-zinc-400">Không có</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Thời gian">
                       <p className="text-xs font-medium text-zinc-700">{timeAgo(item.created_at)}</p>
                       <p className="text-[10px] text-zinc-400 mt-0.5">{dateTime(item.created_at)}</p>
                     </td>
-                    <td>
+                    <td data-label="Trạng thái">
                       {isUnread ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                           <Mail size={10} />
@@ -180,7 +180,7 @@ export function NotificationsScreen({
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="">
                       <div className="action-cell">
                         {item.work_order_id ? (
                           <button
