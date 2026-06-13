@@ -7,7 +7,8 @@ import { changeWorkOrderStatus, makeWorkOrderCode, requireTechnicianIdForUser } 
 export const runtime = "nodejs";
 
 const customerSelect = `
-  select c.id, c.name, c.phone, c.address, c.address_note, c.created_at,
+  select c.id, c.name, c.phone, c.address, c.address_note,
+         c.lat, c.lng, c.location_pinned_at, c.location_pinned_by, c.created_at,
          coalesce((
            select jsonb_agg(
              jsonb_build_object(
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
     const technicianId = searchParams.get("technicianId");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
+    const scope = searchParams.get("scope") ?? "open";
     const q = searchParams.get("q")?.trim();
 
     const params: unknown[] = [];
@@ -82,18 +84,29 @@ export async function GET(request: Request) {
 
     if (dateFrom) {
       params.push(dateFrom);
-      filters.push(`(wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date >= $${params.length}::date`);
+      filters.push(`(coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh')::date >= $${params.length}::date`);
     }
 
     if (dateTo) {
       params.push(dateTo);
-      filters.push(`(wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date <= $${params.length}::date`);
+      filters.push(`(coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh')::date <= $${params.length}::date`);
+    }
+
+    if (!status && !dateFrom && !dateTo) {
+      if (scope === "open") {
+        filters.push(`wo.status not in ('paid', 'cancelled')`);
+      } else if (scope === "today") {
+        filters.push(`(coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date`);
+      } else if (scope === "this_month") {
+        filters.push(`date_trunc('month', coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh') = date_trunc('month', timezone('Asia/Ho_Chi_Minh', now()))`);
+      }
     }
 
     if (q) {
       params.push(q);
       filters.push(
         `(wo.code ilike '%' || $${params.length} || '%'
+          or wo.description ilike '%' || $${params.length} || '%'
           or c.name ilike '%' || $${params.length} || '%'
           or c.phone ilike '%' || $${params.length} || '%'
           or c.address ilike '%' || $${params.length} || '%')`,
@@ -111,6 +124,7 @@ export async function GET(request: Request) {
               wo.appointment_at, woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
+              c.lat as customer_lat, c.lng as customer_lng,
               t.id as technician_id, tu.full_name as technician_name,
               coalesce(p.total_amount, 0) as total_amount, p.status as payment_status
        from work_orders wo
@@ -146,14 +160,16 @@ export async function POST(request: Request) {
 
       if (!customerId && body.customer) {
         const customerResult = await client.query(
-          `insert into customers (name, phone, address, address_note, created_by)
-           values ($1, $2, $3, $4, $5)
+          `insert into customers (name, phone, address, address_note, lat, lng, location_pinned_at, location_pinned_by, created_by)
+           values ($1, $2, $3, $4, $5, $6, case when $5 is not null and $6 is not null then now() else null end, case when $5 is not null and $6 is not null then $7 else null end, $7)
            returning id`,
           [
             body.customer.name,
             body.customer.phone,
             body.customer.address,
             body.customer.addressNote,
+            body.customer.lat ?? null,
+            body.customer.lng ?? null,
             user.id,
           ],
         );
@@ -218,6 +234,7 @@ export async function POST(request: Request) {
                 wo.appointment_at, woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
                 c.id as customer_id,
                 c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
+                c.lat as customer_lat, c.lng as customer_lng,
                 t.id as technician_id, tu.full_name as technician_name,
                 coalesce(p.total_amount, 0) as total_amount, p.status as payment_status
          from work_orders wo

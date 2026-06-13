@@ -21,6 +21,7 @@ export async function GET(_request: Request, context: Context) {
     const workOrderResult = await query(
       `select wo.*,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
+              c.lat as customer_lat, c.lng as customer_lng,
               c.address_note as customer_address_note,
               t.id as technician_id, tu.full_name as technician_name, tu.phone as technician_phone,
               p.status as payment_status, p.method as payment_method, p.labor_amount,

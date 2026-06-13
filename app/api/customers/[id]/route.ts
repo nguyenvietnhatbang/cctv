@@ -10,7 +10,8 @@ type Context = {
 };
 
 const customerSelect = `
-  select c.id, c.name, c.phone, c.address, c.address_note, c.created_at,
+  select c.id, c.name, c.phone, c.address, c.address_note,
+         c.lat, c.lng, c.location_pinned_at, c.location_pinned_by, c.created_at,
          coalesce((
            select jsonb_agg(
              jsonb_build_object(
@@ -31,20 +32,37 @@ const customerSelect = `
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    await requireUser(["admin", "dispatcher"]);
+    const user = await requireUser(["admin", "dispatcher"]);
     const { id } = await context.params;
     const body = createCustomerSchema.partial().parse(await request.json());
 
+    const hasLocationFields = body.lat !== undefined || body.lng !== undefined;
     const customer = await withTransaction(async (client) => {
       const result = await client.query(
         `update customers
          set name = coalesce($2, name),
              phone = coalesce($3, phone),
              address = coalesce($4, address),
-             address_note = coalesce($5, address_note)
+             address_note = coalesce($5, address_note),
+             lat = case when $6 then $7 else lat end,
+             lng = case when $6 then $8 else lng end,
+             location_pinned_at = case
+               when $6 and $7 is not null and $8 is not null
+                 and (lat is distinct from $7 or lng is distinct from $8)
+               then now()
+               when $6 and ($7 is null or $8 is null) then null
+               else location_pinned_at
+             end,
+             location_pinned_by = case
+               when $6 and $7 is not null and $8 is not null
+                 and (lat is distinct from $7 or lng is distinct from $8)
+               then $9
+               when $6 and ($7 is null or $8 is null) then null
+               else location_pinned_by
+             end
          where id = $1
          returning id`,
-        [id, body.name ?? null, body.phone ?? null, body.address ?? null, body.addressNote ?? null],
+        [id, body.name ?? null, body.phone ?? null, body.address ?? null, body.addressNote ?? null, hasLocationFields, body.lat ?? null, body.lng ?? null, user.id],
       );
 
       if (!result.rows[0]) return null;

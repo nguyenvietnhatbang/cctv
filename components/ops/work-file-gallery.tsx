@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Eye, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Trash2 } from "lucide-react";
 import { filePurposeLabel } from "@/lib/types";
 import { PendingButton } from "@/components/ops/ui";
 import type { WorkFile } from "@/components/ops/types";
@@ -24,9 +24,10 @@ export function WorkFileGallery({
     <div className="grid gap-3 sm:grid-cols-2">
       {files.map((file) => {
         const fileCanDelete = typeof canDelete === "function" ? canDelete(file) : canDelete;
+        const isImage = file.mime_type?.startsWith("image/") ?? false;
         return (
           <div key={file.id} className="grid gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-2 text-xs text-zinc-700">
-            {file.signed_url ? (
+            {file.signed_url && isImage ? (
               <a
                 className="block overflow-hidden rounded-md border border-zinc-200 bg-white"
                 href={file.signed_url}
@@ -41,7 +42,7 @@ export function WorkFileGallery({
               </a>
             ) : (
               <div className="flex h-36 items-center justify-center rounded-md border border-dashed border-zinc-300 bg-white text-zinc-500">
-                Không tải được ảnh
+                <FileText size={28} />
               </div>
             )}
             <div className="min-w-0">

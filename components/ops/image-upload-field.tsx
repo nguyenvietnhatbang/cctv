@@ -42,7 +42,7 @@ export function ImageUploadField({ previewLabel = "Xem trước ảnh", onChange
           const file = event.currentTarget.files?.[0] ?? null;
           setPreviewUrl((current) => {
             if (current) URL.revokeObjectURL(current);
-            return file ? URL.createObjectURL(file) : null;
+            return file?.type.startsWith("image/") ? URL.createObjectURL(file) : null;
           });
           onChange?.(event);
         }}

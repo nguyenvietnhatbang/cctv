@@ -6,7 +6,8 @@ import { createCustomerSchema } from "@/lib/validators";
 export const runtime = "nodejs";
 
 const customerSelect = `
-  select c.id, c.name, c.phone, c.address, c.address_note, c.created_at,
+  select c.id, c.name, c.phone, c.address, c.address_note,
+         c.lat, c.lng, c.location_pinned_at, c.location_pinned_by, c.created_at,
          coalesce((
            select jsonb_agg(
              jsonb_build_object(
@@ -65,10 +66,10 @@ export async function POST(request: Request) {
 
     const customer = await withTransaction(async (client) => {
       const result = await client.query(
-        `insert into customers (name, phone, address, address_note, created_by)
-         values ($1, $2, $3, $4, $5)
+        `insert into customers (name, phone, address, address_note, lat, lng, location_pinned_at, location_pinned_by, created_by)
+         values ($1, $2, $3, $4, $5, $6, case when $5 is not null and $6 is not null then now() else null end, case when $5 is not null and $6 is not null then $7 else null end, $7)
          returning id`,
-        [body.name, body.phone, body.address, body.addressNote, user.id],
+        [body.name, body.phone, body.address, body.addressNote, body.lat ?? null, body.lng ?? null, user.id],
       );
       const customerId = result.rows[0].id;
 

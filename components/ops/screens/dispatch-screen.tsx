@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Clock, Eye, MapPinned, Phone, Search, UserPlus } from "lucide-react";
 import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, type WorkOrderStatus } from "@/lib/types";
-import { dateTime, todayInVietnam } from "@/components/ops/format";
+import { dateTime, monthStartInVietnam, todayInVietnam } from "@/components/ops/format";
 import { EmptyState, StatusBadge, TablePagination, TableShell, Toolbar, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -31,8 +31,9 @@ export function DispatchScreen({
 }) {
   const [orderQuery, setOrderQuery] = useState("");
   const [orderScope, setOrderScope] = useState<"active" | "unassigned" | "assigned">("active");
-  const [dateFrom, setDateFrom] = useState(todayInVietnam);
-  const [dateTo, setDateTo] = useState(todayInVietnam);
+  const [dateScope, setDateScope] = useState<"open" | "this_month" | "today" | "all">("open");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [orderPage, setOrderPage] = useState(1);
   const [technicianQuery, setTechnicianQuery] = useState("");
@@ -49,7 +50,16 @@ export function DispatchScreen({
   const filteredDispatchOrders = scopedOrders.filter((order) => {
     const q = orderQuery.trim().toLowerCase();
     const orderDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(order.appointment_at ?? order.created_at));
-    const matchesDate = (!dateFrom || orderDate >= dateFrom) && (!dateTo || orderDate <= dateTo);
+    const hasCustomDate = Boolean(dateFrom || dateTo);
+    const today = todayInVietnam();
+    const monthStart = monthStartInVietnam();
+    const matchesDate = hasCustomDate
+      ? (!dateFrom || orderDate >= dateFrom) && (!dateTo || orderDate <= dateTo)
+      : dateScope === "today"
+        ? orderDate === today
+        : dateScope === "this_month"
+          ? orderDate >= monthStart && orderDate <= today
+          : true;
     const matchesCustomer = !customerId || order.customer_id === customerId;
     const matchesSearch = !q || [order.code, order.customer_name, order.customer_phone, order.customer_address, order.description, order.technician_name ?? ""]
       .some((value) => value.toLowerCase().includes(q));
@@ -108,6 +118,41 @@ export function DispatchScreen({
               </button>
             </div>
             <div className="table-filter-row">
+              {[
+                ["open", "Đang mở"],
+                ["this_month", "Tháng này"],
+                ["today", "Hôm nay"],
+                ["all", "Tất cả"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  className={`tab-button h-8 px-3 text-xs ${dateScope === value && !dateFrom && !dateTo ? "tab-button-active" : ""}`}
+                  onClick={() => {
+                    setDateScope(value as typeof dateScope);
+                    setDateFrom("");
+                    setDateTo("");
+                    setOrderPage(1);
+                  }}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+              <select
+                className="input h-9 py-1 text-xs"
+                value={customerId}
+                onChange={(event) => {
+                  setCustomerId(event.target.value);
+                  setOrderPage(1);
+                }}
+              >
+                <option value="">Tất cả khách hàng</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>{customer.name} · {customer.phone}</option>
+                ))}
+              </select>
+            </div>
+            <div className="table-filter-row">
               <input
                 className="input h-9 py-1 text-xs"
                 type="date"
@@ -128,43 +173,18 @@ export function DispatchScreen({
                 }}
                 aria-label="Đến ngày điều phối"
               />
-              <select
-                className="input h-9 py-1 text-xs"
-                value={customerId}
-                onChange={(event) => {
-                  setCustomerId(event.target.value);
-                  setOrderPage(1);
-                }}
-              >
-                <option value="">Tất cả khách hàng</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>{customer.name} · {customer.phone}</option>
-                ))}
-              </select>
               <button
                 className="btn-secondary h-9 text-xs"
                 onClick={() => {
-                  const today = todayInVietnam();
-                  setDateFrom(today);
-                  setDateTo(today);
+                  setDateFrom("");
+                  setDateTo("");
                   setCustomerId("");
                   setOrderQuery("");
                   setOrderPage(1);
                 }}
                 type="button"
               >
-                Hôm nay
-              </button>
-              <button
-                className="btn-secondary h-9 text-xs"
-                onClick={() => {
-                  setDateFrom("");
-                  setDateTo("");
-                  setOrderPage(1);
-                }}
-                type="button"
-              >
-                Tất cả ngày
+                Xóa lọc phụ
               </button>
             </div>
             <div className="table-filter-row">
@@ -210,6 +230,7 @@ export function DispatchScreen({
                     </td>
                     <td data-label="Khách hàng">
                       <p className="font-semibold text-zinc-900">{order.customer_name}</p>
+                      <p className="mt-1 line-clamp-2 max-w-[320px] text-xs font-medium text-zinc-700">{order.description}</p>
                       <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-zinc-500">
                         <Phone size={12} />{order.customer_phone}
                       </p>

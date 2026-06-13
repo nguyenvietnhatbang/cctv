@@ -75,6 +75,17 @@ export function WorkOrderCreateModal({
             </select>
           </div>
           <textarea name="description" className="input min-h-24" placeholder="Mô tả sự cố/yêu cầu" required />
+          <div className="grid gap-1">
+            <label className="text-xs font-bold uppercase text-zinc-500" htmlFor="requestDocuments">Tài liệu đính kèm</label>
+            <input
+              id="requestDocuments"
+              name="requestDocuments"
+              type="file"
+              multiple
+              className="input"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+            />
+          </div>
           <input name="internalNote" className="input" placeholder="Ghi chú nội bộ" />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>

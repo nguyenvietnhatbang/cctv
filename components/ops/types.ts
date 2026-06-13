@@ -30,6 +30,8 @@ export type WorkOrderListItem = {
   customer_name: string;
   customer_phone: string;
   customer_address: string;
+  customer_lat: string | null;
+  customer_lng: string | null;
   technician_id: string | null;
   technician_name: string | null;
   total_amount: string;
@@ -42,6 +44,10 @@ export type Customer = {
   phone: string;
   address: string;
   address_note: string | null;
+  lat: string | null;
+  lng: string | null;
+  location_pinned_at: string | null;
+  location_pinned_by: string | null;
   created_at: string;
   contacts: CustomerContact[];
 };
@@ -90,6 +96,7 @@ export type WorkFile = {
   id: string;
   original_name: string;
   purpose: string;
+  mime_type?: string;
   signed_url: string | null;
 };
 
@@ -175,6 +182,7 @@ export type ReportData = {
 
 export type Filters = {
   q: string;
+  scope: "open" | "this_month" | "today" | "all";
   status: string;
   type: string;
   technicianId: string;

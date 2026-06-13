@@ -25,6 +25,13 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   debt: "Công nợ",
 };
 
+const SCOPE_FILTERS: Array<{ value: Filters["scope"]; label: string }> = [
+  { value: "open", label: "Đang mở" },
+  { value: "this_month", label: "Tháng này" },
+  { value: "today", label: "Hôm nay" },
+  { value: "all", label: "Tất cả" },
+];
+
 type WorkOrderCreateModalProps = {
   customers: Customer[];
   technicians: Technician[];
@@ -164,6 +171,16 @@ export function OrdersScreen({
       <TableShell>
         <div className="table-toolbar">
           <div className="table-filter-row">
+            {SCOPE_FILTERS.map((item) => (
+              <button
+                key={item.value}
+                className={`tab-button h-8 px-3 text-xs ${filters.scope === item.value && !filters.dateFrom && !filters.dateTo ? "tab-button-active" : ""}`}
+                onClick={() => applyFilter({ ...filters, scope: item.value, dateFrom: "", dateTo: "" })}
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
             <select
               value={filters.status}
               onChange={(event) => applyFilter({ ...filters, status: event.target.value })}
@@ -230,6 +247,15 @@ export function OrdersScreen({
                 aria-label="Đến ngày"
               />
             </div>
+            {(filters.dateFrom || filters.dateTo) ? (
+              <button
+                className="btn-secondary h-9 text-xs"
+                onClick={() => applyFilter({ ...filters, dateFrom: "", dateTo: "" })}
+                type="button"
+              >
+                Bỏ ngày
+              </button>
+            ) : null}
           </div>
 
           <div className="table-search">
@@ -266,6 +292,7 @@ export function OrdersScreen({
                   <td data-label="Mã" className="font-semibold">{order.code}</td>
                   <td data-label="Khách hàng">
                     <p className="font-semibold text-zinc-900 leading-tight">{order.customer_name}</p>
+                    <p className="mt-1 line-clamp-2 max-w-xs text-xs font-medium text-zinc-700">{order.description}</p>
                     <p className="text-xs text-zinc-500 mt-1 truncate max-w-xs">
                       {order.customer_phone} · {order.customer_address}
                     </p>

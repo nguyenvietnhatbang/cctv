@@ -20,6 +20,7 @@ import {
   type WorkOrderStatus,
 } from "@/lib/types";
 import { dateTime } from "@/components/ops/format";
+import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { Material, WorkFile, WorkOrderDetail } from "@/components/ops/types";
 import { FileUploadForm } from "@/components/ops/modals/file-upload-form";
@@ -138,7 +139,7 @@ export function TechnicianJobModal({
               </a>
               <a
                 className="btn-secondary h-11"
-                href={`https://maps.google.com/?q=${encodeURIComponent(detail.workOrder.customer_address)}`}
+                href={mapSearchUrl({ address: detail.workOrder.customer_address, lat: detail.workOrder.customer_lat, lng: detail.workOrder.customer_lng })}
                 target="_blank"
                 rel="noreferrer"
               >

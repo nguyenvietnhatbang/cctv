@@ -17,6 +17,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { dateTime } from "@/components/ops/format";
+import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, PendingButton, StageBadge, StatusBadge } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
 import {
@@ -188,7 +189,7 @@ function TechnicianWorkCard({
         <a className="btn-primary h-12" href={`tel:${order.customer_phone}`}><Phone size={15} />Gọi</a>
         <a
           className="btn-secondary h-12"
-          href={`https://maps.google.com/?q=${encodeURIComponent(order.customer_address)}`}
+          href={mapSearchUrl({ address: order.customer_address, lat: order.customer_lat, lng: order.customer_lng })}
           target="_blank"
           rel="noreferrer"
         >

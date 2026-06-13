@@ -2,19 +2,21 @@ import type { CustomerContact, Filters, SessionUser, WorkOrderListItem } from "@
 import { todayInVietnam } from "@/components/ops/format";
 
 export function filtersFromSearchParams(searchParams: { get: (key: string) => string | null }): Filters {
-  const today = todayInVietnam();
+  const scopeParam = searchParams.get("scope");
   return {
     q: searchParams.get("q") ?? "",
+    scope: scopeParam === "this_month" || scopeParam === "today" || scopeParam === "all" ? scopeParam : "open",
     status: searchParams.get("status") ?? "",
     type: searchParams.get("type") ?? "",
     technicianId: searchParams.get("technicianId") ?? "",
-    dateFrom: searchParams.get("dateFrom") ?? today,
-    dateTo: searchParams.get("dateTo") ?? today,
+    dateFrom: searchParams.get("dateFrom") ?? "",
+    dateTo: searchParams.get("dateTo") ?? "",
   };
 }
 
 export function sameFilters(left: Filters, right: Filters) {
   return left.q === right.q
+    && left.scope === right.scope
     && left.status === right.status
     && left.type === right.type
     && left.technicianId === right.technicianId
@@ -63,17 +65,42 @@ function dateInVietnam(value: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 }
 
+function orderScopeDate(order: WorkOrderListItem) {
+  return dateInVietnam(order.appointment_at ?? order.created_at);
+}
+
 export function orderMatchesFilters(order: WorkOrderListItem, filters: Filters) {
   const q = filters.q.trim().toLowerCase();
   if (filters.status && order.status !== filters.status) return false;
   if (filters.type && order.type !== filters.type) return false;
   if (filters.technicianId && order.technician_id !== filters.technicianId) return false;
-  if (filters.dateFrom && dateInVietnam(order.created_at) < filters.dateFrom) return false;
-  if (filters.dateTo && dateInVietnam(order.created_at) > filters.dateTo) return false;
+  if (filters.dateFrom && orderScopeDate(order) < filters.dateFrom) return false;
+  if (filters.dateTo && orderScopeDate(order) > filters.dateTo) return false;
+  if (!filters.status && !filters.dateFrom && !filters.dateTo) {
+    if (filters.scope === "open" && ["paid", "cancelled"].includes(order.status)) return false;
+    if (filters.scope === "today" && orderScopeDate(order) !== todayInVietnam()) return false;
+    if (filters.scope === "this_month" && !orderScopeDate(order).startsWith(todayInVietnam().slice(0, 8))) return false;
+  }
   if (!q) return true;
 
-  return [order.code, order.customer_name, order.customer_phone, order.customer_address]
+  return [order.code, order.customer_name, order.customer_phone, order.customer_address, order.description]
     .some((value) => value.toLowerCase().includes(q));
+}
+
+export function mapSearchUrl({
+  address,
+  lat,
+  lng,
+}: {
+  address: string;
+  lat?: string | number | null;
+  lng?: string | number | null;
+}) {
+  if (lat !== null && lat !== undefined && lng !== null && lng !== undefined) {
+    return `https://maps.google.com/?q=${encodeURIComponent(`${lat},${lng}`)}`;
+  }
+
+  return `https://maps.google.com/?q=${encodeURIComponent(address)}`;
 }
 
 export function sameSessionUser(left: SessionUser | null, right: SessionUser | null) {

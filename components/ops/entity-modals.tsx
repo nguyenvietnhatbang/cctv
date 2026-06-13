@@ -6,7 +6,7 @@ import { ROLE_LABELS, TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@
 import { dateTime, money } from "@/components/ops/format";
 import { DeadlineBadge, Modal, PendingButton, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { AppUser, Customer, CustomerContact, Technician, WorkOrderListItem } from "@/components/ops/types";
-import { displayCustomerContacts } from "@/components/ops/app-utils";
+import { displayCustomerContacts, mapSearchUrl } from "@/components/ops/app-utils";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
 
@@ -125,7 +125,7 @@ export function CustomerDetailModal({
             <a className="inline-flex items-center gap-2 text-teal-700" href={`tel:${item.phone}`}><Phone size={15} />{item.phone}</a>
             <a
               className="inline-flex items-center gap-2 text-teal-700"
-              href={`https://maps.google.com/?q=${encodeURIComponent(item.address)}`}
+              href={mapSearchUrl({ address: item.address, lat: item.lat, lng: item.lng })}
               target="_blank"
               rel="noreferrer"
             >
@@ -184,6 +184,12 @@ export function CustomerDetailModal({
             <div className="rounded-md border border-zinc-200 p-3 md:col-span-2 xl:col-span-4">
               <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Ghi chú địa chỉ</p>
               <p className="mt-1 text-sm leading-6 text-zinc-700">{item.address_note ?? "Chưa có ghi chú"}</p>
+            </div>
+            <div className="rounded-md border border-zinc-200 p-3 md:col-span-2 xl:col-span-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-zinc-500">Tọa độ chuẩn</p>
+              <p className="mt-1 text-sm leading-6 text-zinc-700">
+                {item.lat && item.lng ? `${item.lat}, ${item.lng}` : "Chưa ghim tọa độ"}
+              </p>
             </div>
           </section>
         ) : null}
@@ -310,6 +316,10 @@ export function CustomerEditModal({
               <input name="phone" className="input" defaultValue={item.phone} placeholder="Số điện thoại" required />
               <input name="address" className="input" defaultValue={item.address} placeholder="Địa chỉ" required />
               <input name="addressNote" className="input" defaultValue={item.address_note ?? ""} placeholder="Ghi chú địa chỉ" />
+              <div className="grid gap-2 md:grid-cols-2">
+                <input name="lat" className="input" defaultValue={item.lat ?? ""} placeholder="Vĩ độ đã ghim" />
+                <input name="lng" className="input" defaultValue={item.lng ?? ""} placeholder="Kinh độ đã ghim" />
+              </div>
               <div className="flex justify-end gap-2">
                 <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
                 <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang lưu...">Lưu</PendingButton>

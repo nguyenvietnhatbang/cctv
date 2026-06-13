@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { CalendarClock, CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, Phone, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
 import { getAllowedWorkOrderTransitions, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
+import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { Material, Role, Technician, WorkFile, WorkOrderDetail, WorkOrderStatus } from "@/components/ops/types";
 import { AssignmentForm } from "@/components/ops/modals/assignment-form";
@@ -251,7 +252,7 @@ export function WorkOrderEditModal({
                 <a className="btn-primary h-11" href={`tel:${detail.workOrder.customer_phone}`}><Phone size={15} />Gọi khách</a>
                 <a
                   className="btn-secondary h-11"
-                  href={`https://maps.google.com/?q=${encodeURIComponent(detail.workOrder.customer_address)}`}
+                  href={mapSearchUrl({ address: detail.workOrder.customer_address, lat: detail.workOrder.customer_lat, lng: detail.workOrder.customer_lng })}
                   target="_blank"
                   rel="noreferrer"
                 >

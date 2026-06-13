@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { CreditCard, FileText, History, MapPinned, Package, Phone, ReceiptText, UserRound, Wrench, type LucideIcon } from "lucide-react";
 import { filePurposeLabel, TECHNICIAN_STATUS_LABELS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
+import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, StageBadge, StatusBadge } from "@/components/ops/ui";
 import type { Technician, WorkOrderDetail } from "@/components/ops/types";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
@@ -148,7 +149,7 @@ export function WorkOrderDetailModal({
               <p className="detail-label">Địa chỉ</p>
               <a
                 className="detail-value inline-flex items-start gap-2 text-teal-700"
-                href={`https://maps.google.com/?q=${encodeURIComponent(detail.workOrder.customer_address)}`}
+                href={mapSearchUrl({ address: detail.workOrder.customer_address, lat: detail.workOrder.customer_lat, lng: detail.workOrder.customer_lng })}
                 target="_blank"
                 rel="noreferrer"
               >

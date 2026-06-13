@@ -18,7 +18,7 @@ export const WORK_ORDER_STATUSES = [
 ] as const;
 export const PAYMENT_STATUSES = ["unpaid", "paid", "debt"] as const;
 export const PAYMENT_METHODS = ["cash", "bank_transfer", "debt"] as const;
-export const FILE_PURPOSES = ["initial", "before", "after", "signature", "bill"] as const;
+export const FILE_PURPOSES = ["initial", "before", "after", "signature", "bill", "request_document", "handover_document"] as const;
 
 export type Role = (typeof ROLES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
@@ -36,6 +36,8 @@ export const FILE_PURPOSE_LABELS: Record<FilePurpose, string> = {
   after: "Ảnh sau xử lý",
   signature: "Chữ ký nghiệm thu",
   bill: "Ảnh bill",
+  request_document: "Tài liệu tạo phiếu",
+  handover_document: "Tài liệu bàn giao",
 };
 
 export function filePurposeLabel(value: string) {

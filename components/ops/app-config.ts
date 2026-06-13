@@ -66,6 +66,7 @@ export const emptyData: AppData = {
 
 export const defaultFilters: Filters = {
   q: "",
+  scope: "open",
   status: "",
   type: "",
   technicianId: "",

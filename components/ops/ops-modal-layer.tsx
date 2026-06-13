@@ -411,6 +411,8 @@ export function OpsModalLayer({
             if (formData.has("phone")) body.phone = formData.get("phone");
             if (formData.has("address")) body.address = formData.get("address");
             if (formData.has("addressNote")) body.addressNote = formData.get("addressNote") || null;
+            if (formData.has("lat")) body.lat = formData.get("lat") || null;
+            if (formData.has("lng")) body.lng = formData.get("lng") || null;
             if (contacts.length) body.contacts = contacts;
             const payload = await apiFetch<{ customer: Customer }>(`/api/customers/${modal.item.id}`, {
               method: "PATCH",
@@ -425,6 +427,8 @@ export function OpsModalLayer({
                     customer_name: payload.customer.name,
                     customer_phone: payload.customer.phone,
                     customer_address: payload.customer.address,
+                    customer_lat: payload.customer.lat,
+                    customer_lng: payload.customer.lng,
                   }
                 : order),
             }));

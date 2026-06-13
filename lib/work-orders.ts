@@ -131,8 +131,8 @@ export async function changeWorkOrderStatus(
   note: string | null,
   checkIn?: { lat?: number; lng?: number },
 ) {
-  const currentResult = await client.query<{ status: WorkOrderStatus }>(
-    "select status from work_orders where id = $1 for update",
+  const currentResult = await client.query<{ status: WorkOrderStatus; customer_id: string }>(
+    "select status, customer_id from work_orders where id = $1 for update",
     [workOrderId],
   );
 
@@ -157,6 +157,20 @@ export async function changeWorkOrderStatus(
      where id = $1`,
     [workOrderId, nextStatus, user.id, setCheckIn, checkIn?.lat ?? null, checkIn?.lng ?? null],
   );
+
+  if (setCheckIn && checkIn?.lat !== undefined && checkIn.lng !== undefined) {
+    await client.query(
+      `update customers
+       set lat = $2,
+           lng = $3,
+           location_pinned_at = now(),
+           location_pinned_by = $4
+       where id = $1
+         and lat is null
+         and lng is null`,
+      [current.customer_id, checkIn.lat, checkIn.lng, user.id],
+    );
+  }
 
   await client.query(
     `insert into work_order_status_history

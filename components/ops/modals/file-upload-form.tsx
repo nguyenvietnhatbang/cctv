@@ -24,7 +24,7 @@ export function FileUploadForm({
 }) {
   return (
     <div className="modal-section">
-      <h3 className="section-title">Ảnh / chữ ký</h3>
+      <h3 className="section-title">Ảnh / tài liệu</h3>
       {locked ? (
         <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Tệp hiện trường đã khóa sau nghiệm thu/thanh toán.</p>
       ) : null}
@@ -37,6 +37,22 @@ export function FileUploadForm({
         </select>
         <ImageUploadField name="file" capture="environment" required disabled={locked || isUploading} aria-label="tệp ảnh" previewLabel="Xem trước ảnh phiếu" />
         <PendingButton className="btn-secondary h-10" type="submit" disabled={locked} pending={isUploading} pendingLabel="Đang tải lên..."><Upload size={15} />Tải ảnh lên</PendingButton>
+      </ValidatedForm>
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isUploading} className="mt-3 grid gap-2">
+        <select name="purpose" className="input" defaultValue="handover_document" disabled={locked || isUploading}>
+          <option value="request_document">Tài liệu tạo phiếu</option>
+          <option value="handover_document">Biên bản/tài liệu bàn giao</option>
+        </select>
+        <input
+          name="file"
+          type="file"
+          className="input"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+          required
+          disabled={locked || isUploading}
+          aria-label="tệp tài liệu"
+        />
+        <PendingButton className="btn-secondary h-10" type="submit" disabled={locked} pending={isUploading} pendingLabel="Đang tải lên..."><Upload size={15} />Tải tài liệu lên</PendingButton>
       </ValidatedForm>
       <div className="mt-3">
         <WorkFileGallery

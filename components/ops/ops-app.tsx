@@ -93,6 +93,7 @@ export function OpsApp() {
   const workOrderQueryString = useCallback(() => {
     const params = new URLSearchParams();
     if (filters.q) params.set("q", filters.q);
+    if (filters.scope !== "open") params.set("scope", filters.scope);
     if (filters.status) params.set("status", filters.status);
     if (filters.type) params.set("type", filters.type);
     if (filters.technicianId) params.set("technicianId", filters.technicianId);
@@ -100,7 +101,7 @@ export function OpsApp() {
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
 
     return params.toString();
-  }, [filters.dateFrom, filters.dateTo, filters.q, filters.status, filters.technicianId, filters.type]);
+  }, [filters.dateFrom, filters.dateTo, filters.q, filters.scope, filters.status, filters.technicianId, filters.type]);
 
   const workOrderListRequest = useCallback(() => {
     const params = section === "dispatch" ? "" : workOrderQueryString();
@@ -339,6 +340,8 @@ export function OpsApp() {
             vat_amount: "0",
             transaction_ref: null,
             debt_due_date: null,
+            customer_lat: item.customer_lat,
+            customer_lng: item.customer_lng,
           },
           history: [],
           materials: [],
@@ -378,6 +381,8 @@ export function OpsApp() {
         vat_amount: "0",
         transaction_ref: null,
         debt_due_date: null,
+        customer_lat: item.customer_lat,
+        customer_lng: item.customer_lng,
       },
       history: [],
       materials: [],
@@ -493,6 +498,9 @@ export function OpsApp() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const customerId = String(formData.get("customerId") || "");
+    const requestDocuments = formData
+      .getAll("requestDocuments")
+      .filter((file): file is File => file instanceof File && file.size > 0);
     try {
       const payload = await apiFetch<{ workOrder: WorkOrderListItem; customer?: Customer | null }>("/api/work-orders", {
         method: "POST",
@@ -514,6 +522,16 @@ export function OpsApp() {
           technicianId: formData.get("technicianId") || null,
         }),
       });
+
+      for (const file of requestDocuments) {
+        const uploadData = new FormData();
+        uploadData.set("purpose", "request_document");
+        uploadData.set("file", file);
+        await apiFetch(`/api/work-orders/${payload.workOrder.id}/files`, {
+          method: "POST",
+          body: uploadData,
+        });
+      }
 
       setData((current) => ({
         ...current,
@@ -612,6 +630,7 @@ export function OpsApp() {
   function updateOrderFilters(nextFilters: Filters) {
     const params = new URLSearchParams();
     if (nextFilters.q) params.set("q", nextFilters.q);
+    if (nextFilters.scope !== "open") params.set("scope", nextFilters.scope);
     if (nextFilters.status) params.set("status", nextFilters.status);
     if (nextFilters.type) params.set("type", nextFilters.type);
     if (nextFilters.technicianId) params.set("technicianId", nextFilters.technicianId);

@@ -39,6 +39,8 @@ export const createCustomerSchema = z.object({
   phone: requiredText,
   address: requiredText,
   addressNote: optionalText,
+  lat: z.coerce.number().min(-90).max(90).optional().nullable(),
+  lng: z.coerce.number().min(-180).max(180).optional().nullable(),
   contacts: z.array(z.object({
     name: requiredText,
     phone: requiredText,

@@ -20,7 +20,7 @@ create type work_order_status as enum (
 );
 create type payment_status as enum ('unpaid', 'paid', 'debt');
 create type payment_method as enum ('cash', 'bank_transfer', 'debt');
-create type work_order_file_purpose as enum ('initial', 'before', 'after', 'signature', 'bill');
+create type work_order_file_purpose as enum ('initial', 'before', 'after', 'signature', 'bill', 'request_document', 'handover_document');
 
 create table users (
   id uuid primary key default gen_random_uuid(),
@@ -41,6 +41,10 @@ create table customers (
   phone text not null,
   address text not null,
   address_note text,
+  lat numeric(10, 7),
+  lng numeric(10, 7),
+  location_pinned_at timestamptz,
+  location_pinned_by uuid references users(id) on delete set null,
   created_by uuid references users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
