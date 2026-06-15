@@ -1,5 +1,11 @@
 import { ZodError } from "zod";
 
+type PgError = {
+  code?: string;
+  constraint?: string;
+  detail?: string;
+};
+
 export class HttpError extends Error {
   status: number;
 
@@ -29,6 +35,28 @@ export function handleRouteError(error: unknown) {
   if (error instanceof ZodError) {
     return Response.json(
       { error: "Dữ liệu không hợp lệ", details: error.flatten() },
+      { status: 422 },
+    );
+  }
+
+  const pgError = error as PgError;
+  if (pgError?.code === "23503") {
+    return Response.json(
+      { error: "Không thể xóa hoặc cập nhật vì dữ liệu đang được liên kết." },
+      { status: 409 },
+    );
+  }
+
+  if (pgError?.code === "23505") {
+    return Response.json(
+      { error: "Dữ liệu đã tồn tại, vui lòng kiểm tra lại." },
+      { status: 409 },
+    );
+  }
+
+  if (pgError?.code === "23514") {
+    return Response.json(
+      { error: "Dữ liệu không hợp lệ theo ràng buộc hệ thống." },
       { status: 422 },
     );
   }

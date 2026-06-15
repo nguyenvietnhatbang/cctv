@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
-import { createSignedFileUrl } from "@/lib/storage";
+import { createSignedFileUrl, deleteWorkOrderFile } from "@/lib/storage";
 import { updateWorkOrderSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanReadWorkOrder } from "@/lib/work-orders";
 
@@ -170,10 +170,34 @@ export async function DELETE(_request: Request, context: Context) {
     await requireUser(["admin", "dispatcher"]);
     const { id } = await context.params;
 
-    const result = await query("delete from work_orders where id = $1 returning id", [id]);
+    const filePaths = await withTransaction(async (client) => {
+      const filesResult = await client.query<{ path: string }>(
+        "select path from work_order_files where work_order_id = $1",
+        [id],
+      );
 
-    if (!result.rows[0]) {
-      throw new HttpError(404, "Không tìm thấy phiếu");
+      await client.query("delete from notifications where work_order_id = $1", [id]);
+      await client.query("delete from work_order_files where work_order_id = $1", [id]);
+      await client.query("delete from work_order_materials where work_order_id = $1", [id]);
+      await client.query("delete from work_order_status_history where work_order_id = $1", [id]);
+      await client.query("delete from work_order_assignments where work_order_id = $1", [id]);
+      await client.query("delete from payments where work_order_id = $1", [id]);
+
+      const result = await client.query("delete from work_orders where id = $1 returning id", [id]);
+
+      if (!result.rows[0]) {
+        throw new HttpError(404, "Không tìm thấy phiếu");
+      }
+
+      return filesResult.rows.map((file) => file.path);
+    });
+
+    for (const path of filePaths) {
+      try {
+        await deleteWorkOrderFile(path);
+      } catch (error) {
+        console.error("Không xóa được file trong storage", { path, error });
+      }
     }
 
     return jsonNoContent();
