@@ -161,7 +161,7 @@ export async function POST(request: Request) {
       if (!customerId && body.customer) {
         const customerResult = await client.query(
           `insert into customers (name, phone, address, address_note, lat, lng, location_pinned_at, location_pinned_by, created_by)
-           values ($1, $2, $3, $4, $5, $6, case when $5 is not null and $6 is not null then now() else null end, case when $5 is not null and $6 is not null then $7 else null end, $7)
+           values ($1, $2, $3, $4, $5::numeric, $6::numeric, case when $5::numeric is not null and $6::numeric is not null then now() else null end, case when $5::numeric is not null and $6::numeric is not null then $7::uuid else null end, $7::uuid)
            returning id`,
           [
             body.customer.name,

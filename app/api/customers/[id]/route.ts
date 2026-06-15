@@ -44,20 +44,20 @@ export async function PATCH(request: Request, context: Context) {
              phone = coalesce($3, phone),
              address = coalesce($4, address),
              address_note = coalesce($5, address_note),
-             lat = case when $6 then $7 else lat end,
-             lng = case when $6 then $8 else lng end,
+             lat = case when $6 then $7::numeric else lat end,
+             lng = case when $6 then $8::numeric else lng end,
              location_pinned_at = case
-               when $6 and $7 is not null and $8 is not null
-                 and (lat is distinct from $7 or lng is distinct from $8)
+               when $6 and $7::numeric is not null and $8::numeric is not null
+                 and (lat is distinct from $7::numeric or lng is distinct from $8::numeric)
                then now()
-               when $6 and ($7 is null or $8 is null) then null
+               when $6 and ($7::numeric is null or $8::numeric is null) then null
                else location_pinned_at
              end,
              location_pinned_by = case
-               when $6 and $7 is not null and $8 is not null
-                 and (lat is distinct from $7 or lng is distinct from $8)
-               then $9
-               when $6 and ($7 is null or $8 is null) then null
+               when $6 and $7::numeric is not null and $8::numeric is not null
+                 and (lat is distinct from $7::numeric or lng is distinct from $8::numeric)
+               then $9::uuid
+               when $6 and ($7::numeric is null or $8::numeric is null) then null
                else location_pinned_by
              end
          where id = $1
