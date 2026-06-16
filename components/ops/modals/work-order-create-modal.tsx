@@ -61,7 +61,7 @@ export function WorkOrderCreateModal({
             )}
           </div>
           <div className="grid gap-3 md:grid-cols-4">
-            <select name="type" className="input" defaultValue="maintenance">
+            <select name="type" className="input" defaultValue="installation">
               {WORK_ORDER_TYPES.map((type) => <option key={type} value={type}>{WORK_ORDER_TYPE_LABELS[type]}</option>)}
             </select>
             <select name="priority" className="input" defaultValue="normal">

@@ -41,6 +41,7 @@ const TECHNICIAN_WORK_STAGES: ReadonlyArray<{
   { id: "accepted", title: "Chuẩn bị di chuyển", description: "Đã nhận việc, chuẩn bị tới địa điểm khách.", statuses: ["accepted"] },
   { id: "traveling", title: "Đang di chuyển", description: "Đang tới địa điểm khách hàng.", statuses: ["traveling"] },
   { id: "working", title: "Đang thi công", description: "Đã check-in và đang xử lý tại hiện trường.", statuses: ["working"] },
+  { id: "paused", title: "Tạm dừng", description: "Đã check-out, chờ tiếp tục xử lý.", statuses: ["paused"] },
   { id: "awaiting_acceptance", title: "Chờ nghiệm thu", description: "Đã xử lý xong, cần khách ký nghiệm thu.", statuses: ["awaiting_acceptance"] },
 ];
 
@@ -224,7 +225,7 @@ export function TechnicianScreen({
   orders: WorkOrderListItem[];
   onView: (id: string) => void;
   onEdit: (id: string) => void;
-  onStatus: (id: string, status: WorkOrderStatus, checkIn?: { checkInLat?: number; checkInLng?: number }) => Promise<void>;
+  onStatus: (id: string, status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => Promise<void>;
 }) {
   const [pendingStatusOrderId, setPendingStatusOrderId] = useState<string | null>(null);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
@@ -240,6 +241,7 @@ export function TechnicianScreen({
   const waitingSignatureOrders = orders.filter((order) => order.status === "awaiting_acceptance");
   const movingOrders = orders.filter((order) => ["accepted", "traveling"].includes(order.status));
   const workingOrders = orders.filter((order) => order.status === "working");
+  const pausedOrders = orders.filter((order) => order.status === "paused");
   const assignedOrders = orders.filter((order) => order.status === "assigned");
   const nextOrder = activeOrders[0] ?? null;
 
@@ -274,7 +276,7 @@ export function TechnicianScreen({
           </div>
           <Route className="mt-1 text-zinc-400" size={24} />
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:gap-3">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:gap-3">
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <p className="text-[11px] font-bold uppercase text-zinc-500">Cần nhận</p>
             <p className="mt-1 text-2xl font-black text-zinc-950">{assignedOrders.length}</p>
@@ -290,6 +292,10 @@ export function TechnicianScreen({
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <p className="text-[11px] font-bold uppercase text-zinc-500">Chờ ký</p>
             <p className="mt-1 text-2xl font-black text-zinc-950">{waitingSignatureOrders.length}</p>
+          </div>
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+            <p className="text-[11px] font-bold uppercase text-zinc-500">Tạm dừng</p>
+            <p className="mt-1 text-2xl font-black text-zinc-950">{pausedOrders.length}</p>
           </div>
         </div>
       </div>
@@ -366,6 +372,10 @@ export function TechnicianScreen({
               <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
                 <span className="text-zinc-600">Chờ nghiệm thu</span>
                 <strong className="text-zinc-950">{waitingSignatureOrders.length}</strong>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
+                <span className="text-zinc-600">Tạm dừng</span>
+                <strong className="text-zinc-950">{pausedOrders.length}</strong>
               </div>
             </div>
           </section>

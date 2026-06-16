@@ -1,7 +1,8 @@
 export const ROLES = ["admin", "dispatcher", "team_lead", "technician", "accountant"] as const;
 export const USER_STATUSES = ["active", "inactive"] as const;
 export const TECHNICIAN_STATUSES = ["available", "traveling", "working", "off"] as const;
-export const WORK_ORDER_TYPES = ["warranty", "maintenance", "installation", "other"] as const;
+export const WORK_ORDER_TYPES = ["installation", "add_on", "maintenance_repair", "relocation", "other"] as const;
+export const LEGACY_WORK_ORDER_TYPES = ["warranty", "maintenance"] as const;
 export const WORK_ORDER_PRIORITIES = ["normal", "urgent"] as const;
 export const WORK_ORDER_STATUSES = [
   "pending_assignment",
@@ -24,7 +25,7 @@ export const FILE_PURPOSES = ["initial", "before", "after", "signature", "bill",
 export type Role = (typeof ROLES)[number];
 export type UserStatus = (typeof USER_STATUSES)[number];
 export type TechnicianStatus = (typeof TECHNICIAN_STATUSES)[number];
-export type WorkOrderType = (typeof WORK_ORDER_TYPES)[number];
+export type WorkOrderType = (typeof WORK_ORDER_TYPES)[number] | (typeof LEGACY_WORK_ORDER_TYPES)[number];
 export type WorkOrderPriority = (typeof WORK_ORDER_PRIORITIES)[number];
 export type WorkOrderStatus = (typeof WORK_ORDER_STATUSES)[number];
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
@@ -86,10 +87,13 @@ export const TECHNICIAN_STATUS_LABELS: Record<TechnicianStatus, string> = {
 };
 
 export const WORK_ORDER_TYPE_LABELS: Record<WorkOrderType, string> = {
+  installation: "Lắp mới",
+  add_on: "Lắp thêm",
+  maintenance_repair: "Bảo trì, sửa chữa",
+  relocation: "Di chuyển lắp lại",
+  other: "Khác",
   warranty: "Bảo hành",
   maintenance: "Bảo trì",
-  installation: "Lắp mới",
-  other: "Khác",
 };
 
 export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
@@ -173,17 +177,17 @@ export const WORK_ORDER_TRANSITIONS: Partial<Record<WorkOrderStatus, WorkOrderTr
   ],
   accepted: [
     { status: "traveling", label: "Đang di chuyển", roles: FIELD_ROLES, intent: "field" },
-    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
+    { status: "paused", label: "Tạm dừng", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   traveling: [
     { status: "working", label: "Check-in", roles: FIELD_ROLES, intent: "field" },
-    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
+    { status: "paused", label: "Check-out", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   working: [
     { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: FIELD_ROLES, intent: "field" },
-    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
+    { status: "paused", label: "Check-out", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   awaiting_acceptance: [
@@ -193,7 +197,7 @@ export const WORK_ORDER_TRANSITIONS: Partial<Record<WorkOrderStatus, WorkOrderTr
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   paused: [
-    { status: "working", label: "Tiếp tục xử lý", roles: OPS_MANAGER_ROLES, intent: "field" },
+    { status: "working", label: "Tiếp tục xử lý", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "field" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   completed: [

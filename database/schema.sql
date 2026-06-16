@@ -3,7 +3,7 @@ create extension if not exists pgcrypto;
 create type app_role as enum ('admin', 'dispatcher', 'team_lead', 'technician', 'accountant');
 create type user_status as enum ('active', 'inactive');
 create type technician_status as enum ('available', 'traveling', 'working', 'off');
-create type work_order_type as enum ('warranty', 'maintenance', 'installation', 'other');
+create type work_order_type as enum ('warranty', 'maintenance', 'installation', 'add_on', 'maintenance_repair', 'relocation', 'other');
 create type work_order_priority as enum ('normal', 'urgent');
 create type work_order_status as enum (
   'pending_assignment',

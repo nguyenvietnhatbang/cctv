@@ -155,7 +155,7 @@ export function WorkOrderEditModal({
   role: Role;
   technicians: Technician[];
   onClose: () => void;
-  onStatus: (status: WorkOrderStatus, checkIn?: { checkInLat?: number; checkInLng?: number }) => void | Promise<void>;
+  onStatus: (status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => void | Promise<void>;
   onCancel: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAssign: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -341,7 +341,10 @@ export function WorkOrderEditModal({
                   </p>
                   <PendingButton
                     className="btn-secondary mt-3 h-10"
-                    onClick={() => onStatus((resumeTransition ?? pauseTransition)?.status ?? "paused")}
+                    onClick={() => onStatus(
+                      (resumeTransition ?? pauseTransition)?.status ?? "paused",
+                      { note: resumeTransition ? "Tiếp tục xử lý sau tạm dừng" : "Tạm dừng công việc" },
+                    )}
                     type="button"
                     pending={pendingAction === "status"}
                     pendingLabel="Đang lưu..."

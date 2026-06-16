@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   MapPinned,
   Navigation,
+  PauseCircle,
   Phone,
   Play,
   Save,
@@ -37,6 +38,11 @@ const ACTION_ICONS: Partial<Record<WorkOrderStatus, LucideIcon>> = {
 };
 
 const STEP_ORDER: WorkOrderStatus[] = ["assigned", "accepted", "traveling", "working", "awaiting_acceptance", "completed"];
+const CHECKOUT_REASONS = [
+  "Nghỉ trưa",
+  "Hết giờ làm",
+  "Tạm dừng để đi việc gấp khác",
+] as const;
 
 function getCurrentPosition() {
   return new Promise<{ checkInLat: number; checkInLng: number } | null>((resolve) => {
@@ -77,7 +83,7 @@ export function TechnicianJobModal({
 }: {
   detail: WorkOrderDetail;
   onClose: () => void;
-  onStatus: (status: WorkOrderStatus, checkIn?: { checkInLat?: number; checkInLng?: number }) => void | Promise<void>;
+  onStatus: (status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onMaterialUpdate: (material: Material, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -96,10 +102,22 @@ export function TechnicianJobModal({
     () => getAllowedWorkOrderTransitions(status, "technician").find((transition) => transition.intent === "field"),
     [status],
   );
+  const checkoutTransition = useMemo(
+    () => getAllowedWorkOrderTransitions(status, "technician").find((transition) => transition.intent === "pause"),
+    [status],
+  );
+  const resumeTransition = useMemo(
+    () => status === "paused"
+      ? getAllowedWorkOrderTransitions(status, "technician").find((transition) => transition.status === "working")
+      : null,
+    [status],
+  );
   const fieldLocked = FIELD_LOCKED_STATUSES.includes(status);
   const currentStepIndex = stepIndex(status);
   const canSignAcceptance = status === "awaiting_acceptance";
   const canMoveNext = Boolean(nextFieldTransition);
+  const canCheckout = Boolean(checkoutTransition);
+  const canResume = Boolean(resumeTransition);
   const nextStatus = nextFieldTransition?.status ?? null;
   const NextIcon = nextStatus ? ACTION_ICONS[nextStatus] ?? Play : ClipboardCheck;
 
@@ -116,6 +134,19 @@ export function TechnicianJobModal({
     } finally {
       setPreparingStatus(false);
     }
+  }
+
+  async function handleCheckout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!checkoutTransition) return;
+    const formData = new FormData(event.currentTarget);
+    const reason = String(formData.get("checkoutReason") || CHECKOUT_REASONS[0]);
+    await onStatus(checkoutTransition.status, { note: `Check-out: ${reason}` });
+  }
+
+  async function handleResume() {
+    if (!resumeTransition) return;
+    await onStatus(resumeTransition.status, { note: "Tiếp tục xử lý sau check-out" });
   }
 
   return (
@@ -164,6 +195,17 @@ export function TechnicianJobModal({
                 pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}
               >
                 <NextIcon size={15} />{nextFieldTransition.label}
+              </PendingButton>
+            ) : null}
+            {canResume && resumeTransition ? (
+              <PendingButton
+                className="btn-primary h-11"
+                onClick={handleResume}
+                type="button"
+                pending={pendingAction === "status"}
+                pendingLabel="Đang lưu..."
+              >
+                <Play size={15} />{resumeTransition.label}
               </PendingButton>
             ) : null}
           </div>
@@ -223,6 +265,22 @@ export function TechnicianJobModal({
                 <Save size={15} />Lưu ghi chú
               </PendingButton>
             </ValidatedForm>
+
+            {canCheckout ? (
+              <ValidatedForm onSubmit={handleCheckout} aria-busy={pendingAction === "status"} className="modal-section">
+                <h3 className="section-title">Check-out</h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <select name="checkoutReason" className="input" defaultValue={CHECKOUT_REASONS[0]} disabled={pendingAction === "status"}>
+                    {CHECKOUT_REASONS.map((reason) => (
+                      <option key={reason} value={reason}>{reason}</option>
+                    ))}
+                  </select>
+                  <PendingButton className="btn-secondary h-10" type="submit" pending={pendingAction === "status"} pendingLabel="Đang lưu...">
+                    <PauseCircle size={15} />Check-out
+                  </PendingButton>
+                </div>
+              </ValidatedForm>
+            ) : null}
 
             {canSignAcceptance ? (
               <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />

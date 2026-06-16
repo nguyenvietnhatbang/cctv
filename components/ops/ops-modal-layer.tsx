@@ -10,6 +10,7 @@ import { ConfirmModal, Modal, PendingButton, ValidatedForm } from "@/components/
 
 type MaterialPendingAction = { type: "create" } | { type: "update" | "delete"; id: string } | null;
 type CheckInPayload = { checkInLat?: number; checkInLng?: number };
+type StatusNotePayload = CheckInPayload & { note?: string | null };
 type AcceptancePayload = { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string };
 type MaterialItem = WorkOrderDetail["materials"][number];
 type FileItem = WorkOrderDetail["files"][number];
@@ -35,7 +36,7 @@ type WorkOrderEditModalProps = WorkOrderDetailModalProps & {
   pendingAction: string | null;
   materialPendingAction: MaterialPendingAction;
   deletingFileId: string | null;
-  onStatus: (status: WorkOrderDetail["workOrder"]["status"], checkIn?: CheckInPayload) => void | Promise<void>;
+  onStatus: (status: WorkOrderDetail["workOrder"]["status"], payload?: StatusNotePayload) => void | Promise<void>;
   onCancel: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAssign: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -54,7 +55,7 @@ type TechnicianJobModalProps = {
   pendingAction: string | null;
   materialPendingAction: MaterialPendingAction;
   deletingFileId: string | null;
-  onStatus: (status: WorkOrderDetail["workOrder"]["status"], checkIn?: CheckInPayload) => void | Promise<void>;
+  onStatus: (status: WorkOrderDetail["workOrder"]["status"], payload?: StatusNotePayload) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onMaterialUpdate: (material: MaterialItem, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -296,7 +297,7 @@ export function OpsModalLayer({
           pendingAction={pendingAction}
           materialPendingAction={materialPendingAction}
           deletingFileId={deletingFileId}
-          onStatus={(status, checkIn) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...checkIn }) }); await afterMutation(); })}
+          onStatus={(status, payload) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...payload }) }); await afterMutation(); })}
           onCancel={(event) => runMutation("cancel", async () => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status: "cancelled", note: formData.get("note") }) }); await afterMutation(); })}
           onAssign={(event) => runMutation("assign", () => submitAssignment(event))}
           onUpdate={(event) => runMutation("update", () => submitWorkOrderPatch(event))}
@@ -320,7 +321,7 @@ export function OpsModalLayer({
           pendingAction={pendingAction}
           materialPendingAction={materialPendingAction}
           deletingFileId={deletingFileId}
-          onStatus={(status, checkIn) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...checkIn }) }); await afterMutation(); })}
+          onStatus={(status, payload) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...payload }) }); await afterMutation(); })}
           onUpdate={(event) => runMutation("update", () => submitWorkOrderPatch(event))}
           onMaterialCreate={(event) => runMaterialMutation({ type: "create" }, async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials`, { method: "POST", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); form.reset(); await afterMutation(); })}
           onMaterialUpdate={(material, event) => runMaterialMutation({ type: "update", id: material.id }, async () => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "PATCH", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); await afterMutation(); })}

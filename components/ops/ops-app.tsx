@@ -675,10 +675,10 @@ export function OpsApp() {
     if (closeAfterSubmit) closeInlineModal();
   }
 
-  async function updateTechnicianStatus(id: string, status: WorkOrderListItem["status"], checkIn?: { checkInLat?: number; checkInLng?: number }) {
+  async function updateTechnicianStatus(id: string, status: WorkOrderListItem["status"], payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) {
     await apiFetch(`/api/work-orders/${id}/status`, {
       method: "POST",
-      body: JSON.stringify({ status, ...checkIn }),
+      body: JSON.stringify({ status, ...payload }),
     });
     await afterMutation();
   }
