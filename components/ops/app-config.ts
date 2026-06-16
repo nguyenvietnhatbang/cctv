@@ -31,7 +31,7 @@ export const tabs: ReadonlyArray<{ id: TabId; label: string; roles: readonly Rol
   { id: "orders", label: "Công việc", roles: ["admin", "dispatcher", "team_lead", "accountant"] },
   { id: "customers", label: "Khách hàng", roles: ["admin", "dispatcher", "team_lead", "accountant"] },
   { id: "dispatch", label: "Phân công", roles: ["admin", "dispatcher", "team_lead"] },
-  { id: "technician", label: "Kỹ thuật", roles: ["dispatcher", "technician"] },
+  { id: "technician", label: "Kỹ thuật", roles: ["dispatcher", "team_lead", "technician"] },
   { id: "assignment-history", label: "Lịch sử", roles: ["technician"] },
   { id: "technicians", label: "DS kỹ thuật", roles: ["admin", "dispatcher", "team_lead"] },
   { id: "payments", label: "Thanh toán", roles: ["admin", "dispatcher", "accountant"] },

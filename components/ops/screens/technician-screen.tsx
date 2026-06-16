@@ -29,8 +29,6 @@ import {
   type WorkOrderStatus,
 } from "@/lib/types";
 
-const TECHNICIAN_ROLE: Role = "technician";
-
 const TECHNICIAN_WORK_STAGES: ReadonlyArray<{
   id: string;
   title: string;
@@ -47,6 +45,7 @@ const TECHNICIAN_WORK_STAGES: ReadonlyArray<{
 
 const ACTIVE_STATUSES = new Set<WorkOrderStatus>(TECHNICIAN_WORK_STAGES.flatMap((stage) => stage.statuses));
 const DONE_STATUSES = new Set<WorkOrderStatus>(["completed", "awaiting_payment", "paid", "debt"]);
+const TODO_STATUSES = new Set<WorkOrderStatus>(["pending_assignment", "assigned", "accepted", "traveling"]);
 
 const TECHNICIAN_ACTION_ICONS: Partial<Record<WorkOrderStatus, typeof Play>> = {
   accepted: Navigation,
@@ -86,12 +85,12 @@ function technicianStageIndex(status: WorkOrderStatus) {
   return index >= 0 ? index : WORK_ORDER_STATUS_ORDER[status];
 }
 
-function getTechnicianPrimaryAction(order: WorkOrderListItem) {
+function getTechnicianPrimaryAction(order: WorkOrderListItem, role: Role) {
   if (order.status === "awaiting_acceptance") {
     return { type: "edit" as const, label: "Nghiệm thu", icon: ClipboardCheck };
   }
 
-  const transition = getAllowedWorkOrderTransitions(order.status, TECHNICIAN_ROLE)
+  const transition = getAllowedWorkOrderTransitions(order.status, role)
     .find((item) => item.intent === "field");
   if (!transition) {
     return { type: "edit" as const, label: "Chi tiết", icon: Wrench };
@@ -139,6 +138,7 @@ function TechnicianWorkCard({
   onView,
   onEdit,
   onNextAction,
+  role,
 }: {
   order: WorkOrderListItem;
   prominent?: boolean;
@@ -146,8 +146,9 @@ function TechnicianWorkCard({
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onNextAction: (order: WorkOrderListItem) => void;
+  role: Role;
 }) {
-  const action = getTechnicianPrimaryAction(order);
+  const action = getTechnicianPrimaryAction(order, role);
   const ActionIcon = action.icon;
   const appointmentLabel = dateTime(order.appointment_at);
 
@@ -217,11 +218,13 @@ function TechnicianWorkCard({
 }
 
 export function TechnicianScreen({
+  role,
   orders,
   onView,
   onEdit,
   onStatus,
 }: {
+  role: Role;
   orders: WorkOrderListItem[];
   onView: (id: string) => void;
   onEdit: (id: string) => void;
@@ -242,11 +245,13 @@ export function TechnicianScreen({
   const movingOrders = orders.filter((order) => ["accepted", "traveling"].includes(order.status));
   const workingOrders = orders.filter((order) => order.status === "working");
   const pausedOrders = orders.filter((order) => order.status === "paused");
+  const todoOrders = orders.filter((order) => TODO_STATUSES.has(order.status));
   const assignedOrders = orders.filter((order) => order.status === "assigned");
   const nextOrder = activeOrders[0] ?? null;
+  const isTeamLead = role === "team_lead";
 
   async function runNextAction(order: WorkOrderListItem) {
-    const action = getTechnicianPrimaryAction(order);
+    const action = getTechnicianPrimaryAction(order, role);
     if (action.type === "edit") {
       onEdit(order.id);
       return;
@@ -270,13 +275,19 @@ export function TechnicianScreen({
       <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm lg:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase text-zinc-500">Kỹ thuật viên</p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-normal text-zinc-950 lg:text-3xl">Việc ngoài hiện trường</h2>
+            <p className="text-xs font-bold uppercase text-zinc-500">{isTeamLead ? "Trưởng nhóm" : "Kỹ thuật viên"}</p>
+            <h2 className="mt-1 text-2xl font-extrabold tracking-normal text-zinc-950 lg:text-3xl">Công việc</h2>
             <p className="mt-1 text-sm text-zinc-500">Theo dõi đúng luồng: nhận việc, di chuyển, check-in, hoàn tất và nghiệm thu.</p>
           </div>
           <Route className="mt-1 text-zinc-400" size={24} />
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:gap-3">
+        <div className={`mt-4 grid grid-cols-2 gap-2 ${isTeamLead ? "sm:grid-cols-3 xl:grid-cols-6" : "sm:grid-cols-5"} lg:gap-3`}>
+          {isTeamLead ? (
+            <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+              <p className="text-[11px] font-bold uppercase text-zinc-500">Chưa làm</p>
+              <p className="mt-1 text-2xl font-black text-zinc-950">{todoOrders.length}</p>
+            </div>
+          ) : null}
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <p className="text-[11px] font-bold uppercase text-zinc-500">Cần nhận</p>
             <p className="mt-1 text-2xl font-black text-zinc-950">{assignedOrders.length}</p>
@@ -294,7 +305,7 @@ export function TechnicianScreen({
             <p className="mt-1 text-2xl font-black text-zinc-950">{waitingSignatureOrders.length}</p>
           </div>
           <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-            <p className="text-[11px] font-bold uppercase text-zinc-500">Tạm dừng</p>
+            <p className="text-[11px] font-bold uppercase text-zinc-500">{isTeamLead ? "Việc tạm dừng" : "Tạm dừng"}</p>
             <p className="mt-1 text-2xl font-black text-zinc-950">{pausedOrders.length}</p>
           </div>
         </div>
@@ -310,7 +321,7 @@ export function TechnicianScreen({
                 <Clock3 size={15} className="text-zinc-500" />
                 <p className="text-xs font-bold uppercase text-zinc-700">Việc cần làm tiếp theo</p>
               </div>
-              <TechnicianWorkCard order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
+              <TechnicianWorkCard role={role} order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
             </div>
           ) : null}
 
@@ -329,7 +340,7 @@ export function TechnicianScreen({
                 </div>
                 <div className="grid gap-3 xl:grid-cols-2">
                   {visibleOrders.map((order) => (
-                    <TechnicianWorkCard key={order.id} order={order} pending={pendingStatusOrderId === order.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
+                    <TechnicianWorkCard key={order.id} role={role} order={order} pending={pendingStatusOrderId === order.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
                   ))}
                 </div>
               </div>
@@ -357,6 +368,12 @@ export function TechnicianScreen({
               <span className="text-xs font-semibold text-zinc-500">{orders.length} phiếu</span>
             </div>
             <div className="mt-3 grid gap-2">
+              {isTeamLead ? (
+                <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
+                  <span className="text-zinc-600">Chưa làm</span>
+                  <strong className="text-zinc-950">{todoOrders.length}</strong>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
                 <span className="text-zinc-600">Cần nhận</span>
                 <strong className="text-zinc-950">{assignedOrders.length}</strong>
@@ -374,7 +391,7 @@ export function TechnicianScreen({
                 <strong className="text-zinc-950">{waitingSignatureOrders.length}</strong>
               </div>
               <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2 text-sm">
-                <span className="text-zinc-600">Tạm dừng</span>
+                <span className="text-zinc-600">{isTeamLead ? "Việc tạm dừng" : "Tạm dừng"}</span>
                 <strong className="text-zinc-950">{pausedOrders.length}</strong>
               </div>
             </div>

@@ -220,7 +220,7 @@ export function OpsScreenSwitcher({
     );
   }
 
-  if (section === "technician") return <TechnicianScreen orders={data.orders} onView={onOpenOrder} onEdit={onEditOrder} onStatus={onTechnicianStatus} />;
+  if (section === "technician") return <TechnicianScreen role={role} orders={data.orders} onView={onOpenOrder} onEdit={onEditOrder} onStatus={onTechnicianStatus} />;
 
   if (section === "assignment-history") return <AssignmentHistoryScreen />;
 
