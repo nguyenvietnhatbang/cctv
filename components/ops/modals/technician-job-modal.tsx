@@ -20,15 +20,11 @@ import {
   WORK_ORDER_TYPE_LABELS,
   type WorkOrderStatus,
 } from "@/lib/types";
-import { dateTime } from "@/components/ops/format";
+import { dateTime, money } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
-import type { Material, WorkFile, WorkOrderDetail } from "@/components/ops/types";
-import { FileUploadForm } from "@/components/ops/modals/file-upload-form";
-import { MaterialsForm } from "@/components/ops/modals/materials-form";
+import type { WorkOrderDetail } from "@/components/ops/types";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
-
-const FIELD_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "awaiting_payment", "paid", "debt", "paused", "cancelled"];
 
 const ACTION_ICONS: Partial<Record<WorkOrderStatus, LucideIcon>> = {
   accepted: Play,
@@ -43,6 +39,12 @@ const CHECKOUT_REASONS = [
   "Hết giờ làm",
   "Tạm dừng để đi việc gấp khác",
 ] as const;
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  unpaid: "Chưa thanh toán",
+  paid: "Đã thanh toán",
+  debt: "Công nợ",
+};
 
 function getCurrentPosition() {
   return new Promise<{ checkInLat: number; checkInLng: number } | null>((resolve) => {
@@ -66,34 +68,58 @@ function stepIndex(status: WorkOrderStatus) {
   return -1;
 }
 
+function PaymentSummary({ detail }: { detail: WorkOrderDetail }) {
+  const paymentStatus = detail.workOrder.payment_status ?? "unpaid";
+  const paidAmount = paymentStatus === "paid" ? detail.workOrder.total_amount : 0;
+  const debtAmount = paymentStatus === "debt" ? detail.workOrder.total_amount : 0;
+
+  return (
+    <section className="modal-section">
+      <h3 className="section-title">Thanh toán</h3>
+      <div className="mt-3 grid gap-2 text-sm text-zinc-700">
+        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+          <span>Tổng chi phí</span>
+          <strong className="text-zinc-950">{money(detail.workOrder.total_amount)}</strong>
+        </div>
+        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+          <span>Đã thanh toán</span>
+          <strong className="text-zinc-950">{money(paidAmount)}</strong>
+        </div>
+        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+          <span>Công nợ còn lại</span>
+          <strong className="text-zinc-950">{money(debtAmount)}</strong>
+        </div>
+        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+          <span>Hiện trạng</span>
+          <strong className="text-zinc-950">{PAYMENT_STATUS_LABELS[paymentStatus] ?? paymentStatus}</strong>
+        </div>
+        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
+          <span>Hẹn ngày thanh toán</span>
+          <strong className="text-zinc-950">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Chưa có"}</strong>
+        </div>
+        <div className="rounded-md bg-zinc-50 px-3 py-2">
+          <p className="text-zinc-600">Ghi chú khác</p>
+          <p className="mt-1 font-semibold text-zinc-950 whitespace-pre-wrap">{detail.workOrder.payment_note ?? "Chưa có"}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function TechnicianJobModal({
   detail,
   onClose,
   onStatus,
   onUpdate,
-  onMaterialCreate,
-  onMaterialUpdate,
-  onMaterialDelete,
-  onUpload,
-  onFileDelete,
   onAcceptance,
   pendingAction = null,
-  materialPendingAction = null,
-  deletingFileId = null,
 }: {
   detail: WorkOrderDetail;
   onClose: () => void;
   onStatus: (status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
-  onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
-  onMaterialUpdate: (material: Material, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
-  onMaterialDelete: (material: Material) => void | Promise<void>;
-  onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
-  onFileDelete: (file: WorkFile) => void | Promise<void>;
   onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
   pendingAction?: string | null;
-  materialPendingAction?: { type: "create" } | { type: "update" | "delete"; id: string } | null;
-  deletingFileId?: string | null;
 }) {
   const [preparingStatus, setPreparingStatus] = useState(false);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
@@ -112,7 +138,6 @@ export function TechnicianJobModal({
       : null,
     [status],
   );
-  const fieldLocked = FIELD_LOCKED_STATUSES.includes(status);
   const currentStepIndex = stepIndex(status);
   const canSignAcceptance = status === "awaiting_acceptance";
   const canMoveNext = Boolean(nextFieldTransition);
@@ -282,39 +307,25 @@ export function TechnicianJobModal({
               </ValidatedForm>
             ) : null}
 
-            {canSignAcceptance ? (
-              <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
-            ) : (
-              <div className="modal-section">
-                <h3 className="section-title">Nghiệm thu</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-600">
-                  {status === "completed" || detail.workOrder.accepted_at
-                    ? `Đã nghiệm thu: ${dateTime(detail.workOrder.accepted_at)}`
-                    : "Hoàn tất xử lý xong thì nút nghiệm thu sẽ hiện tại đây để khách ký xác nhận."}
-                </p>
-              </div>
-            )}
           </section>
 
           <section className="grid gap-4">
-            <FileUploadForm
-              detail={detail}
-              locked={fieldLocked}
-              onSubmit={onUpload}
-              onDelete={onFileDelete}
-              isUploading={pendingAction === "upload"}
-              deletingFileId={deletingFileId}
-            />
-            <MaterialsForm
-              detail={detail}
-              locked={fieldLocked}
-              onCreate={onMaterialCreate}
-              onUpdate={onMaterialUpdate}
-              onDelete={onMaterialDelete}
-              pendingAction={materialPendingAction}
-            />
+            <PaymentSummary detail={detail} />
           </section>
         </div>
+
+        {canSignAcceptance ? (
+          <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
+        ) : (
+          <div className="modal-section">
+            <h3 className="section-title">Nghiệm thu</h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              {status === "completed" || detail.workOrder.accepted_at
+                ? `Đã nghiệm thu: ${dateTime(detail.workOrder.accepted_at)}`
+                : "Hoàn tất xử lý xong thì nút nghiệm thu sẽ hiện tại đây để khách ký xác nhận."}
+            </p>
+          </div>
+        )}
 
         {!canMoveNext && !canSignAcceptance && status !== "completed" && !["awaiting_payment", "paid", "debt", "paused", "cancelled"].includes(status) ? (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
