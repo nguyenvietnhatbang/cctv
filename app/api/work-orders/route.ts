@@ -87,6 +87,17 @@ export async function GET(request: Request) {
         filters.push(`wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and (wo.appointment_at is null or wo.updated_at <= wo.appointment_at)`);
       } else if (status === "done_overdue") {
         filters.push(`wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and wo.appointment_at is not null and wo.updated_at > wo.appointment_at`);
+      } else if (status === "paused") {
+        filters.push(`wo.status = 'paused'`);
+      } else if (status === "cancelled") {
+        filters.push(`wo.status = 'cancelled'`);
+      } else if (status === "other") {
+        filters.push(`wo.status::text not in (
+          'pending_assignment', 'assigned', 'accepted', 'traveling',
+          'working', 'awaiting_acceptance',
+          'completed', 'awaiting_payment', 'paid', 'debt',
+          'paused', 'cancelled'
+        )`);
       } else if (status === "intake") {
         filters.push(`wo.status = 'pending_assignment'`);
       } else if (status === "dispatch") {

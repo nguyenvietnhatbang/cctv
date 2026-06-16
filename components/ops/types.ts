@@ -1,4 +1,4 @@
-import type { Role, SessionUser, WorkOrderStatus, WorkOrderType } from "@/lib/types";
+import type { DisplayStatus, Role, SessionUser, WorkOrderStatus, WorkOrderType } from "@/lib/types";
 
 export type { Role, SessionUser, WorkOrderStatus, WorkOrderType };
 
@@ -9,6 +9,9 @@ export type Metrics = {
   doing_overdue: string;
   done: string;
   done_overdue: string;
+  paused: string;
+  cancelled: string;
+  other: string;
   paid_today: string;
   open_debt: string;
 };
@@ -174,7 +177,7 @@ export type ReportData = {
     gross_amount: string;
   };
   byDisplayStatus: Array<{
-    status: "todo" | "doing" | "doing_overdue" | "done" | "done_overdue";
+    status: DisplayStatus;
     label: string;
     count: string;
     total: string;

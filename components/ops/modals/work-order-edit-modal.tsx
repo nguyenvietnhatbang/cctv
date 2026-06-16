@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { CalendarClock, CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, Phone, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, PauseCircle, Phone, Play, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
 import { getAllowedWorkOrderTransitions, isOpsManagerRole, isPaymentManagerRole, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
@@ -113,6 +113,15 @@ function getAdminAction(status: WorkOrderStatus) {
       tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
     };
   }
+  if (status === "paused") {
+    return {
+      title: "Phiếu đang tạm dừng",
+      body: "Công việc đang được giữ lại. Có thể đổi phân công, hủy phiếu hoặc cập nhật lại trạng thái khi tiếp tục xử lý.",
+      tab: "workflow" as EditTab,
+      label: "Xem tiến độ",
+      tone: "border-slate-200 bg-slate-100 text-slate-800",
+    };
+  }
   return {
     title: "Phiếu đã hủy",
     body: "Phiếu không còn bước xử lý tiếp theo. Xem lịch sử để biết lý do hủy.",
@@ -166,9 +175,13 @@ export function WorkOrderEditModal({
   const nextAction = NEXT_STATUS_ACTIONS[detail.workOrder.status] ?? null;
   const canNext = nextAction?.roles.includes(role) ?? false;
   const canAssign = isOpsManagerRole(role)
-    && ["pending_assignment", "assigned", "accepted", "traveling", "working", "awaiting_acceptance"].includes(detail.workOrder.status);
+    && ["pending_assignment", "assigned", "accepted", "traveling", "working", "awaiting_acceptance", "paused"].includes(detail.workOrder.status);
   const canPay = isPaymentManagerRole(role);
   const allowedTransitions = getAllowedWorkOrderTransitions(detail.workOrder.status, role);
+  const pauseTransition = allowedTransitions.find((transition) => transition.intent === "pause");
+  const resumeTransition = detail.workOrder.status === "paused"
+    ? allowedTransitions.find((transition) => transition.status === "working")
+    : null;
   const canCancel = allowedTransitions.some((transition) => transition.status === "cancelled");
   const financialLocked = FINANCIAL_LOCKED_STATUSES.includes(detail.workOrder.status) && role !== "admin";
   const signatureFile = detail.files.find((file) => file.purpose === "signature");
@@ -318,6 +331,26 @@ export function WorkOrderEditModal({
                 </div>
               ) : null}
               {canAssign ? <AssignmentForm detail={detail} technicians={technicians} onSubmit={onAssign} isSubmitting={pendingAction === "assign"} /> : null}
+              {pauseTransition || resumeTransition ? (
+                <div className="modal-section">
+                  <h3 className="section-title">{resumeTransition ? "Tiếp tục công việc" : "Tạm dừng công việc"}</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600">
+                    {resumeTransition
+                      ? "Chuyển phiếu tạm dừng về bước đang xử lý để đội kỹ thuật tiếp tục thi công."
+                      : "Giữ phiếu lại khi chưa thể xử lý tiếp nhưng chưa hủy công việc."}
+                  </p>
+                  <PendingButton
+                    className="btn-secondary mt-3 h-10"
+                    onClick={() => onStatus((resumeTransition ?? pauseTransition)?.status ?? "paused")}
+                    type="button"
+                    pending={pendingAction === "status"}
+                    pendingLabel="Đang lưu..."
+                  >
+                    {resumeTransition ? <Play size={15} /> : <PauseCircle size={15} />}
+                    {resumeTransition?.label ?? pauseTransition?.label}
+                  </PendingButton>
+                </div>
+              ) : null}
               {canCancel ? (
                 <ValidatedForm onSubmit={onCancel} aria-busy={pendingAction === "cancel"} className="rounded-md border border-red-200 bg-red-50 p-4 lg:col-span-2">
                   <h3 className="section-title text-red-900">Hủy phiếu</h3>

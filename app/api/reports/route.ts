@@ -51,20 +51,40 @@ export async function GET(request: Request) {
            select 'done_overdue', 'Hoàn thành quá hạn',
                   count(*) filter (where status in ('completed', 'awaiting_payment', 'paid', 'debt') and appointment_at is not null and updated_at > appointment_at)
            from scoped
+           union all
+           select 'paused', 'Việc tạm dừng',
+                  count(*) filter (where status = 'paused')
+           from scoped
+           union all
+           select 'cancelled', 'Việc đã hủy',
+                  count(*) filter (where status = 'cancelled')
+           from scoped
+           union all
+           select 'other', 'Khác',
+                  count(*) filter (where status::text not in (
+                    'pending_assignment', 'assigned', 'accepted', 'traveling',
+                    'working', 'awaiting_acceptance',
+                    'completed', 'awaiting_payment', 'paid', 'debt',
+                    'paused', 'cancelled'
+                  ))
+           from scoped
          ),
          totals as (
-           select count(*) as total from scoped where status <> 'cancelled'
+           select count(*) as total from scoped
          )
          select b.status, b.label, b.count, t.total,
                 case when t.total = 0 then 0 else round(b.count * 100.0 / t.total, 1) end as percent
          from buckets b cross join totals t
          order by case b.status
-           when 'doing' then 1
-           when 'doing_overdue' then 2
-           when 'done' then 3
-           when 'done_overdue' then 4
-           when 'todo' then 5
-           else 6
+           when 'todo' then 1
+           when 'doing' then 2
+           when 'doing_overdue' then 3
+           when 'done' then 4
+           when 'done_overdue' then 5
+           when 'paused' then 6
+           when 'cancelled' then 7
+           when 'other' then 8
+           else 9
          end`,
         [from, to],
       ),

@@ -28,6 +28,9 @@ const DISPLAY_STATUS_TONE: Record<string, { accent: string; bg: string; text: st
   done: { accent: "#10b981", bg: "bg-emerald-50", text: "text-emerald-900" },
   done_overdue: { accent: "#f59e0b", bg: "bg-amber-50", text: "text-amber-900" },
   todo: { accent: "#eab308", bg: "bg-yellow-50", text: "text-yellow-900" },
+  paused: { accent: "#64748b", bg: "bg-slate-100", text: "text-slate-800" },
+  cancelled: { accent: "#71717a", bg: "bg-zinc-100", text: "text-zinc-700" },
+  other: { accent: "#a1a1aa", bg: "bg-zinc-50", text: "text-zinc-600" },
 };
 
 function asNumber(value: string | number | null | undefined) {

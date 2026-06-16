@@ -16,6 +16,7 @@ create type work_order_status as enum (
   'awaiting_payment',
   'paid',
   'debt',
+  'paused',
   'cancelled'
 );
 create type payment_status as enum ('unpaid', 'paid', 'debt');

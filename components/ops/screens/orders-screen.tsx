@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Edit, Eye, Plus, XCircle, Search } from "lucide-react";
 import {
   DISPLAY_STATUS_LABELS,
+  DISPLAY_STATUS_ORDER,
   DISPLAY_STATUS_TONE,
   getAllowedWorkOrderTransitions,
   getDisplayStatus,
@@ -97,7 +98,9 @@ export function OrdersScreen({
         doing_overdue: 0,
         done: 0,
         done_overdue: 0,
+        paused: 0,
         cancelled: 0,
+        other: 0,
       },
     ),
     [orders],
@@ -150,9 +153,10 @@ export function OrdersScreen({
         ) : null}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        {(Object.entries(DISPLAY_STATUS_LABELS) as Array<[DisplayStatus, string]>).map(([status, label]) => (
-          status === "cancelled" ? null : (
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {DISPLAY_STATUS_ORDER.map((status) => {
+          const label = DISPLAY_STATUS_LABELS[status];
+          return (
           <button
             key={status}
             className={`rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 ${filters.status === status ? "ring-2 ring-zinc-900" : ""}`}
@@ -164,8 +168,8 @@ export function OrdersScreen({
             </span>
             <p className="mt-2 text-2xl font-bold text-zinc-950">{statusSummary[status]}</p>
           </button>
-          )
-        ))}
+          );
+        })}
       </div>
 
       {/* Orders Table Shell with Compact Filter Header */}
@@ -189,12 +193,10 @@ export function OrdersScreen({
             >
               <option value="">Trạng thái: Tất cả</option>
               <optgroup label="Nhóm vận hành">
-                {Object.entries(DISPLAY_STATUS_LABELS).map(([status, label]) => (
-                  status === "cancelled" ? null : (
+                {DISPLAY_STATUS_ORDER.map((status) => (
                   <option key={status} value={status}>
-                    {label}
+                    {DISPLAY_STATUS_LABELS[status]}
                   </option>
-                  )
                 ))}
               </optgroup>
               <optgroup label="Trạng thái nghiệp vụ">

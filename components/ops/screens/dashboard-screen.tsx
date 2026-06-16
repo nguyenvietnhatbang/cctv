@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { money } from "@/components/ops/format";
 import type { Metrics, WorkOrderListItem } from "@/components/ops/types";
+import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_ORDER, DISPLAY_STATUS_TONE, type DisplayStatus } from "@/lib/types";
 
 export function DashboardScreen({
   metrics,
@@ -82,13 +83,11 @@ export function DashboardScreen({
     },
   ];
 
-  const quickStatuses = [
-    { label: "Việc chưa làm", value: metrics?.todo ?? "0", status: "todo" },
-    { label: "Đang làm", value: metrics?.doing ?? "0", status: "doing" },
-    { label: "Đang làm quá hạn", value: metrics?.doing_overdue ?? "0", status: "doing_overdue" },
-    { label: "Hoàn thành", value: metrics?.done ?? "0", status: "done" },
-    { label: "Hoàn thành quá hạn", value: metrics?.done_overdue ?? "0", status: "done_overdue" },
-  ];
+  const quickStatuses = DISPLAY_STATUS_ORDER.map((status) => ({
+    label: DISPLAY_STATUS_LABELS[status],
+    value: metrics?.[status] ?? "0",
+    status,
+  }));
 
   return (
     <div className="grid gap-6">
@@ -134,7 +133,7 @@ export function DashboardScreen({
           </div>
           <span>{metrics?.total_today ?? "0"} phiếu hôm nay</span>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {quickStatuses.map((item) => (
             <button
               key={item.status}
@@ -142,7 +141,9 @@ export function DashboardScreen({
               onClick={() => onOpenOrders(item.status)}
               type="button"
             >
-              <p className="text-xs font-bold uppercase text-zinc-500">{item.label}</p>
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${DISPLAY_STATUS_TONE[item.status as DisplayStatus]}`}>
+                {item.label}
+              </span>
               <p className="mt-2 text-2xl font-black text-zinc-950">{item.value}</p>
             </button>
           ))}

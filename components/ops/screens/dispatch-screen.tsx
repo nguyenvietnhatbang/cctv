@@ -14,6 +14,7 @@ const DISPATCH_STATUSES = new Set<WorkOrderStatus>([
   "traveling",
   "working",
   "awaiting_acceptance",
+  "paused",
 ]);
 
 export function DispatchScreen({

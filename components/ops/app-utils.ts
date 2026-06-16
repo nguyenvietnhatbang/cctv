@@ -1,5 +1,6 @@
 import type { CustomerContact, Filters, SessionUser, WorkOrderListItem } from "@/components/ops/types";
 import { todayInVietnam } from "@/components/ops/format";
+import { DISPLAY_STATUS_LABELS, getDisplayStatus } from "@/lib/types";
 
 export function filtersFromSearchParams(searchParams: { get: (key: string) => string | null }): Filters {
   const scopeParam = searchParams.get("scope");
@@ -71,7 +72,13 @@ function orderScopeDate(order: WorkOrderListItem) {
 
 export function orderMatchesFilters(order: WorkOrderListItem, filters: Filters) {
   const q = filters.q.trim().toLowerCase();
-  if (filters.status && order.status !== filters.status) return false;
+  if (filters.status) {
+    if (filters.status in DISPLAY_STATUS_LABELS) {
+      if (getDisplayStatus(order) !== filters.status) return false;
+    } else if (order.status !== filters.status) {
+      return false;
+    }
+  }
   if (filters.type && order.type !== filters.type) return false;
   if (filters.technicianId && !(order.assigned_technicians ?? []).some((technician) => technician.id === filters.technicianId)) return false;
   if (filters.dateFrom && orderScopeDate(order) < filters.dateFrom) return false;

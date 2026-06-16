@@ -31,6 +31,9 @@ export async function GET() {
       doing_overdue: string;
       done: string;
       done_overdue: string;
+      paused: string;
+      cancelled: string;
+      other: string;
       paid_today: string;
       open_debt: string;
     }>(
@@ -41,6 +44,14 @@ export async function GET() {
         count(*) filter (where wo.status in ('working', 'awaiting_acceptance') and wo.appointment_at < now()) as doing_overdue,
         count(*) filter (where wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and (wo.appointment_at is null or wo.updated_at <= wo.appointment_at)) as done,
         count(*) filter (where wo.status in ('completed', 'awaiting_payment', 'paid', 'debt') and wo.appointment_at is not null and wo.updated_at > wo.appointment_at) as done_overdue,
+        count(*) filter (where wo.status = 'paused') as paused,
+        count(*) filter (where wo.status = 'cancelled') as cancelled,
+        count(*) filter (where wo.status::text not in (
+          'pending_assignment', 'assigned', 'accepted', 'traveling',
+          'working', 'awaiting_acceptance',
+          'completed', 'awaiting_payment', 'paid', 'debt',
+          'paused', 'cancelled'
+        )) as other,
         coalesce(sum(p.total_amount) filter (
           where p.status = 'paid' and (p.confirmed_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date
         ), 0) as paid_today,

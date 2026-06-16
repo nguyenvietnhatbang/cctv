@@ -27,7 +27,7 @@ import { FileUploadForm } from "@/components/ops/modals/file-upload-form";
 import { MaterialsForm } from "@/components/ops/modals/materials-form";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
 
-const FIELD_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "awaiting_payment", "paid", "debt", "cancelled"];
+const FIELD_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "awaiting_payment", "paid", "debt", "paused", "cancelled"];
 
 const ACTION_ICONS: Partial<Record<WorkOrderStatus, LucideIcon>> = {
   accepted: Play,
@@ -258,7 +258,7 @@ export function TechnicianJobModal({
           </section>
         </div>
 
-        {!canMoveNext && !canSignAcceptance && status !== "completed" && !["awaiting_payment", "paid", "debt", "cancelled"].includes(status) ? (
+        {!canMoveNext && !canSignAcceptance && status !== "completed" && !["awaiting_payment", "paid", "debt", "paused", "cancelled"].includes(status) ? (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             Phiếu chưa có thao tác kế tiếp cho kỹ thuật viên. Admin cần kiểm tra lại trạng thái hoặc phân công.
           </p>

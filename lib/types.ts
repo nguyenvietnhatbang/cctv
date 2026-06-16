@@ -14,6 +14,7 @@ export const WORK_ORDER_STATUSES = [
   "awaiting_payment",
   "paid",
   "debt",
+  "paused",
   "cancelled",
 ] as const;
 export const PAYMENT_STATUSES = ["unpaid", "paid", "debt"] as const;
@@ -102,6 +103,7 @@ export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
   awaiting_payment: "Chờ thu tiền",
   paid: "Đã thu tiền",
   debt: "Công nợ",
+  paused: "Tạm dừng",
   cancelled: "Hủy",
 };
 
@@ -116,6 +118,7 @@ export const WORK_ORDER_STATUS_TONE: Record<WorkOrderStatus, string> = {
   awaiting_payment: "bg-rose-50 text-rose-800 ring-rose-200",
   paid: "bg-green-50 text-green-800 ring-green-200",
   debt: "bg-red-50 text-red-800 ring-red-200",
+  paused: "bg-slate-100 text-slate-700 ring-slate-300",
   cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
 };
 
@@ -130,6 +133,7 @@ export const WORK_ORDER_STATUS_DESCRIPTIONS: Record<WorkOrderStatus, string> = {
   awaiting_payment: "Phiếu đã bàn giao sang bước thu tiền, chưa xác nhận thanh toán.",
   paid: "Phiếu đã được xác nhận thu tiền.",
   debt: "Phiếu đang được theo dõi công nợ.",
+  paused: "Phiếu đang tạm dừng xử lý.",
   cancelled: "Phiếu đã bị hủy.",
 };
 
@@ -144,6 +148,7 @@ export const WORK_ORDER_STATUS_ORDER: Record<WorkOrderStatus, number> = {
   awaiting_payment: 80,
   paid: 90,
   debt: 90,
+  paused: 95,
   cancelled: 99,
 };
 
@@ -151,34 +156,44 @@ export type WorkOrderTransition = {
   status: WorkOrderStatus;
   label: string;
   roles: Role[];
-  intent: "assign" | "field" | "acceptance" | "payment" | "cancel";
+  intent: "assign" | "field" | "acceptance" | "payment" | "pause" | "cancel";
 };
 
 export const WORK_ORDER_TRANSITIONS: Partial<Record<WorkOrderStatus, WorkOrderTransition[]>> = {
   pending_assignment: [
     { status: "assigned", label: "Phân công", roles: OPS_MANAGER_ROLES, intent: "assign" },
+    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   assigned: [
     { status: "accepted", label: "Nhận việc", roles: FIELD_ROLES, intent: "field" },
     { status: "pending_assignment", label: "Bỏ phân công", roles: OPS_MANAGER_ROLES, intent: "assign" },
+    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   accepted: [
     { status: "traveling", label: "Đang di chuyển", roles: FIELD_ROLES, intent: "field" },
+    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   traveling: [
     { status: "working", label: "Check-in", roles: FIELD_ROLES, intent: "field" },
+    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   working: [
     { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: FIELD_ROLES, intent: "field" },
+    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   awaiting_acceptance: [
     { status: "completed", label: "Khách nghiệm thu", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "acceptance" },
     { status: "working", label: "Làm lại", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "field" },
+    { status: "paused", label: "Tạm dừng", roles: OPS_MANAGER_ROLES, intent: "pause" },
+    { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
+  ],
+  paused: [
+    { status: "working", label: "Tiếp tục xử lý", roles: OPS_MANAGER_ROLES, intent: "field" },
     { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   completed: [
@@ -255,6 +270,7 @@ export const WORK_ORDER_STAGE_ORDER: readonly WorkOrderStage[] = [
 
 export function getWorkOrderStage(status: WorkOrderStatus): WorkOrderStage {
   if (status === "cancelled") return "cancelled";
+  if (status === "paused") return "field";
   if (status === "pending_assignment") return "intake";
   if (status === "assigned") return "dispatch";
   if (["accepted", "traveling", "working"].includes(status)) return "field";
@@ -263,7 +279,18 @@ export function getWorkOrderStage(status: WorkOrderStatus): WorkOrderStage {
   return "closed";
 }
 
-export type DisplayStatus = "todo" | "doing" | "doing_overdue" | "done" | "done_overdue" | "cancelled";
+export type DisplayStatus = "todo" | "doing" | "doing_overdue" | "done" | "done_overdue" | "paused" | "cancelled" | "other";
+
+export const DISPLAY_STATUS_ORDER: readonly DisplayStatus[] = [
+  "todo",
+  "doing",
+  "doing_overdue",
+  "done",
+  "done_overdue",
+  "paused",
+  "cancelled",
+  "other",
+];
 
 export const DISPLAY_STATUS_LABELS: Record<DisplayStatus, string> = {
   todo: "Việc chưa làm",
@@ -271,7 +298,9 @@ export const DISPLAY_STATUS_LABELS: Record<DisplayStatus, string> = {
   doing_overdue: "Đang làm quá hạn",
   done: "Hoàn thành",
   done_overdue: "Hoàn thành quá hạn",
+  paused: "Việc tạm dừng",
   cancelled: "Đã hủy",
+  other: "Khác",
 };
 
 export const DISPLAY_STATUS_TONE: Record<DisplayStatus, string> = {
@@ -280,7 +309,9 @@ export const DISPLAY_STATUS_TONE: Record<DisplayStatus, string> = {
   doing_overdue: "bg-red-50 text-red-800 ring-red-200 animate-pulse",
   done: "bg-emerald-50 text-emerald-800 ring-emerald-200",
   done_overdue: "bg-orange-50 text-orange-800 ring-orange-200",
+  paused: "bg-slate-100 text-slate-700 ring-slate-300",
   cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
+  other: "bg-zinc-50 text-zinc-600 ring-zinc-200",
 };
 
 export function getDisplayStatus(order: {
@@ -288,10 +319,12 @@ export function getDisplayStatus(order: {
   appointment_at: string | null;
   updated_at?: string;
 }): DisplayStatus {
+  if (order.status === "paused") return "paused";
   if (order.status === "cancelled") return "cancelled";
 
   const isFinished = ["completed", "awaiting_payment", "paid", "debt"].includes(order.status);
   const isDoing = ["working", "awaiting_acceptance"].includes(order.status);
+  const isTodo = ["pending_assignment", "assigned", "accepted", "traveling"].includes(order.status);
 
   if (isFinished) {
     if (order.appointment_at && order.updated_at) {
@@ -314,7 +347,9 @@ export function getDisplayStatus(order: {
     return "doing";
   }
 
-  return "todo";
+  if (isTodo) return "todo";
+
+  return "other";
 }
 
 export function getWorkOrderDeadlineLabel(order: {
