@@ -29,12 +29,14 @@ export function NotificationsScreen({
   onOpen,
   onRequestBrowserNotifications,
   onRead,
+  onReadAll,
 }: {
   notifications: NotificationItem[];
   browserNotificationPermission: NotificationPermission | "unsupported";
   onOpen: (id: string) => void;
   onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
   onRead: (id: string) => void;
+  onReadAll: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
@@ -124,6 +126,15 @@ export function NotificationsScreen({
             <button className="btn-secondary h-9 text-xs px-2.5 flex items-center gap-1.5" type="button">
               <Filter size={13} />
               Lọc
+            </button>
+            <button
+              className="btn-secondary h-9 text-xs px-2.5 flex items-center gap-1.5"
+              type="button"
+              onClick={onReadAll}
+              disabled={unreadCount === 0}
+            >
+              <CheckCircle2 size={13} />
+              Đánh dấu đã đọc tất cả
             </button>
           </div>
         </div>

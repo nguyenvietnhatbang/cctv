@@ -53,6 +53,7 @@ type NotificationsScreenProps = {
   onOpen: (id: string) => void;
   onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
   onRead: (id: string) => Promise<void>;
+  onReadAll: () => Promise<void>;
 };
 
 type UsersScreenProps = {
@@ -135,6 +136,7 @@ type OpsScreenSwitcherProps = {
   browserNotificationPermission: NotificationPermission | "unsupported";
   onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
   onReadNotification: (id: string) => Promise<void>;
+  onReadAllNotifications: () => Promise<void>;
   onEditUser: (item: AppData["users"][number]) => void;
   onDeleteUser: (item: AppData["users"][number]) => void;
   onViewUserAssignmentHistory: (item: AppData["users"][number]) => void;
@@ -171,6 +173,7 @@ export function OpsScreenSwitcher({
   browserNotificationPermission,
   onRequestBrowserNotifications,
   onReadNotification,
+  onReadAllNotifications,
   onEditUser,
   onDeleteUser,
   onViewUserAssignmentHistory,
@@ -248,6 +251,7 @@ export function OpsScreenSwitcher({
         onOpen={onOpenNotification}
         onRequestBrowserNotifications={onRequestBrowserNotifications}
         onRead={onReadNotification}
+        onReadAll={onReadAllNotifications}
       />
     );
   }

@@ -838,6 +838,13 @@ export function OpsApp() {
           });
           await refreshNotifications();
         }}
+        onReadAllNotifications={async () => {
+          await apiFetch("/api/notifications", {
+            method: "PATCH",
+            body: JSON.stringify({ read: true }),
+          });
+          await refreshNotifications();
+        }}
         onEditUser={(item) => setModal({ type: "user-edit", item })}
         onDeleteUser={(item) => setModal({ type: "user-delete", item })}
         onViewUserAssignmentHistory={(item) => setModal({ type: "user-assignment-history", item })}
