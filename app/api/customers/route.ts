@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
+import { BACK_OFFICE_ROLES, OPS_MANAGER_ROLES } from "@/lib/types";
 import { createCustomerSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -33,7 +34,7 @@ function normalizeContacts(body: { name: string; phone: string; contacts?: Array
 
 export async function GET(request: Request) {
   try {
-    await requireUser(["admin", "dispatcher", "accountant"]);
+    await requireUser(BACK_OFFICE_ROLES);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("q")?.trim() ?? "";
 
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser(["admin", "dispatcher"]);
+    const user = await requireUser(OPS_MANAGER_ROLES);
     const body = createCustomerSchema.parse(await request.json());
 
     const customer = await withTransaction(async (client) => {

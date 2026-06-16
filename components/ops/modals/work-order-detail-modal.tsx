@@ -37,7 +37,6 @@ function InfoItem({ label, children }: { label: string; children: ReactNode }) {
 
 export function WorkOrderDetailModal({
   detail,
-  technicians,
   onClose,
 }: {
   detail: WorkOrderDetail;
@@ -50,7 +49,7 @@ export function WorkOrderDetailModal({
   const [resourceQuery, setResourceQuery] = useState("");
   const [materialPage, setMaterialPage] = useState(1);
   const [filePage, setFilePage] = useState(1);
-  const assignedTechnician = technicians.find((technician) => technician.id === detail.workOrder.technician_id) ?? null;
+  const assignedTechnicians = detail.workOrder.assigned_technicians ?? [];
   const signatureFile = detail.files.find((file) => file.purpose === "signature");
   const paymentStatus = detail.workOrder.payment_status
     ? paymentLabels[detail.workOrder.payment_status] ?? detail.workOrder.payment_status
@@ -127,8 +126,14 @@ export function WorkOrderDetailModal({
             <InfoItem label="Độ ưu tiên">{detail.workOrder.priority === "urgent" ? "Khẩn cấp" : "Bình thường"}</InfoItem>
             <InfoItem label="Thời gian hẹn">{dateTime(detail.workOrder.appointment_at)}</InfoItem>
             <InfoItem label="Ngày tạo">{dateTime(detail.workOrder.created_at)}</InfoItem>
-            <InfoItem label="Kỹ thuật viên">{detail.workOrder.technician_name ?? "Chưa phân công"}</InfoItem>
-            <InfoItem label="Trạng thái kỹ thuật">{assignedTechnician ? TECHNICIAN_STATUS_LABELS[assignedTechnician.status] : "Chưa gán"}</InfoItem>
+            <InfoItem label="Kỹ thuật viên">
+              {assignedTechnicians.length > 0 ? assignedTechnicians.map((technician) => technician.full_name).join(", ") : "Chưa phân công"}
+            </InfoItem>
+            <InfoItem label="Trạng thái kỹ thuật">
+              {assignedTechnicians.length > 0
+                ? assignedTechnicians.map((technician) => `${technician.full_name}: ${TECHNICIAN_STATUS_LABELS[technician.status]}`).join(", ")
+                : "Chưa gán"}
+            </InfoItem>
             <InfoItem label="Thanh toán">{paymentStatus}</InfoItem>
             <div className="detail-card md:col-span-2 xl:col-span-4">
               <p className="detail-label">Mô tả công việc</p>

@@ -489,7 +489,7 @@ export function UserCreateModal({
               <option key={role} value={role}>{label}</option>
             ))}
           </select>
-          {selectedRole === "technician" ? (
+          {selectedRole === "technician" || selectedRole === "team_lead" ? (
             <input name="serviceArea" className="input" placeholder="Khu vực phụ trách (ví dụ: Quận 1, Quận 3)" />
           ) : null}
           <div className="flex justify-end gap-2">

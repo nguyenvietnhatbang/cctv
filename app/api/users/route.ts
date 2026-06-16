@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
       const user = userResult.rows[0];
 
-      if (body.role === "technician" || body.technician) {
+      if (body.role === "technician" || body.role === "team_lead" || body.technician) {
         await client.query(
           `insert into technicians (user_id, service_area, status)
            values ($1, $2, $3)`,

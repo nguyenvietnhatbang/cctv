@@ -69,8 +69,7 @@ export function WorkOrderCreateModal({
               <option value="urgent">Gấp</option>
             </select>
             <input name="appointmentAt" type="datetime-local" className="input" />
-            <select name="technicianId" className="input" defaultValue="">
-              <option value="">Lưu chờ phân công</option>
+            <select name="technicianIds" className="input min-h-24" multiple aria-label="Kỹ thuật viên phân công">
               {technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.full_name}</option>)}
             </select>
           </div>

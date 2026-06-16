@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
+import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createMaterialSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanMutateFieldWork } from "@/lib/work-orders";
 
@@ -31,7 +32,7 @@ export async function GET(_request: Request, context: Context) {
 
 export async function POST(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
     const { id } = await context.params;
     const body = createMaterialSchema.parse(await request.json());
 

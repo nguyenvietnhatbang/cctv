@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
 import { updateUserSchema } from "@/lib/validators";
 
@@ -15,17 +15,31 @@ export async function PATCH(request: Request, context: Context) {
     const { id } = await context.params;
     const body = updateUserSchema.parse(await request.json());
 
-    const updateResult = await query(
-      `update users
-       set full_name = coalesce($2, full_name),
-           email = coalesce($3, email),
-           phone = coalesce($4, phone),
-           role = coalesce($5, role),
-           status = coalesce($6, status)
-       where id = $1
-       returning id, full_name, email, phone, role, status`,
-      [id, body.fullName ?? null, body.email ?? null, body.phone ?? null, body.role ?? null, body.status ?? null],
-    );
+    const updateResult = await withTransaction(async (client) => {
+      const result = await client.query(
+        `update users
+         set full_name = coalesce($2, full_name),
+             email = coalesce($3, email),
+             phone = coalesce($4, phone),
+             role = coalesce($5, role),
+             status = coalesce($6, status)
+         where id = $1
+         returning id, full_name, email, phone, role, status`,
+        [id, body.fullName ?? null, body.email ?? null, body.phone ?? null, body.role ?? null, body.status ?? null],
+      );
+
+      const updated = result.rows[0];
+      if (updated && (updated.role === "technician" || updated.role === "team_lead")) {
+        await client.query(
+          `insert into technicians (user_id)
+           values ($1)
+           on conflict (user_id) do nothing`,
+          [id],
+        );
+      }
+
+      return result;
+    });
 
     if (!updateResult.rows[0]) {
       return Response.json({ error: "Không tìm thấy nhân viên" }, { status: 404 });

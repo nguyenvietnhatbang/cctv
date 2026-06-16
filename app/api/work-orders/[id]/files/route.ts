@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonCreated } from "@/lib/http";
 import { getMaxUploadBytes, uploadWorkOrderFile } from "@/lib/storage";
+import { isPaymentManagerRole, OPS_MANAGER_ROLES } from "@/lib/types";
 import { uploadPurposeSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork, assertCanReadWorkOrder } from "@/lib/work-orders";
 
@@ -19,7 +20,7 @@ function getExtension(name: string) {
 
 export async function POST(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician", "accountant"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician", "accountant"]);
     const { id } = await context.params;
 
     const formData = await request.formData();
@@ -31,7 +32,7 @@ export async function POST(request: Request, context: Context) {
     }
 
     if (purpose === "bill") {
-      if (!["admin", "dispatcher", "accountant"].includes(user.role)) {
+      if (!isPaymentManagerRole(user.role)) {
         throw new HttpError(403, "Bạn không có quyền upload bill thanh toán");
       }
       await assertCanReadWorkOrder(user, id);

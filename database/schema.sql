@@ -1,6 +1,6 @@
 create extension if not exists pgcrypto;
 
-create type app_role as enum ('admin', 'dispatcher', 'technician', 'accountant');
+create type app_role as enum ('admin', 'dispatcher', 'team_lead', 'technician', 'accountant');
 create type user_status as enum ('active', 'inactive');
 create type technician_status as enum ('available', 'traveling', 'working', 'off');
 create type work_order_type as enum ('warranty', 'maintenance', 'installation', 'other');
@@ -120,7 +120,7 @@ create table work_order_assignments (
 );
 
 create unique index work_order_active_assignment_idx
-  on work_order_assignments(work_order_id)
+  on work_order_assignments(work_order_id, technician_id)
   where unassigned_at is null;
 
 create table work_order_status_history (

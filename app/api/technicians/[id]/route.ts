@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateTechnicianSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -11,7 +12,7 @@ type Context = {
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    await requireUser(["admin", "dispatcher"]);
+    await requireUser(OPS_MANAGER_ROLES);
     const { id } = await context.params;
     const body = updateTechnicianSchema.parse(await request.json());
 

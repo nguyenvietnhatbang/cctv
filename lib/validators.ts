@@ -63,6 +63,7 @@ export const createWorkOrderSchema = z.object({
   appointmentAt: z.string().datetime().optional().nullable(),
   internalNote: optionalText,
   technicianId: z.string().uuid().optional().nullable(),
+  technicianIds: z.array(z.string().uuid()).optional(),
 });
 
 export const updateWorkOrderSchema = z.object({
@@ -80,8 +81,11 @@ export const updateWorkOrderSchema = z.object({
 });
 
 export const assignWorkOrderSchema = z.object({
-  technicianId: z.string().uuid(),
+  technicianId: z.string().uuid().optional(),
+  technicianIds: z.array(z.string().uuid()).optional(),
   note: optionalText,
+}).refine((value) => Boolean(value.technicianId || value.technicianIds?.length), {
+  message: "Cần chọn ít nhất một kỹ thuật viên",
 });
 
 export const changeStatusSchema = z.object({

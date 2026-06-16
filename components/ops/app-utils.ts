@@ -73,7 +73,7 @@ export function orderMatchesFilters(order: WorkOrderListItem, filters: Filters) 
   const q = filters.q.trim().toLowerCase();
   if (filters.status && order.status !== filters.status) return false;
   if (filters.type && order.type !== filters.type) return false;
-  if (filters.technicianId && order.technician_id !== filters.technicianId) return false;
+  if (filters.technicianId && !(order.assigned_technicians ?? []).some((technician) => technician.id === filters.technicianId)) return false;
   if (filters.dateFrom && orderScopeDate(order) < filters.dateFrom) return false;
   if (filters.dateTo && orderScopeDate(order) > filters.dateTo) return false;
   if (!filters.status && !filters.dateFrom && !filters.dateTo) {
@@ -83,7 +83,7 @@ export function orderMatchesFilters(order: WorkOrderListItem, filters: Filters) 
   }
   if (!q) return true;
 
-  return [order.code, order.customer_name, order.customer_phone, order.customer_address, order.description]
+  return [order.code, order.customer_name, order.customer_phone, order.customer_address, order.description, order.technician_name ?? ""]
     .some((value) => value.toLowerCase().includes(q));
 }
 

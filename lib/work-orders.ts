@@ -3,7 +3,14 @@ import "server-only";
 import type { PoolClient } from "pg";
 import { query } from "@/lib/db";
 import { HttpError } from "@/lib/http";
-import { canTransitionWorkOrderStatus, ROLE_LABELS, WORK_ORDER_STATUS_LABELS, type SessionUser, type WorkOrderStatus } from "@/lib/types";
+import {
+  canTransitionWorkOrderStatus,
+  isOpsManagerRole,
+  ROLE_LABELS,
+  WORK_ORDER_STATUS_LABELS,
+  type SessionUser,
+  type WorkOrderStatus,
+} from "@/lib/types";
 
 const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "debt", "cancelled"]);
 
@@ -47,7 +54,7 @@ export async function assertCanReadWorkOrder(user: SessionUser, workOrderId: str
 }
 
 export async function assertCanMutateFieldWork(user: SessionUser, workOrderId: string) {
-  if (["admin", "dispatcher"].includes(user.role)) {
+  if (isOpsManagerRole(user.role)) {
     return;
   }
 

@@ -31,17 +31,18 @@ import { OpsModalLayer } from "@/components/ops/ops-modal-layer";
 import { OpsScreenSwitcher } from "@/components/ops/ops-screen-switcher";
 import { OpsShell } from "@/components/ops/ops-shell";
 import { LoadingScreen } from "@/components/ops/ui";
+import { BACK_OFFICE_ROLES, isOpsManagerRole } from "@/lib/types";
 
 const ORDER_BACKED_SECTIONS = new Set<TabId>(["dashboard", "orders", "customers", "dispatch", "technician", "payments"]);
 const CUSTOMER_BACKED_SECTIONS = new Set<TabId>(["orders", "customers", "dispatch"]);
 const TECHNICIAN_BACKED_SECTIONS = new Set<TabId>(["orders", "dispatch", "technicians"]);
 
 function needsCustomers(section: TabId, role: Role) {
-  return ["admin", "dispatcher", "accountant"].includes(role) && CUSTOMER_BACKED_SECTIONS.has(section);
+  return BACK_OFFICE_ROLES.includes(role) && CUSTOMER_BACKED_SECTIONS.has(section);
 }
 
 function needsTechnicians(section: TabId, role: Role) {
-  return ["admin", "dispatcher"].includes(role) && TECHNICIAN_BACKED_SECTIONS.has(section);
+  return isOpsManagerRole(role) && TECHNICIAN_BACKED_SECTIONS.has(section);
 }
 
 function needsUsers(section: TabId, role: Role) {
@@ -83,6 +84,7 @@ export function OpsApp() {
     () => data.notifications.filter((item) => !item.read_at).length,
     [data.notifications],
   );
+  const userRole = user?.role;
 
   const loadMe = useCallback(async () => {
     const payload = await apiFetch<{ user: SessionUser | null }>("/api/auth/me");
@@ -172,14 +174,14 @@ export function OpsApp() {
   }, [detail?.workOrder.id, loadDetail]);
 
   const refreshOrderContext = useCallback(async () => {
-    const canManageOps = ["admin", "dispatcher"].includes(user?.role ?? "");
+    const canManageOps = userRole ? isOpsManagerRole(userRole) : false;
     await Promise.all([
       refreshOrders(),
       refreshDashboard(),
       canManageOps ? refreshTechnicians() : Promise.resolve(null),
       refreshOpenDetail(),
     ]);
-  }, [refreshDashboard, refreshOpenDetail, refreshOrders, refreshTechnicians, user?.role]);
+  }, [refreshDashboard, refreshOpenDetail, refreshOrders, refreshTechnicians, userRole]);
 
   const loadDataForUser = useCallback(async (currentUser: SessionUser) => {
     const ordersRequest = workOrderListRequest();
@@ -291,12 +293,12 @@ export function OpsApp() {
   }, [loading, refreshCustomers, refreshTechnicians, section, user]);
 
   useEffect(() => {
-    const canViewReports = ["admin", "dispatcher", "accountant"].includes(user?.role ?? "");
+    const canViewReports = userRole ? BACK_OFFICE_ROLES.includes(userRole) && userRole !== "team_lead" : false;
     if (loading || !canViewReports || section !== "reports" || data.report || reportLoading) return;
     refreshDefaultReport().catch((reason) => {
       setError(reason instanceof Error ? reason.message : "Không tải được báo cáo");
     });
-  }, [data.report, loading, refreshDefaultReport, reportLoading, section, user?.role]);
+  }, [data.report, loading, refreshDefaultReport, reportLoading, section, userRole]);
 
   useEffect(() => {
     const nextFilters = filtersFromSearchParams(searchParams);
@@ -329,6 +331,7 @@ export function OpsApp() {
         setDetail({
           workOrder: {
             ...item,
+            assigned_technicians: item.assigned_technicians ?? [],
             internal_note: null,
             completion_note: null,
             acceptance_name: null,
@@ -370,6 +373,7 @@ export function OpsApp() {
     return {
       workOrder: {
         ...item,
+        assigned_technicians: item.assigned_technicians ?? [],
         internal_note: null,
         completion_note: null,
         acceptance_name: null,
@@ -519,7 +523,7 @@ export function OpsApp() {
           description: formData.get("description"),
           appointmentAt: formData.get("appointmentAt") ? new Date(String(formData.get("appointmentAt"))).toISOString() : null,
           internalNote: formData.get("internalNote") || null,
-          technicianId: formData.get("technicianId") || null,
+          technicianIds: formData.getAll("technicianIds").map(String).filter(Boolean),
         }),
       });
 
@@ -542,7 +546,7 @@ export function OpsApp() {
       }));
       form.reset();
       void refreshDashboard();
-      if (["admin", "dispatcher"].includes(user?.role ?? "")) void refreshTechnicians();
+      if (user && isOpsManagerRole(user.role)) void refreshTechnicians();
       if (!customerId && !payload.customer) void refreshCustomers();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không tạo được phiếu");
@@ -594,12 +598,12 @@ export function OpsApp() {
           phone: formData.get("phone") || null,
           password: formData.get("password"),
           role,
-          technician: role === "technician" ? { serviceArea: formData.get("serviceArea") || null, status: "available" } : undefined,
+          technician: (role === "technician" || role === "team_lead") ? { serviceArea: formData.get("serviceArea") || null, status: "available" } : undefined,
         }),
       });
       setData((current) => ({ ...current, users: prependById(current.users, payload.user) }));
       form.reset();
-      if (role === "technician") void refreshTechnicians();
+      if (role === "technician" || role === "team_lead") void refreshTechnicians();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không tạo được nhân viên");
     } finally {
@@ -663,7 +667,7 @@ export function OpsApp() {
     await apiFetch(`/api/work-orders/${detail.workOrder.id}/assign`, {
       method: "POST",
       body: JSON.stringify({
-        technicianId: formData.get("technicianId"),
+        technicianIds: formData.getAll("technicianIds").map(String).filter(Boolean),
         note: formData.get("note") || null,
       }),
     });

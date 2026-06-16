@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateMaterialSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanMutateFieldWork, syncWorkOrderPaymentAmounts } from "@/lib/work-orders";
 
@@ -12,7 +13,7 @@ type Context = {
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
     const { id, materialId } = await context.params;
     const body = updateMaterialSchema.parse(await request.json());
 
@@ -46,7 +47,7 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
     const { id, materialId } = await context.params;
 
     await assertCanMutateFieldWork(user, id);

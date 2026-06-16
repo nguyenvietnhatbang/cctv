@@ -7,6 +7,7 @@ import type { AppData, Customer, Filters, ReportData, Role, Technician, WorkOrde
 import { DashboardScreen } from "@/components/ops/screens/dashboard-screen";
 import { OrdersScreen } from "@/components/ops/screens/orders-screen";
 import { TechnicianScreen } from "@/components/ops/screens/technician-screen";
+import { isOpsManagerRole } from "@/lib/types";
 
 function ScreenLoading({ label = "Đang tải màn hình..." }: { label?: string }) {
   return (
@@ -182,7 +183,7 @@ export function OpsScreenSwitcher({
         technicians={data.technicians}
         orders={data.orders}
         role={role}
-        canCreate={["admin", "dispatcher"].includes(role)}
+        canCreate={isOpsManagerRole(role)}
         isCreating={pendingAction === "create-order"}
         onFilter={onFilter}
         onCreate={onCreateOrder}

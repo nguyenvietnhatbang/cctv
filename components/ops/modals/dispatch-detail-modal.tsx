@@ -50,7 +50,9 @@ export function DispatchDetailModal({
   const [resourceQuery, setResourceQuery] = useState("");
   const [materialPage, setMaterialPage] = useState(1);
   const [filePage, setFilePage] = useState(1);
-  const assignedTechnician = technicians.find((technician) => technician.id === detail.workOrder.technician_id) ?? null;
+  const assignedTechnicians = detail.workOrder.assigned_technicians ?? [];
+  const assignedTechnicianProfiles = assignedTechnicians
+    .map((assigned) => technicians.find((technician) => technician.id === assigned.id) ?? assigned);
   const paymentStatus = detail.workOrder.payment_status
     ? paymentLabels[detail.workOrder.payment_status] ?? detail.workOrder.payment_status
     : "Chưa thanh toán";
@@ -145,12 +147,24 @@ export function DispatchDetailModal({
 
         {activeTab === "technician" ? (
           <section className="grid gap-3 md:grid-cols-2">
-            <InfoItem label="Kỹ thuật được gán">{detail.workOrder.technician_name ?? "Chưa phân công"}</InfoItem>
-            <InfoItem label="Lịch hôm nay">{assignedTechnician ? `${assignedTechnician.jobs_today} việc` : "Chưa có dữ liệu"}</InfoItem>
-            <InfoItem label="Trạng thái">
-              {assignedTechnician ? TECHNICIAN_STATUS_LABELS[assignedTechnician.status] : "Chưa phân công"}
+            <InfoItem label="Kỹ thuật được gán">
+              {assignedTechnicians.length > 0 ? assignedTechnicians.map((technician) => technician.full_name).join(", ") : "Chưa phân công"}
             </InfoItem>
-            <InfoItem label="Khu vực">{assignedTechnician?.service_area ?? "Chưa gán khu vực"}</InfoItem>
+            <InfoItem label="Lịch hôm nay">
+              {assignedTechnicianProfiles.length > 0
+                ? assignedTechnicianProfiles.map((technician) => `${technician.full_name}: ${"jobs_today" in technician ? technician.jobs_today : "0"} việc`).join(", ")
+                : "Chưa có dữ liệu"}
+            </InfoItem>
+            <InfoItem label="Trạng thái">
+              {assignedTechnicianProfiles.length > 0
+                ? assignedTechnicianProfiles.map((technician) => `${technician.full_name}: ${TECHNICIAN_STATUS_LABELS[technician.status]}`).join(", ")
+                : "Chưa phân công"}
+            </InfoItem>
+            <InfoItem label="Khu vực">
+              {assignedTechnicianProfiles.length > 0
+                ? assignedTechnicianProfiles.map((technician) => `${technician.full_name}: ${technician.service_area ?? "Chưa gán khu vực"}`).join(", ")
+                : "Chưa gán khu vực"}
+            </InfoItem>
           </section>
         ) : null}
 

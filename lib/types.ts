@@ -1,4 +1,4 @@
-export const ROLES = ["admin", "dispatcher", "technician", "accountant"] as const;
+export const ROLES = ["admin", "dispatcher", "team_lead", "technician", "accountant"] as const;
 export const USER_STATUSES = ["active", "inactive"] as const;
 export const TECHNICIAN_STATUSES = ["available", "traveling", "working", "off"] as const;
 export const WORK_ORDER_TYPES = ["warranty", "maintenance", "installation", "other"] as const;
@@ -55,9 +55,27 @@ export type SessionUser = {
 export const ROLE_LABELS: Record<Role, string> = {
   admin: "Admin",
   dispatcher: "Điều phối",
+  team_lead: "Trưởng nhóm",
   technician: "Kỹ thuật",
   accountant: "Kế toán",
 };
+
+export const OPS_MANAGER_ROLES: Role[] = ["admin", "dispatcher", "team_lead"];
+export const FIELD_ROLES: Role[] = ["technician", "team_lead"];
+export const PAYMENT_MANAGER_ROLES: Role[] = ["admin", "dispatcher", "accountant"];
+export const BACK_OFFICE_ROLES: Role[] = ["admin", "dispatcher", "team_lead", "accountant"];
+
+export function isOpsManagerRole(role: Role) {
+  return OPS_MANAGER_ROLES.includes(role);
+}
+
+export function isFieldRole(role: Role) {
+  return FIELD_ROLES.includes(role);
+}
+
+export function isPaymentManagerRole(role: Role) {
+  return PAYMENT_MANAGER_ROLES.includes(role);
+}
 
 export const TECHNICIAN_STATUS_LABELS: Record<TechnicianStatus, string> = {
   available: "Rảnh",
@@ -138,42 +156,42 @@ export type WorkOrderTransition = {
 
 export const WORK_ORDER_TRANSITIONS: Partial<Record<WorkOrderStatus, WorkOrderTransition[]>> = {
   pending_assignment: [
-    { status: "assigned", label: "Phân công", roles: ["admin", "dispatcher"], intent: "assign" },
-    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+    { status: "assigned", label: "Phân công", roles: OPS_MANAGER_ROLES, intent: "assign" },
+    { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   assigned: [
-    { status: "accepted", label: "Nhận việc", roles: ["technician"], intent: "field" },
-    { status: "pending_assignment", label: "Bỏ phân công", roles: ["admin", "dispatcher"], intent: "assign" },
-    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+    { status: "accepted", label: "Nhận việc", roles: FIELD_ROLES, intent: "field" },
+    { status: "pending_assignment", label: "Bỏ phân công", roles: OPS_MANAGER_ROLES, intent: "assign" },
+    { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   accepted: [
-    { status: "traveling", label: "Đang di chuyển", roles: ["technician"], intent: "field" },
-    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+    { status: "traveling", label: "Đang di chuyển", roles: FIELD_ROLES, intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   traveling: [
-    { status: "working", label: "Check-in", roles: ["technician"], intent: "field" },
-    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+    { status: "working", label: "Check-in", roles: FIELD_ROLES, intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   working: [
-    { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: ["technician"], intent: "field" },
-    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+    { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: FIELD_ROLES, intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   awaiting_acceptance: [
-    { status: "completed", label: "Khách nghiệm thu", roles: ["admin", "dispatcher", "technician"], intent: "acceptance" },
-    { status: "working", label: "Làm lại", roles: ["admin", "dispatcher", "technician"], intent: "field" },
-    { status: "cancelled", label: "Hủy phiếu", roles: ["admin", "dispatcher"], intent: "cancel" },
+    { status: "completed", label: "Khách nghiệm thu", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "acceptance" },
+    { status: "working", label: "Làm lại", roles: [...OPS_MANAGER_ROLES, "technician"], intent: "field" },
+    { status: "cancelled", label: "Hủy phiếu", roles: OPS_MANAGER_ROLES, intent: "cancel" },
   ],
   completed: [
-    { status: "awaiting_payment", label: "Chờ thu tiền", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
-    { status: "paid", label: "Đã thu tiền", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
-    { status: "debt", label: "Ghi công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "awaiting_payment", label: "Chờ thu tiền", roles: PAYMENT_MANAGER_ROLES, intent: "payment" },
+    { status: "paid", label: "Đã thu tiền", roles: PAYMENT_MANAGER_ROLES, intent: "payment" },
+    { status: "debt", label: "Ghi công nợ", roles: PAYMENT_MANAGER_ROLES, intent: "payment" },
   ],
   awaiting_payment: [
-    { status: "paid", label: "Đã thu tiền", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
-    { status: "debt", label: "Ghi công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "paid", label: "Đã thu tiền", roles: PAYMENT_MANAGER_ROLES, intent: "payment" },
+    { status: "debt", label: "Ghi công nợ", roles: PAYMENT_MANAGER_ROLES, intent: "payment" },
   ],
   debt: [
-    { status: "paid", label: "Thu công nợ", roles: ["admin", "dispatcher", "accountant"], intent: "payment" },
+    { status: "paid", label: "Thu công nợ", roles: PAYMENT_MANAGER_ROLES, intent: "payment" },
   ],
 };
 
@@ -187,11 +205,11 @@ export function canTransitionWorkOrderStatus(from: WorkOrderStatus, to: WorkOrde
 }
 
 export const NEXT_STATUS_ACTIONS: Partial<Record<WorkOrderStatus, { status: WorkOrderStatus; label: string; roles: Role[] }>> = {
-  assigned: { status: "accepted", label: "Nhận việc", roles: ["technician"] },
-  accepted: { status: "traveling", label: "Đang di chuyển", roles: ["technician"] },
-  traveling: { status: "working", label: "Check-in", roles: ["technician"] },
-  working: { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: ["technician"] },
-  completed: { status: "awaiting_payment", label: "Bàn giao thu tiền", roles: ["dispatcher", "accountant", "admin"] },
+  assigned: { status: "accepted", label: "Nhận việc", roles: FIELD_ROLES },
+  accepted: { status: "traveling", label: "Đang di chuyển", roles: FIELD_ROLES },
+  traveling: { status: "working", label: "Check-in", roles: FIELD_ROLES },
+  working: { status: "awaiting_acceptance", label: "Hoàn tất xử lý", roles: FIELD_ROLES },
+  completed: { status: "awaiting_payment", label: "Bàn giao thu tiền", roles: PAYMENT_MANAGER_ROLES },
 };
 
 export type WorkOrderStage = "intake" | "dispatch" | "field" | "acceptance" | "payment" | "closed" | "cancelled";

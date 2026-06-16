@@ -34,8 +34,20 @@ export type WorkOrderListItem = {
   customer_lng: string | null;
   technician_id: string | null;
   technician_name: string | null;
+  assigned_technicians: AssignedTechnician[];
   total_amount: string;
   payment_status: string | null;
+};
+
+export type AssignedTechnician = {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  service_area: string | null;
+  status: "available" | "traveling" | "working" | "off";
+  assigned_at: string;
 };
 
 export type Customer = {

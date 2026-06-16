@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { CalendarClock, CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, Phone, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
-import { getAllowedWorkOrderTransitions, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
+import { getAllowedWorkOrderTransitions, isOpsManagerRole, isPaymentManagerRole, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
@@ -165,9 +165,9 @@ export function WorkOrderEditModal({
   const [preparingStatus, setPreparingStatus] = useState(false);
   const nextAction = NEXT_STATUS_ACTIONS[detail.workOrder.status] ?? null;
   const canNext = nextAction?.roles.includes(role) ?? false;
-  const canAssign = ["admin", "dispatcher"].includes(role)
+  const canAssign = isOpsManagerRole(role)
     && ["pending_assignment", "assigned", "accepted", "traveling", "working", "awaiting_acceptance"].includes(detail.workOrder.status);
-  const canPay = ["admin", "dispatcher", "accountant"].includes(role);
+  const canPay = isPaymentManagerRole(role);
   const allowedTransitions = getAllowedWorkOrderTransitions(detail.workOrder.status, role);
   const canCancel = allowedTransitions.some((transition) => transition.status === "cancelled");
   const financialLocked = FINANCIAL_LOCKED_STATUSES.includes(detail.workOrder.status) && role !== "admin";

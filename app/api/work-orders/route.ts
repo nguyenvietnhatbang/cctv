@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
-import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
+import { handleRouteError, HttpError, jsonCreated, jsonOk } from "@/lib/http";
+import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createWorkOrderSchema } from "@/lib/validators";
 import { changeWorkOrderStatus, makeWorkOrderCode, requireTechnicianIdForUser } from "@/lib/work-orders";
 
@@ -26,6 +27,38 @@ const customerSelect = `
          ), '[]'::jsonb) as contacts
   from customers c
 `;
+
+const assignmentLateralJoin = `
+  left join lateral (
+    select min(woa.assigned_at) as assigned_at,
+           (array_agg(t.id order by woa.assigned_at, u.full_name))[1] as technician_id,
+           string_agg(u.full_name, ', ' order by u.full_name) as technician_name,
+           coalesce(
+             jsonb_agg(
+               jsonb_build_object(
+                 'id', t.id,
+                 'user_id', t.user_id,
+                 'full_name', u.full_name,
+                 'phone', u.phone,
+                 'email', u.email,
+                 'service_area', t.service_area,
+                 'status', t.status,
+                 'assigned_at', woa.assigned_at
+               )
+               order by u.full_name
+             ),
+             '[]'::jsonb
+           ) as assigned_technicians
+    from work_order_assignments woa
+    join technicians t on t.id = woa.technician_id
+    join users u on u.id = t.user_id
+    where woa.work_order_id = wo.id and woa.unassigned_at is null
+  ) assn on true
+`;
+
+function uniqueIds(ids: Array<string | null | undefined>) {
+  return [...new Set(ids.filter((id): id is string => Boolean(id)))];
+}
 
 export async function GET(request: Request) {
   try {
@@ -79,7 +112,15 @@ export async function GET(request: Request) {
 
     if (technicianId && user.role !== "technician") {
       params.push(technicianId);
-      filters.push(`woa.technician_id = $${params.length}`);
+      filters.push(
+        `exists (
+          select 1
+          from work_order_assignments filter_woa
+          where filter_woa.work_order_id = wo.id
+            and filter_woa.unassigned_at is null
+            and filter_woa.technician_id = $${params.length}
+        )`,
+      );
     }
 
     if (dateFrom) {
@@ -109,29 +150,36 @@ export async function GET(request: Request) {
           or wo.description ilike '%' || $${params.length} || '%'
           or c.name ilike '%' || $${params.length} || '%'
           or c.phone ilike '%' || $${params.length} || '%'
-          or c.address ilike '%' || $${params.length} || '%')`,
+          or c.address ilike '%' || $${params.length} || '%'
+          or coalesce(assn.technician_name, '') ilike '%' || $${params.length} || '%')`,
       );
     }
 
     if (user.role === "technician") {
       const ownTechnicianId = await requireTechnicianIdForUser(user.id);
       params.push(ownTechnicianId);
-      filters.push(`woa.technician_id = $${params.length}`);
+      filters.push(
+        `exists (
+          select 1
+          from work_order_assignments own_woa
+          where own_woa.work_order_id = wo.id
+            and own_woa.unassigned_at is null
+            and own_woa.technician_id = $${params.length}
+        )`,
+      );
     }
 
     const result = await query(
       `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
-              wo.appointment_at, woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
+              wo.appointment_at, assn.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
               c.lat as customer_lat, c.lng as customer_lng,
-              t.id as technician_id, tu.full_name as technician_name,
+              assn.technician_id, assn.technician_name, coalesce(assn.assigned_technicians, '[]'::jsonb) as assigned_technicians,
               coalesce(p.total_amount, 0) as total_amount, p.status as payment_status
        from work_orders wo
        join customers c on c.id = wo.customer_id
-       left join work_order_assignments woa on woa.work_order_id = wo.id and woa.unassigned_at is null
-       left join technicians t on t.id = woa.technician_id
-       left join users tu on tu.id = t.user_id
+       ${assignmentLateralJoin}
        left join payments p on p.work_order_id = wo.id
        where ${filters.join(" and ")}
        order by coalesce(wo.appointment_at, wo.created_at) desc
@@ -147,8 +195,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser(["admin", "dispatcher"]);
+    const user = await requireUser(OPS_MANAGER_ROLES);
     const body = createWorkOrderSchema.parse(await request.json());
+    const technicianIds = uniqueIds([...(body.technicianIds ?? []), body.technicianId]);
 
     if (!body.customerId && !body.customer) {
       return Response.json({ error: "Cần chọn hoặc tạo khách hàng" }, { status: 422 });
@@ -214,34 +263,52 @@ export async function POST(request: Request) {
         [workOrder.id],
       );
 
-      if (body.technicianId) {
+      if (technicianIds.length > 0) {
+        const technicianResult = await client.query<{ id: string }>(
+          `select t.id
+           from technicians t
+           join users u on u.id = t.user_id
+           where t.id = any($1::uuid[]) and u.status = 'active'`,
+          [technicianIds],
+        );
+        if (technicianResult.rows.length !== technicianIds.length) {
+          throw new HttpError(422, "Danh sách kỹ thuật viên không hợp lệ hoặc có người đã ngưng hoạt động");
+        }
+
         await client.query(
           `insert into work_order_assignments (work_order_id, technician_id, assigned_by)
-           values ($1, $2, $3)`,
-          [workOrder.id, body.technicianId, user.id],
+           select $1, id, $3
+           from technicians
+           where id = any($2::uuid[])`,
+          [workOrder.id, technicianIds, user.id],
+        );
+        await client.query(
+          `insert into notifications (user_id, work_order_id, title, body)
+           select t.user_id, $1, 'Bạn được giao phiếu mới', 'Mở phiếu để xem địa chỉ, liên hệ khách và nhận việc.'
+           from technicians t
+           where t.id = any($2::uuid[])`,
+          [workOrder.id, technicianIds],
         );
         await changeWorkOrderStatus(
           client,
           workOrder.id,
           "assigned",
           user,
-          "Phân công kỹ thuật viên",
+          `Phân công ${technicianIds.length} kỹ thuật viên`,
         );
       }
 
       const listResult = await client.query(
         `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
-                wo.appointment_at, woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
+                wo.appointment_at, assn.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
                 c.id as customer_id,
                 c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
                 c.lat as customer_lat, c.lng as customer_lng,
-                t.id as technician_id, tu.full_name as technician_name,
+                assn.technician_id, assn.technician_name, coalesce(assn.assigned_technicians, '[]'::jsonb) as assigned_technicians,
                 coalesce(p.total_amount, 0) as total_amount, p.status as payment_status
          from work_orders wo
          join customers c on c.id = wo.customer_id
-         left join work_order_assignments woa on woa.work_order_id = wo.id and woa.unassigned_at is null
-         left join technicians t on t.id = woa.technician_id
-         left join users tu on tu.id = t.user_id
+         ${assignmentLateralJoin}
          left join payments p on p.work_order_id = wo.id
          where wo.id = $1
          limit 1`,

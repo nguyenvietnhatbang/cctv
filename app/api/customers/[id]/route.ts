@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createCustomerSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -32,7 +33,7 @@ const customerSelect = `
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher"]);
+    const user = await requireUser(OPS_MANAGER_ROLES);
     const { id } = await context.params;
     const body = createCustomerSchema.partial().parse(await request.json());
 
@@ -94,7 +95,7 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    await requireUser(["admin", "dispatcher"]);
+    await requireUser(OPS_MANAGER_ROLES);
     const { id } = await context.params;
 
     const result = await query("delete from customers where id = $1 returning id", [id]);

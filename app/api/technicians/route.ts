@@ -1,13 +1,14 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
+import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createTechnicianSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    await requireUser(["admin", "dispatcher"]);
+    await requireUser(OPS_MANAGER_ROLES);
 
     const result = await query(
       `select t.id, t.user_id, u.full_name, u.phone, u.email, t.service_area, t.status,

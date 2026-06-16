@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
 import { createSignedFileUrl, deleteWorkOrderFile } from "@/lib/storage";
+import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateWorkOrderSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanReadWorkOrder } from "@/lib/work-orders";
 
@@ -10,6 +11,34 @@ export const runtime = "nodejs";
 type Context = {
   params: Promise<{ id: string }>;
 };
+
+const assignmentLateralJoin = `
+  left join lateral (
+    select min(woa.assigned_at) as assigned_at,
+           (array_agg(t.id order by woa.assigned_at, u.full_name))[1] as technician_id,
+           string_agg(u.full_name, ', ' order by u.full_name) as technician_name,
+           coalesce(
+             jsonb_agg(
+               jsonb_build_object(
+                 'id', t.id,
+                 'user_id', t.user_id,
+                 'full_name', u.full_name,
+                 'phone', u.phone,
+                 'email', u.email,
+                 'service_area', t.service_area,
+                 'status', t.status,
+                 'assigned_at', woa.assigned_at
+               )
+               order by u.full_name
+             ),
+             '[]'::jsonb
+           ) as assigned_technicians
+    from work_order_assignments woa
+    join technicians t on t.id = woa.technician_id
+    join users u on u.id = t.user_id
+    where woa.work_order_id = wo.id and woa.unassigned_at is null
+  ) assn on true
+`;
 
 export async function GET(_request: Request, context: Context) {
   try {
@@ -23,15 +52,16 @@ export async function GET(_request: Request, context: Context) {
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
               c.lat as customer_lat, c.lng as customer_lng,
               c.address_note as customer_address_note,
-              t.id as technician_id, tu.full_name as technician_name, tu.phone as technician_phone,
+              assn.assigned_at,
+              assn.technician_id,
+              assn.technician_name,
+              coalesce(assn.assigned_technicians, '[]'::jsonb) as assigned_technicians,
               p.status as payment_status, p.method as payment_method, p.labor_amount,
               p.material_amount, p.vat_amount, p.total_amount, p.transaction_ref,
               p.debt_due_date, p.note as payment_note, p.confirmed_at
        from work_orders wo
        join customers c on c.id = wo.customer_id
-       left join work_order_assignments woa on woa.work_order_id = wo.id and woa.unassigned_at is null
-       left join technicians t on t.id = woa.technician_id
-       left join users tu on tu.id = t.user_id
+       ${assignmentLateralJoin}
        left join payments p on p.work_order_id = wo.id
        where wo.id = $1
        limit 1`,
@@ -91,7 +121,7 @@ export async function GET(_request: Request, context: Context) {
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
     const { id } = await context.params;
 
     await assertCanReadWorkOrder(user, id);
@@ -167,7 +197,7 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    await requireUser(["admin", "dispatcher"]);
+    await requireUser(OPS_MANAGER_ROLES);
     const { id } = await context.params;
 
     const filePaths = await withTransaction(async (client) => {

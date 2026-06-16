@@ -27,16 +27,16 @@ export type TabId =
   | "users";
 
 export const tabs: ReadonlyArray<{ id: TabId; label: string; roles: readonly Role[] }> = [
-  { id: "dashboard", label: "Tổng quan", roles: ["admin", "dispatcher", "accountant"] },
-  { id: "orders", label: "Công việc", roles: ["admin", "dispatcher", "accountant"] },
-  { id: "customers", label: "Khách hàng", roles: ["admin", "dispatcher", "accountant"] },
-  { id: "dispatch", label: "Phân công", roles: ["admin", "dispatcher"] },
+  { id: "dashboard", label: "Tổng quan", roles: ["admin", "dispatcher", "team_lead", "accountant"] },
+  { id: "orders", label: "Công việc", roles: ["admin", "dispatcher", "team_lead", "accountant"] },
+  { id: "customers", label: "Khách hàng", roles: ["admin", "dispatcher", "team_lead", "accountant"] },
+  { id: "dispatch", label: "Phân công", roles: ["admin", "dispatcher", "team_lead"] },
   { id: "technician", label: "Kỹ thuật", roles: ["dispatcher", "technician"] },
   { id: "assignment-history", label: "Lịch sử", roles: ["technician"] },
-  { id: "technicians", label: "DS kỹ thuật", roles: ["admin", "dispatcher"] },
+  { id: "technicians", label: "DS kỹ thuật", roles: ["admin", "dispatcher", "team_lead"] },
   { id: "payments", label: "Thanh toán", roles: ["admin", "dispatcher", "accountant"] },
   { id: "reports", label: "Báo cáo", roles: ["admin", "dispatcher", "accountant"] },
-  { id: "notifications", label: "Thông báo", roles: ["admin", "dispatcher", "accountant", "technician"] },
+  { id: "notifications", label: "Thông báo", roles: ["admin", "dispatcher", "team_lead", "accountant", "technician"] },
   { id: "users", label: "Nhân viên", roles: ["admin"] },
 ];
 

@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
-import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
+import { isOpsManagerRole, OPS_MANAGER_ROLES, WORK_ORDER_STATUS_LABELS } from "@/lib/types";
 import { changeStatusSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork, changeWorkOrderStatus } from "@/lib/work-orders";
 
@@ -13,7 +13,7 @@ type Context = {
 
 export async function POST(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician", "accountant"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician", "accountant"]);
     const { id } = await context.params;
     const body = changeStatusSchema.parse(await request.json());
 
@@ -22,8 +22,8 @@ export async function POST(request: Request, context: Context) {
     }
 
     if (body.status === "cancelled") {
-      if (!["admin", "dispatcher"].includes(user.role)) {
-        throw new HttpError(403, "Chỉ admin hoặc điều phối được hủy phiếu");
+      if (!isOpsManagerRole(user.role)) {
+        throw new HttpError(403, "Chỉ admin, điều phối hoặc trưởng nhóm được hủy phiếu");
       }
       if (!body.note) {
         throw new HttpError(422, "Cần nhập lý do hủy phiếu");
@@ -43,7 +43,7 @@ export async function POST(request: Request, context: Context) {
         `insert into notifications (user_id, work_order_id, title, body)
          select u.id, $1, 'Phiếu đã đổi trạng thái', $2
          from users u
-         where u.role in ('admin', 'dispatcher') and u.status = 'active'`,
+         where u.role in ('admin', 'dispatcher', 'team_lead') and u.status = 'active'`,
         [id, `Trạng thái mới: ${WORK_ORDER_STATUS_LABELS[body.status]}`],
       );
     });

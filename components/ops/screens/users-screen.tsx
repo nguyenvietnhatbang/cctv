@@ -141,7 +141,7 @@ export function UsersScreen({
                       </span>
                     </td>
                     <td data-label="Khu vực" className="text-zinc-600 text-sm">
-                      {item.service_area ?? (item.role === "technician" ? "Chưa phân khu" : "Không áp dụng")}
+                      {item.service_area ?? (item.role === "technician" || item.role === "team_lead" ? "Chưa phân khu" : "Không áp dụng")}
                     </td>
                     <td data-label="Trạng thái">
                       {item.status === "active" ? (

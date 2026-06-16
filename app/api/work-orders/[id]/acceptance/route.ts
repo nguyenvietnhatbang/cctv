@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
-import type { WorkOrderStatus } from "@/lib/types";
+import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { uploadWorkOrderBytes } from "@/lib/storage";
 import { acceptanceSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork, changeWorkOrderStatus } from "@/lib/work-orders";
@@ -15,7 +15,7 @@ type Context = {
 
 export async function POST(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
     const { id } = await context.params;
     const body = acceptanceSchema.parse(await request.json());
 

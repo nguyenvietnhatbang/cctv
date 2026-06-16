@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent } from "@/lib/http";
 import { deleteWorkOrderFile } from "@/lib/storage";
-import type { WorkOrderStatus } from "@/lib/types";
+import { isPaymentManagerRole, OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { assertCanMutateFieldWork } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
@@ -15,7 +15,7 @@ const LOCKED_FILE_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "deb
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "technician", "accountant"]);
+    const user = await requireUser([...OPS_MANAGER_ROLES, "technician", "accountant"]);
     const { id, fileId } = await context.params;
 
     const result = await query<{
@@ -37,7 +37,7 @@ export async function DELETE(_request: Request, context: Context) {
     }
 
     if (file.purpose === "bill") {
-      if (!["admin", "dispatcher", "accountant"].includes(user.role)) {
+      if (!isPaymentManagerRole(user.role)) {
         throw new HttpError(403, "Bạn không có quyền xóa bill thanh toán");
       }
     } else {

@@ -8,6 +8,7 @@ import {
   DISPLAY_STATUS_TONE,
   getAllowedWorkOrderTransitions,
   getDisplayStatus,
+  isOpsManagerRole,
   PAYMENT_STATUSES,
   WORK_ORDER_STATUS_LABELS,
   WORK_ORDER_STATUSES,
@@ -326,7 +327,7 @@ export function OrdersScreen({
                       >
                         <Eye size={15} />
                       </button>
-                      {["admin", "dispatcher"].includes(role) ? (
+                      {isOpsManagerRole(role) ? (
                         <button
                           className="icon-button"
                           onClick={() => onEdit(order.id)}
