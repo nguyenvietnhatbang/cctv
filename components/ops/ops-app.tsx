@@ -64,8 +64,10 @@ export function OpsApp() {
   const [reportLoading, setReportLoading] = useState(false);
   const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
   const ordersCacheRef = useRef<Record<string, WorkOrderListItem[]>>({});
+  const notificationIdsRef = useRef<Set<string> | null>(null);
   const resourcesLoadedRef = useRef({ customers: false, technicians: false, users: false });
   const initialLoadedRef = useRef<boolean>(false);
+  const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
 
   const section = useMemo<TabId>(() => {
     const segment = pathname.split("/").filter(Boolean)[0] as TabId | undefined;
@@ -136,8 +138,35 @@ export function OpsApp() {
 
   const refreshNotifications = useCallback(async () => {
     const payload = await apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications");
+    const previousIds = notificationIdsRef.current;
+    const nextIds = new Set(payload.notifications.map((item) => item.id));
+    const newNotifications = previousIds
+      ? payload.notifications.filter((item) => !item.read_at && !previousIds.has(item.id))
+      : [];
+
+    if (typeof window !== "undefined" && "Notification" in window && window.Notification.permission === "granted") {
+      newNotifications.slice(0, 3).forEach((item) => {
+        new window.Notification(item.title, {
+          body: item.body,
+          tag: item.id,
+        });
+      });
+    }
+
+    notificationIdsRef.current = nextIds;
     setData((current) => ({ ...current, notifications: payload.notifications }));
     return payload.notifications;
+  }, []);
+
+  const requestBrowserNotifications = useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setBrowserNotificationPermission("unsupported");
+      return "unsupported" as const;
+    }
+
+    const permission = await window.Notification.requestPermission();
+    setBrowserNotificationPermission(permission);
+    return permission;
   }, []);
 
   const refreshTechnicians = useCallback(async () => {
@@ -210,6 +239,7 @@ export function OpsApp() {
     });
 
     if (orders) ordersCacheRef.current[ordersRequest.key] = orders.workOrders;
+    notificationIdsRef.current = new Set(notifications.notifications.map((item) => item.id));
     resourcesLoadedRef.current = {
       customers: Boolean(customers),
       technicians: Boolean(technicians),
@@ -263,6 +293,15 @@ export function OpsApp() {
       }
     }
   }, [filters, loading, section, user, loadDataForUser, refreshOrders, workOrderListRequest]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setBrowserNotificationPermission("unsupported");
+      return;
+    }
+
+    setBrowserNotificationPermission(window.Notification.permission);
+  }, []);
 
   useEffect(() => {
     if (loading || !user || !initialLoadedRef.current) return;
@@ -451,7 +490,10 @@ export function OpsApp() {
   async function afterMutation() {
     ordersCacheRef.current = {};
     setData((current) => ({ ...current, report: null }));
-    await refreshOrderContext();
+    await Promise.all([
+      refreshOrderContext(),
+      refreshNotifications(),
+    ]);
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -787,6 +829,8 @@ export function OpsApp() {
           }
         }}
         onOpenNotification={(id) => openOrder(id)}
+        browserNotificationPermission={browserNotificationPermission}
+        onRequestBrowserNotifications={requestBrowserNotifications}
         onReadNotification={async (id) => {
           await apiFetch(`/api/notifications/${id}`, {
             method: "PATCH",

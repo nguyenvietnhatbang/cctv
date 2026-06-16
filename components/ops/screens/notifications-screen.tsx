@@ -25,11 +25,15 @@ function timeAgo(dateString: string) {
 
 export function NotificationsScreen({
   notifications,
+  browserNotificationPermission,
   onOpen,
+  onRequestBrowserNotifications,
   onRead,
 }: {
   notifications: NotificationItem[];
+  browserNotificationPermission: NotificationPermission | "unsupported";
   onOpen: (id: string) => void;
+  onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
   onRead: (id: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,6 +55,13 @@ export function NotificationsScreen({
   const visibleNotifications = getPageItems(filteredNotifications, safePage);
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
+  const permissionLabel = browserNotificationPermission === "granted"
+    ? "Đã bật thông báo trình duyệt"
+    : browserNotificationPermission === "denied"
+      ? "Trình duyệt đang chặn thông báo"
+      : browserNotificationPermission === "unsupported"
+        ? "Trình duyệt không hỗ trợ"
+        : "Bật thông báo trình duyệt";
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,9 +71,20 @@ export function NotificationsScreen({
           <h2>Thông báo</h2>
           <p>Các cập nhật trạng thái công việc và ghi chú quan trọng từ kỹ thuật</p>
         </div>
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
-          {unreadCount} chưa đọc
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {browserNotificationPermission === "default" ? (
+            <button className="btn-secondary h-9 text-xs" type="button" onClick={onRequestBrowserNotifications}>
+              <Bell size={13} />{permissionLabel}
+            </button>
+          ) : (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-zinc-50 text-zinc-600 border border-zinc-200">
+              {permissionLabel}
+            </span>
+          )}
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
+            {unreadCount} chưa đọc
+          </span>
+        </div>
       </div>
 
       {/* Notifications Table Shell with Compact Filter Header */}

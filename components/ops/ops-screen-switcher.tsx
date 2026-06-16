@@ -49,7 +49,9 @@ type PaymentsScreenProps = {
 
 type NotificationsScreenProps = {
   notifications: AppData["notifications"];
+  browserNotificationPermission: NotificationPermission | "unsupported";
   onOpen: (id: string) => void;
+  onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
   onRead: (id: string) => Promise<void>;
 };
 
@@ -130,6 +132,8 @@ type OpsScreenSwitcherProps = {
   onPaymentAction: (id: string) => void;
   onReportSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onOpenNotification: (id: string) => void;
+  browserNotificationPermission: NotificationPermission | "unsupported";
+  onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
   onReadNotification: (id: string) => Promise<void>;
   onEditUser: (item: AppData["users"][number]) => void;
   onDeleteUser: (item: AppData["users"][number]) => void;
@@ -164,6 +168,8 @@ export function OpsScreenSwitcher({
   onPaymentAction,
   onReportSubmit,
   onOpenNotification,
+  browserNotificationPermission,
+  onRequestBrowserNotifications,
   onReadNotification,
   onEditUser,
   onDeleteUser,
@@ -235,7 +241,15 @@ export function OpsScreenSwitcher({
   if (section === "reports") return <ReportsScreen report={data.report as ReportData | null} loading={reportLoading} onSubmit={onReportSubmit} />;
 
   if (section === "notifications") {
-    return <NotificationsScreen notifications={data.notifications} onOpen={onOpenNotification} onRead={onReadNotification} />;
+    return (
+      <NotificationsScreen
+        notifications={data.notifications}
+        browserNotificationPermission={browserNotificationPermission}
+        onOpen={onOpenNotification}
+        onRequestBrowserNotifications={onRequestBrowserNotifications}
+        onRead={onReadNotification}
+      />
+    );
   }
 
   if (section === "users") {
