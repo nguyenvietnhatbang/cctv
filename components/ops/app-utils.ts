@@ -66,8 +66,8 @@ function dateInVietnam(value: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(value));
 }
 
-function orderScopeDate(order: WorkOrderListItem) {
-  return dateInVietnam(order.appointment_at ?? order.created_at);
+function orderAppointmentDate(order: WorkOrderListItem) {
+  return order.appointment_at ? dateInVietnam(order.appointment_at) : null;
 }
 
 export function orderMatchesFilters(order: WorkOrderListItem, filters: Filters) {
@@ -81,12 +81,13 @@ export function orderMatchesFilters(order: WorkOrderListItem, filters: Filters) 
   }
   if (filters.type && order.type !== filters.type) return false;
   if (filters.technicianId && !(order.assigned_technicians ?? []).some((technician) => technician.id === filters.technicianId)) return false;
-  if (filters.dateFrom && orderScopeDate(order) < filters.dateFrom) return false;
-  if (filters.dateTo && orderScopeDate(order) > filters.dateTo) return false;
+  const appointmentDate = orderAppointmentDate(order);
+  if (filters.dateFrom && (!appointmentDate || appointmentDate < filters.dateFrom)) return false;
+  if (filters.dateTo && (!appointmentDate || appointmentDate > filters.dateTo)) return false;
   if (!filters.status && !filters.dateFrom && !filters.dateTo) {
     if (filters.scope === "open" && ["paid", "cancelled"].includes(order.status)) return false;
-    if (filters.scope === "today" && orderScopeDate(order) !== todayInVietnam()) return false;
-    if (filters.scope === "this_month" && !orderScopeDate(order).startsWith(todayInVietnam().slice(0, 8))) return false;
+    if (filters.scope === "today" && appointmentDate !== todayInVietnam()) return false;
+    if (filters.scope === "this_month" && (!appointmentDate || !appointmentDate.startsWith(todayInVietnam().slice(0, 8)))) return false;
   }
   if (!q) return true;
 

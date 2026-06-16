@@ -94,7 +94,7 @@ export function CustomerDetailModal({
   const normalizedOrdersQuery = ordersQuery.trim().toLowerCase();
   const filteredCustomerOrders = customerOrders.filter((order) => {
     if (!normalizedOrdersQuery) return true;
-    return [order.code, WORK_ORDER_TYPE_LABELS[order.type], order.description, order.technician_name ?? "", dateTime(order.appointment_at ?? order.created_at)]
+    return [order.code, WORK_ORDER_TYPE_LABELS[order.type], order.description, order.technician_name ?? "", dateTime(order.appointment_at), dateTime(order.created_at)]
       .some((value) => value.toLowerCase().includes(normalizedOrdersQuery));
   });
   const visibleCustomerOrders = pageItems(filteredCustomerOrders, clampPage(ordersPage, filteredCustomerOrders.length));
@@ -217,7 +217,7 @@ export function CustomerDetailModal({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-bold text-zinc-950">{order.code}</p>
-                    <p className="mt-1 text-zinc-500">{WORK_ORDER_TYPE_LABELS[order.type]} · {dateTime(order.appointment_at ?? order.created_at)}</p>
+                    <p className="mt-1 text-zinc-500">{WORK_ORDER_TYPE_LABELS[order.type]} · Hẹn: {dateTime(order.appointment_at)} · Tạo: {dateTime(order.created_at)}</p>
                   </div>
                   <div className="flex flex-wrap justify-end gap-1.5">
                     <StatusBadge order={order} />

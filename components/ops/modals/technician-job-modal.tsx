@@ -247,7 +247,7 @@ export function TechnicianJobModal({
                 </p>
                 <p className="flex items-center gap-2">
                   <CalendarClock size={15} className="shrink-0 text-zinc-500" />
-                  <span>{dateTime(detail.workOrder.appointment_at ?? detail.workOrder.created_at)}</span>
+                  <span>{dateTime(detail.workOrder.appointment_at)}</span>
                 </p>
               </div>
             </div>

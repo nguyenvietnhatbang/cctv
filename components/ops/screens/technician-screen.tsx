@@ -70,9 +70,9 @@ function getCurrentPosition() {
 }
 
 function sortByNextWork(left: WorkOrderListItem, right: WorkOrderListItem) {
-  const leftTime = new Date(left.appointment_at ?? left.created_at).getTime();
-  const rightTime = new Date(right.appointment_at ?? right.created_at).getTime();
-  return leftTime - rightTime;
+  const leftTime = left.appointment_at ? new Date(left.appointment_at).getTime() : Number.MAX_SAFE_INTEGER;
+  const rightTime = right.appointment_at ? new Date(right.appointment_at).getTime() : Number.MAX_SAFE_INTEGER;
+  return leftTime - rightTime || new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
 }
 
 function formatAddress(address: string) {
@@ -127,7 +127,7 @@ function MiniOrderRow({
         </div>
       </div>
       <p className="truncate text-sm font-semibold text-zinc-950">{order.customer_name}</p>
-      <p className="truncate text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</p>
+      <p className="truncate text-xs text-zinc-500">Hẹn: {dateTime(order.appointment_at)}</p>
     </button>
   );
 }
@@ -149,7 +149,7 @@ function TechnicianWorkCard({
 }) {
   const action = getTechnicianPrimaryAction(order);
   const ActionIcon = action.icon;
-  const appointmentLabel = dateTime(order.appointment_at ?? order.created_at);
+  const appointmentLabel = dateTime(order.appointment_at);
 
   return (
     <article className={`mobile-job grid gap-4 ${prominent ? "border-zinc-900 ring-2 ring-zinc-900" : ""}`}>

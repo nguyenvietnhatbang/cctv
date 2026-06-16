@@ -13,7 +13,8 @@ export async function GET() {
     const result = await query(
       `select t.id, t.user_id, u.full_name, u.phone, u.email, t.service_area, t.status,
               count(woa.id) filter (
-                where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date
+                where wo.appointment_at is not null
+                  and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date
                   and woa.unassigned_at is null
               ) as jobs_today
        from technicians t

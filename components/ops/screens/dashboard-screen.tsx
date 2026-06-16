@@ -131,7 +131,7 @@ export function DashboardScreen({
             <h2>Tình hình nhanh</h2>
             <p className="mt-1 text-sm text-zinc-500">Bấm vào từng trạng thái để mở danh sách công việc tương ứng.</p>
           </div>
-          <span>{metrics?.total_today ?? "0"} phiếu hôm nay</span>
+          <span>{metrics?.total_today ?? "0"} phiếu hẹn hôm nay</span>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {quickStatuses.map((item) => (

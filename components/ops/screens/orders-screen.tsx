@@ -234,12 +234,12 @@ export function OrdersScreen({
 
             {/* Combined Date Range Box */}
             <div className="date-range-control">
-              <span className="text-[10px] uppercase font-bold text-zinc-400">Từ:</span>
+              <span className="text-[10px] uppercase font-bold text-zinc-400">Hẹn từ:</span>
               <input
                 type="date"
                 value={filters.dateFrom}
                 onChange={(event) => applyFilter({ ...filters, dateFrom: event.target.value })}
-                aria-label="Từ ngày"
+                aria-label="Từ ngày hẹn"
               />
               <span className="date-separator text-zinc-200">|</span>
               <span className="text-[10px] uppercase font-bold text-zinc-400">Đến:</span>
@@ -247,7 +247,7 @@ export function OrdersScreen({
                 type="date"
                 value={filters.dateTo}
                 onChange={(event) => applyFilter({ ...filters, dateTo: event.target.value })}
-                aria-label="Đến ngày"
+                aria-label="Đến ngày hẹn"
               />
             </div>
             {(filters.dateFrom || filters.dateTo) ? (
@@ -284,7 +284,8 @@ export function OrdersScreen({
                 <th>Kỹ thuật</th>
                 <th>Trạng thái</th>
                 <th>Thanh toán</th>
-                <th>Hẹn/Tạo</th>
+                <th>Ngày hẹn</th>
+                <th>Ngày tạo</th>
                 <th className="text-right">Tổng</th>
                 <th />
               </tr>
@@ -317,7 +318,8 @@ export function OrdersScreen({
                       {PAYMENT_STATUS_LABELS[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thu"}
                     </span>
                   </td>
-                  <td data-label="Hẹn/Tạo" className="text-xs text-zinc-500">{dateTime(order.appointment_at ?? order.created_at)}</td>
+                  <td data-label="Ngày hẹn" className="text-xs text-zinc-500">{dateTime(order.appointment_at)}</td>
+                  <td data-label="Ngày tạo" className="text-xs text-zinc-500">{dateTime(order.created_at)}</td>
                   <td data-label="Tổng" className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
                   <td data-label="">
                     <div className="action-cell">

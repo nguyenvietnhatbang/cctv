@@ -136,21 +136,21 @@ export async function GET(request: Request) {
 
     if (dateFrom) {
       params.push(dateFrom);
-      filters.push(`(coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh')::date >= $${params.length}::date`);
+      filters.push(`wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date >= $${params.length}::date`);
     }
 
     if (dateTo) {
       params.push(dateTo);
-      filters.push(`(coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh')::date <= $${params.length}::date`);
+      filters.push(`wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date <= $${params.length}::date`);
     }
 
     if (!status && !dateFrom && !dateTo) {
       if (scope === "open") {
         filters.push(`wo.status not in ('paid', 'cancelled')`);
       } else if (scope === "today") {
-        filters.push(`(coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date`);
+        filters.push(`wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date`);
       } else if (scope === "this_month") {
-        filters.push(`date_trunc('month', coalesce(wo.appointment_at, wo.created_at) at time zone 'Asia/Ho_Chi_Minh') = date_trunc('month', timezone('Asia/Ho_Chi_Minh', now()))`);
+        filters.push(`wo.appointment_at is not null and date_trunc('month', wo.appointment_at at time zone 'Asia/Ho_Chi_Minh') = date_trunc('month', timezone('Asia/Ho_Chi_Minh', now()))`);
       }
     }
 
@@ -193,7 +193,7 @@ export async function GET(request: Request) {
        ${assignmentLateralJoin}
        left join payments p on p.work_order_id = wo.id
        where ${filters.join(" and ")}
-       order by coalesce(wo.appointment_at, wo.created_at) desc
+       order by wo.appointment_at desc nulls last, wo.created_at desc
        limit 80`,
       params,
     );

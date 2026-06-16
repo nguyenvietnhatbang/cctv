@@ -258,7 +258,7 @@ export function WorkOrderEditModal({
                 </p>
                 <p className="flex items-center gap-2">
                   <CalendarClock size={15} className="shrink-0 text-zinc-500" />
-                  <span>{dateTime(detail.workOrder.appointment_at ?? detail.workOrder.created_at)}</span>
+                  <span>{dateTime(detail.workOrder.appointment_at)}</span>
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -294,7 +294,10 @@ export function WorkOrderEditModal({
               <fieldset disabled={pendingAction === "update"} className="contents">
                 <div className="grid gap-3 md:grid-cols-2">
                   <textarea name="description" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.description} placeholder="Mô tả" required />
-                  <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
+                  <label className="grid gap-1">
+                    <span className="text-xs font-bold uppercase text-zinc-500">Ngày hẹn khách</span>
+                    <input name="appointmentAt" className="input" type="datetime-local" defaultValue={inputDate(detail.workOrder.appointment_at)} />
+                  </label>
                   <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" />
                   <textarea name="completionNote" className="input min-h-24 md:col-span-2" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành" />
                 </div>

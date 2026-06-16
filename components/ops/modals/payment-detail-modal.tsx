@@ -116,7 +116,8 @@ export function PaymentDetailModal({
             <InfoItem label="Phương thức">{paymentMethod}</InfoItem>
             <InfoItem label="Mã giao dịch">{detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>
             <InfoItem label="Hạn công nợ">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Không có"}</InfoItem>
-            <InfoItem label="Hẹn/Tạo">{dateTime(detail.workOrder.appointment_at ?? detail.workOrder.created_at)}</InfoItem>
+            <InfoItem label="Ngày hẹn">{dateTime(detail.workOrder.appointment_at)}</InfoItem>
+            <InfoItem label="Ngày tạo">{dateTime(detail.workOrder.created_at)}</InfoItem>
             <div className="detail-card md:col-span-2">
               <p className="detail-label">Ghi chú thanh toán</p>
               <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.payment_note ?? "Chưa có ghi chú"}</p>

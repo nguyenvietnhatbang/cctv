@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Clock, Eye, MapPinned, Phone, Search, UserPlus } from "lucide-react";
 import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, type WorkOrderStatus } from "@/lib/types";
-import { dateTime, monthStartInVietnam, todayInVietnam } from "@/components/ops/format";
+import { dateTime, todayInVietnam } from "@/components/ops/format";
 import { EmptyState, StatusBadge, TablePagination, TableShell, Toolbar, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -16,6 +16,12 @@ const DISPATCH_STATUSES = new Set<WorkOrderStatus>([
   "awaiting_acceptance",
   "paused",
 ]);
+
+function appointmentDate(order: WorkOrderListItem) {
+  return order.appointment_at
+    ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(order.appointment_at))
+    : null;
+}
 
 export function DispatchScreen({
   orders,
@@ -50,16 +56,16 @@ export function DispatchScreen({
   });
   const filteredDispatchOrders = scopedOrders.filter((order) => {
     const q = orderQuery.trim().toLowerCase();
-    const orderDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(order.appointment_at ?? order.created_at));
+    const orderDate = appointmentDate(order);
     const hasCustomDate = Boolean(dateFrom || dateTo);
     const today = todayInVietnam();
-    const monthStart = monthStartInVietnam();
+    const currentMonth = today.slice(0, 8);
     const matchesDate = hasCustomDate
-      ? (!dateFrom || orderDate >= dateFrom) && (!dateTo || orderDate <= dateTo)
+      ? orderDate !== null && (!dateFrom || orderDate >= dateFrom) && (!dateTo || orderDate <= dateTo)
       : dateScope === "today"
         ? orderDate === today
         : dateScope === "this_month"
-          ? orderDate >= monthStart && orderDate <= today
+          ? orderDate !== null && orderDate.startsWith(currentMonth)
           : true;
     const matchesCustomer = !customerId || order.customer_id === customerId;
     const matchesSearch = !q || [order.code, order.customer_name, order.customer_phone, order.customer_address, order.description, order.technician_name ?? ""]
@@ -241,8 +247,9 @@ export function DispatchScreen({
                     </td>
                     <td data-label="Lịch hẹn">
                       <p className="inline-flex items-center gap-1.5 text-sm text-zinc-700">
-                        <Clock size={13} />{dateTime(order.appointment_at ?? order.created_at)}
+                        <Clock size={13} />{dateTime(order.appointment_at)}
                       </p>
+                      <p className="mt-1 text-xs text-zinc-500">Tạo: {dateTime(order.created_at)}</p>
                     </td>
                     <td data-label="Kỹ thuật">
                       <p className="font-semibold text-zinc-800">{order.technician_name ?? "Chưa phân công"}</p>
@@ -310,7 +317,7 @@ export function DispatchScreen({
                 </span>
               </div>
               <p className="mt-2 text-sm text-zinc-500">{technician.service_area ?? "Chưa gán khu vực"}</p>
-              <p className="mt-1 text-sm text-zinc-500">{technician.jobs_today} phiếu hôm nay</p>
+              <p className="mt-1 text-sm text-zinc-500">{technician.jobs_today} phiếu hẹn hôm nay</p>
             </div>
           ))}
         </div>

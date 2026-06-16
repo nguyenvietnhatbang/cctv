@@ -136,15 +136,15 @@ export async function PATCH(request: Request, context: Context) {
          set type = coalesce($2, type),
              priority = coalesce($3, priority),
              description = coalesce($4, description),
-             appointment_at = coalesce($5, appointment_at),
-             internal_note = coalesce($6, internal_note),
-             labor_cost = coalesce($7, labor_cost),
-             vat_rate = coalesce($8, vat_rate),
-             completion_note = coalesce($9, completion_note),
-             acceptance_name = coalesce($10, acceptance_name),
-             acceptance_phone = coalesce($11, acceptance_phone),
-             cancellation_reason = coalesce($12, cancellation_reason),
-             updated_by = $13
+             appointment_at = case when $5::boolean then $6::timestamptz else appointment_at end,
+             internal_note = coalesce($7, internal_note),
+             labor_cost = coalesce($8, labor_cost),
+             vat_rate = coalesce($9, vat_rate),
+             completion_note = coalesce($10, completion_note),
+             acceptance_name = coalesce($11, acceptance_name),
+             acceptance_phone = coalesce($12, acceptance_phone),
+             cancellation_reason = coalesce($13, cancellation_reason),
+             updated_by = $14
          where id = $1
          returning id, code, status`,
         [
@@ -152,6 +152,7 @@ export async function PATCH(request: Request, context: Context) {
           body.type ?? null,
           body.priority ?? null,
           body.description ?? null,
+          Object.prototype.hasOwnProperty.call(body, "appointmentAt"),
           body.appointmentAt ? new Date(body.appointmentAt) : null,
           body.internalNote ?? null,
           body.laborCost ?? null,

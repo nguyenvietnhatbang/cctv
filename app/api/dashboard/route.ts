@@ -38,7 +38,7 @@ export async function GET() {
       open_debt: string;
     }>(
       `select
-        count(*) filter (where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date) as total_today,
+        count(*) filter (where wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date) as total_today,
         count(*) filter (where wo.status in ('pending_assignment', 'assigned', 'accepted', 'traveling')) as todo,
         count(*) filter (where wo.status in ('working', 'awaiting_acceptance') and (wo.appointment_at is null or wo.appointment_at >= now())) as doing,
         count(*) filter (where wo.status in ('working', 'awaiting_acceptance') and wo.appointment_at < now()) as doing_overdue,
