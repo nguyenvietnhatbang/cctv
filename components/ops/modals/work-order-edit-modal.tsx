@@ -172,6 +172,7 @@ export function WorkOrderEditModal({
 }) {
   const [activeTab, setActiveTab] = useState<EditTab>(() => getInitialTab(role, detail.workOrder.status));
   const [preparingStatus, setPreparingStatus] = useState(false);
+  const [locationWarning, setLocationWarning] = useState<string | null>(null);
   const nextAction = NEXT_STATUS_ACTIONS[detail.workOrder.status] ?? null;
   const canNext = nextAction?.roles.includes(role) ?? false;
   const canAssign = isOpsManagerRole(role)
@@ -191,9 +192,13 @@ export function WorkOrderEditModal({
   async function handleNextStatus() {
     if (!nextAction) return;
     setPreparingStatus(true);
+    setLocationWarning(null);
     try {
       const checkIn = nextAction.status === "working" ? await getCurrentPosition() : null;
-      setPreparingStatus(false);
+      if (nextAction.status === "working" && !checkIn) {
+        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
+        return;
+      }
       await onStatus(nextAction.status, checkIn ?? undefined);
     } finally {
       setPreparingStatus(false);
@@ -323,6 +328,9 @@ export function WorkOrderEditModal({
                 <div className="modal-section">
                   <h3 className="section-title">Chuyển trạng thái</h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-600">Thao tác tiếp theo theo đúng luồng xử lý của phiếu.</p>
+                  {locationWarning ? (
+                    <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{locationWarning}</p>
+                  ) : null}
                   <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>
                     <CheckCircle2 size={15} />{nextAction.label}
                   </PendingButton>

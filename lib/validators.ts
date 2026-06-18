@@ -91,8 +91,8 @@ export const assignWorkOrderSchema = z.object({
 export const changeStatusSchema = z.object({
   status: z.enum(WORK_ORDER_STATUSES),
   note: optionalText,
-  checkInLat: z.coerce.number().optional(),
-  checkInLng: z.coerce.number().optional(),
+  checkInLat: z.coerce.number().min(-90).max(90).optional(),
+  checkInLng: z.coerce.number().min(-180).max(180).optional(),
 });
 
 export const createMaterialSchema = z.object({

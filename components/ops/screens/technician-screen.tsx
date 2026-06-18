@@ -262,7 +262,8 @@ export function TechnicianScreen({
     try {
       const checkIn = action.status === "working" ? await getCurrentPosition() : null;
       if (action.status === "working" && !checkIn) {
-        setLocationWarning("Không lấy được vị trí check-in. Hệ thống vẫn lưu trạng thái, nhưng chưa có tọa độ.");
+        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
+        return;
       }
       await onStatus(order.id, action.status, checkIn ?? undefined);
     } finally {

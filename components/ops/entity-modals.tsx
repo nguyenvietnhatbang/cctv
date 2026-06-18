@@ -9,6 +9,7 @@ import type { AppUser, Customer, CustomerContact, Technician, WorkOrderListItem 
 import { displayCustomerContacts, mapSearchUrl } from "@/components/ops/app-utils";
 import { ModalListControls, clampPage, pageItems } from "@/components/ops/modals/modal-list-controls";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
+import { LocationPinField } from "@/components/ops/location-pin-field";
 
 type CustomerTab = "info" | "orders" | "payments";
 type CustomerEditTab = "info" | "contacts" | "payments";
@@ -316,10 +317,7 @@ export function CustomerEditModal({
               <input name="phone" className="input" defaultValue={item.phone} placeholder="Số điện thoại" required />
               <input name="address" className="input" defaultValue={item.address} placeholder="Địa chỉ" required />
               <input name="addressNote" className="input" defaultValue={item.address_note ?? ""} placeholder="Ghi chú địa chỉ" />
-              <div className="grid gap-2 md:grid-cols-2">
-                <input name="lat" className="input" defaultValue={item.lat ?? ""} placeholder="Vĩ độ đã ghim" />
-                <input name="lng" className="input" defaultValue={item.lng ?? ""} placeholder="Kinh độ đã ghim" />
-              </div>
+              <LocationPinField address={item.address} initialLat={item.lat} initialLng={item.lng} disabled={isSubmitting} />
               <div className="flex justify-end gap-2">
                 <button className="btn-secondary h-10" onClick={onClose} type="button">Hủy</button>
                 <PendingButton className="btn-primary h-10" type="submit" pending={isSubmitting} pendingLabel="Đang lưu...">Lưu</PendingButton>

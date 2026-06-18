@@ -13,6 +13,20 @@ import {
 } from "@/lib/types";
 
 const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "debt", "cancelled"]);
+const CHECK_IN_RADIUS_METERS = 300;
+
+function distanceInMeters(left: { lat: number; lng: number }, right: { lat: number; lng: number }) {
+  const toRadians = (degrees: number) => degrees * Math.PI / 180;
+  const earthRadiusMeters = 6371000;
+  const latDelta = toRadians(right.lat - left.lat);
+  const lngDelta = toRadians(right.lng - left.lng);
+  const leftLat = toRadians(left.lat);
+  const rightLat = toRadians(right.lat);
+  const haversine = Math.sin(latDelta / 2) ** 2
+    + Math.cos(leftLat) * Math.cos(rightLat) * Math.sin(lngDelta / 2) ** 2;
+
+  return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
 
 export async function getTechnicianIdForUser(userId: string) {
   const result = await query<{ id: string }>(
@@ -138,8 +152,17 @@ export async function changeWorkOrderStatus(
   note: string | null,
   checkIn?: { lat?: number; lng?: number },
 ) {
-  const currentResult = await client.query<{ status: WorkOrderStatus; customer_id: string }>(
-    "select status, customer_id from work_orders where id = $1 for update",
+  const currentResult = await client.query<{
+    status: WorkOrderStatus;
+    customer_id: string;
+    customer_lat: string | null;
+    customer_lng: string | null;
+  }>(
+    `select wo.status, wo.customer_id, c.lat as customer_lat, c.lng as customer_lng
+     from work_orders wo
+     join customers c on c.id = wo.customer_id
+     where wo.id = $1
+     for update of wo`,
     [workOrderId],
   );
 
@@ -150,8 +173,33 @@ export async function changeWorkOrderStatus(
 
   assertStatusTransition(current.status, nextStatus, user);
 
-  const setCheckIn = nextStatus === "working";
+  const setCheckIn = current.status === "traveling" && nextStatus === "working";
   const acceptedAt = nextStatus === "completed" ? ", accepted_at = coalesce(accepted_at, now())" : "";
+  let checkedInLat: number | null = null;
+  let checkedInLng: number | null = null;
+
+  if (setCheckIn) {
+    if (checkIn?.lat === undefined || checkIn.lng === undefined) {
+      throw new HttpError(422, "Check-in cần lấy được vị trí GPS. Hãy mở quyền vị trí trên trình duyệt và thử lại.");
+    }
+
+    checkedInLat = checkIn.lat;
+    checkedInLng = checkIn.lng;
+    const customerLat = current.customer_lat === null ? null : Number(current.customer_lat);
+    const customerLng = current.customer_lng === null ? null : Number(current.customer_lng);
+    if (customerLat !== null && customerLng !== null) {
+      const distance = distanceInMeters(
+        { lat: checkedInLat, lng: checkedInLng },
+        { lat: customerLat, lng: customerLng },
+      );
+      if (distance > CHECK_IN_RADIUS_METERS) {
+        throw new HttpError(
+          422,
+          `Vị trí check-in đang cách tọa độ khách hàng khoảng ${Math.round(distance)}m. Cần trong phạm vi ${CHECK_IN_RADIUS_METERS}m hoặc cập nhật lại tọa độ khách hàng.`,
+        );
+      }
+    }
+  }
 
   await client.query(
     `update work_orders
@@ -162,10 +210,10 @@ export async function changeWorkOrderStatus(
          check_in_lng = case when $4 then coalesce($6, check_in_lng) else check_in_lng end
          ${acceptedAt}
      where id = $1`,
-    [workOrderId, nextStatus, user.id, setCheckIn, checkIn?.lat ?? null, checkIn?.lng ?? null],
+    [workOrderId, nextStatus, user.id, setCheckIn, checkedInLat, checkedInLng],
   );
 
-  if (setCheckIn && checkIn?.lat !== undefined && checkIn.lng !== undefined) {
+  if (setCheckIn) {
     await client.query(
       `update customers
        set lat = $2,
@@ -173,9 +221,8 @@ export async function changeWorkOrderStatus(
            location_pinned_at = now(),
            location_pinned_by = $4
        where id = $1
-         and lat is null
-         and lng is null`,
-      [current.customer_id, checkIn.lat, checkIn.lng, user.id],
+         and (lat is null or lng is null)`,
+      [current.customer_id, checkedInLat, checkedInLng, user.id],
     );
   }
 
