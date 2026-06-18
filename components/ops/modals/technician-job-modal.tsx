@@ -75,8 +75,9 @@ function stepIndex(status: WorkOrderStatus) {
 
 function PaymentSummary({ detail }: { detail: WorkOrderDetail }) {
   const paymentStatus = detail.workOrder.payment_status ?? "unpaid";
-  const paidAmount = paymentStatus === "paid" ? detail.workOrder.total_amount : 0;
-  const debtAmount = paymentStatus === "debt" ? detail.workOrder.total_amount : 0;
+  const paidAmount = detail.workOrder.paid_amount;
+  const debtAmount = detail.workOrder.debt_amount;
+  const latestTransaction = detail.paymentTransactions[0];
 
   return (
     <section className="modal-section">
@@ -101,6 +102,12 @@ function PaymentSummary({ detail }: { detail: WorkOrderDetail }) {
         <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
           <span>Hẹn ngày thanh toán</span>
           <strong className="text-zinc-950">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Chưa có"}</strong>
+        </div>
+        <div className="rounded-md bg-zinc-50 px-3 py-2">
+          <p className="text-zinc-600">Giao dịch gần nhất</p>
+          <p className="mt-1 font-semibold text-zinc-950">
+            {latestTransaction ? `${latestTransaction.transaction_ref} · ${money(latestTransaction.amount)}` : "Chưa có"}
+          </p>
         </div>
         <div className="rounded-md bg-zinc-50 px-3 py-2">
           <p className="text-zinc-600">Ghi chú khác</p>

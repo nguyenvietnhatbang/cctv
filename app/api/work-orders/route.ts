@@ -194,7 +194,14 @@ export async function GET(request: Request) {
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
               c.lat as customer_lat, c.lng as customer_lng,
               assn.technician_id, assn.technician_name, coalesce(assn.assigned_technicians, '[]'::jsonb) as assigned_technicians,
-              coalesce(p.total_amount, 0) as total_amount, p.status as payment_status
+              coalesce(p.total_amount, 0) as total_amount,
+              coalesce(p.paid_amount, 0) as paid_amount,
+              case
+                when p.status = 'debt' then coalesce(p.debt_amount, 0)
+                when p.status = 'paid' then 0
+                else greatest(coalesce(p.total_amount, 0) - coalesce(p.paid_amount, 0), 0)
+              end as debt_amount,
+              p.status as payment_status
        from work_orders wo
        join customers c on c.id = wo.customer_id
        ${assignmentLateralJoin}
@@ -323,7 +330,14 @@ export async function POST(request: Request) {
                 c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
                 c.lat as customer_lat, c.lng as customer_lng,
                 assn.technician_id, assn.technician_name, coalesce(assn.assigned_technicians, '[]'::jsonb) as assigned_technicians,
-                coalesce(p.total_amount, 0) as total_amount, p.status as payment_status
+                coalesce(p.total_amount, 0) as total_amount,
+                coalesce(p.paid_amount, 0) as paid_amount,
+                case
+                  when p.status = 'debt' then coalesce(p.debt_amount, 0)
+                  when p.status = 'paid' then 0
+                  else greatest(coalesce(p.total_amount, 0) - coalesce(p.paid_amount, 0), 0)
+                end as debt_amount,
+                p.status as payment_status
          from work_orders wo
          join customers c on c.id = wo.customer_id
          ${assignmentLateralJoin}

@@ -116,6 +116,8 @@ export function DispatchDetailModal({
             <InfoItem label="Vật tư">{money(detail.workOrder.material_amount)}</InfoItem>
             <InfoItem label="VAT">{money(detail.workOrder.vat_amount)}</InfoItem>
             <InfoItem label="Tổng">{money(detail.workOrder.total_amount)}</InfoItem>
+            <InfoItem label="Đã thu">{money(detail.workOrder.paid_amount)}</InfoItem>
+            <InfoItem label="Còn nợ">{money(detail.workOrder.debt_amount)}</InfoItem>
             <div className="detail-card md:col-span-2 xl:col-span-4">
               <p className="detail-label">Ghi chú nội bộ</p>
               <p className="detail-value whitespace-pre-wrap font-normal text-zinc-700">{detail.workOrder.internal_note ?? "Chưa có ghi chú"}</p>

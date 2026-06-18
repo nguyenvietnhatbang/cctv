@@ -20,8 +20,8 @@ export async function GET(request: Request) {
       query(
         `select
            count(*) as order_count,
-           coalesce(sum(p.total_amount) filter (where p.status = 'paid'), 0) as paid_revenue,
-           coalesce(sum(p.total_amount) filter (where p.status = 'debt'), 0) as open_debt,
+           coalesce(sum(p.paid_amount), 0) as paid_revenue,
+           coalesce(sum(p.debt_amount), 0) as open_debt,
            coalesce(sum(p.total_amount), 0) as gross_amount
          from work_orders wo
          left join payments p on p.work_order_id = wo.id
@@ -111,23 +111,31 @@ export async function GET(request: Request) {
            group by 1
          ),
          paid as (
+           select (pt.collected_at at time zone 'Asia/Ho_Chi_Minh')::date as day,
+                  coalesce(sum(pt.amount), 0) as paid_revenue
+           from payment_transactions pt
+           where pt.collected_at >= $3 and pt.collected_at < $4
+           group by 1
+         ),
+         debt as (
            select (p.confirmed_at at time zone 'Asia/Ho_Chi_Minh')::date as day,
-                  coalesce(sum(p.total_amount) filter (where p.status = 'paid'), 0) as paid_revenue,
-                  coalesce(sum(p.total_amount) filter (where p.status = 'debt'), 0) as open_debt
+                  coalesce(sum(p.debt_amount), 0) as open_debt
            from payments p
            where p.confirmed_at is not null
              and p.confirmed_at >= $3 and p.confirmed_at < $4
+             and p.debt_amount > 0
            group by 1
          )
          select d.day::text as date,
                 coalesce(co.created_count, 0) as created_count,
                 coalesce(c.completed_count, 0) as completed_count,
                 coalesce(p.paid_revenue, 0) as paid_revenue,
-                coalesce(p.open_debt, 0) as open_debt
+                coalesce(db.open_debt, 0) as open_debt
          from days d
          left join created_orders co on co.day = d.day
          left join completed_orders c on c.day = d.day
          left join paid p on p.day = d.day
+         left join debt db on db.day = d.day
          order by d.day`,
         dailyParams,
       ),
@@ -142,7 +150,7 @@ export async function GET(request: Request) {
       query(
         `select coalesce(u.full_name, 'Chưa phân công') as technician_name,
                 count(wo.id) as order_count,
-                coalesce(sum(p.total_amount) filter (where p.status = 'paid'), 0) as paid_revenue
+                coalesce(sum(p.paid_amount), 0) as paid_revenue
          from work_orders wo
          left join work_order_assignments woa on woa.work_order_id = wo.id and woa.unassigned_at is null
          left join technicians t on t.id = woa.technician_id

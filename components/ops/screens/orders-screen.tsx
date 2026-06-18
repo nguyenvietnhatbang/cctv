@@ -320,7 +320,11 @@ export function OrdersScreen({
                   </td>
                   <td data-label="Ngày hẹn" className="text-xs text-zinc-500">{dateTime(order.appointment_at)}</td>
                   <td data-label="Ngày tạo" className="text-xs text-zinc-500">{dateTime(order.created_at)}</td>
-                  <td data-label="Tổng" className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
+                  <td data-label="Tổng" className="text-right">
+                    <p className="font-bold text-zinc-900">{money(order.total_amount)}</p>
+                    <p className="mt-1 text-xs font-semibold text-emerald-700">Đã thu {money(order.paid_amount)}</p>
+                    <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(order.debt_amount)}</p>
+                  </td>
                   <td data-label="">
                     <div className="action-cell">
                       <button

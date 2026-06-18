@@ -72,6 +72,7 @@ export function PaymentDetailModal({
   });
   const visibleHistory = pageItems(filteredHistory, clampPage(historyPage, filteredHistory.length));
   const billFiles = detail.files.filter((file) => file.purpose === "bill");
+  const latestTransaction = detail.paymentTransactions[0];
 
   return (
     <Modal title={`Xem thanh toán ${detail.workOrder.code}`} size="xl" onClose={onClose}>
@@ -88,7 +89,11 @@ export function PaymentDetailModal({
               <h3 className="text-lg font-bold text-zinc-950">{detail.workOrder.customer_name}</h3>
               <p className="mt-1 text-sm text-zinc-500">{paymentStatus}</p>
             </div>
-            <p className="text-2xl font-bold text-zinc-950">{money(detail.workOrder.total_amount)}</p>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-zinc-950">{money(detail.workOrder.total_amount)}</p>
+              <p className="mt-1 text-sm font-semibold text-emerald-700">Đã thu {money(detail.workOrder.paid_amount)}</p>
+              <p className="mt-1 text-sm font-semibold text-rose-700">Còn nợ {money(detail.workOrder.debt_amount)}</p>
+            </div>
           </div>
         </section>
 
@@ -114,7 +119,9 @@ export function PaymentDetailModal({
             <InfoItem label="Mã công việc">{detail.workOrder.code}</InfoItem>
             <InfoItem label="Thanh toán">{paymentStatus}</InfoItem>
             <InfoItem label="Phương thức">{paymentMethod}</InfoItem>
-            <InfoItem label="Mã giao dịch">{detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>
+            <InfoItem label="Đã thu">{money(detail.workOrder.paid_amount)}</InfoItem>
+            <InfoItem label="Còn nợ">{money(detail.workOrder.debt_amount)}</InfoItem>
+            <InfoItem label="Mã gần nhất">{latestTransaction?.transaction_ref ?? detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>
             <InfoItem label="Hạn công nợ">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Không có"}</InfoItem>
             <InfoItem label="Ngày hẹn">{dateTime(detail.workOrder.appointment_at)}</InfoItem>
             <InfoItem label="Ngày tạo">{dateTime(detail.workOrder.created_at)}</InfoItem>
@@ -148,6 +155,8 @@ export function PaymentDetailModal({
             <InfoItem label="Vật tư">{money(detail.workOrder.material_amount)}</InfoItem>
             <InfoItem label="VAT">{money(detail.workOrder.vat_amount)}</InfoItem>
             <InfoItem label="Tổng">{money(detail.workOrder.total_amount)}</InfoItem>
+            <InfoItem label="Đã thu">{money(detail.workOrder.paid_amount)}</InfoItem>
+            <InfoItem label="Còn nợ">{money(detail.workOrder.debt_amount)}</InfoItem>
             <div className="modal-section md:col-span-2 xl:col-span-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="section-title">Vật tư</h3>
@@ -207,6 +216,27 @@ export function PaymentDetailModal({
                 {item.note ? <p className="mt-1 text-zinc-500">{item.note}</p> : null}
               </div>
             ))}
+            <div className="modal-section mt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="section-title">Giao dịch thu tiền</h3>
+                <span className="text-xs font-semibold text-zinc-500">{detail.paymentTransactions.length} lần thu</span>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {detail.paymentTransactions.length === 0 ? (
+                  <p className="text-sm text-zinc-500">Chưa ghi nhận giao dịch thu tiền.</p>
+                ) : detail.paymentTransactions.map((transaction) => (
+                  <div key={transaction.id} className="detail-card text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <strong className="text-zinc-950">{money(transaction.amount)}</strong>
+                      <span className="font-semibold text-zinc-500">{dateTime(transaction.collected_at)}</span>
+                    </div>
+                    <p className="mt-2 text-zinc-700">{methodLabels[transaction.method] ?? transaction.method} · {transaction.transaction_ref}</p>
+                    <p className="mt-1 text-zinc-500">{transaction.collected_by_name ?? "Hệ thống"}</p>
+                    {transaction.note ? <p className="mt-1 whitespace-pre-wrap text-zinc-600">{transaction.note}</p> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
         ) : null}
       </div>

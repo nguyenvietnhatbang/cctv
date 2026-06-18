@@ -36,7 +36,12 @@ export async function GET(_request: Request, context: Context) {
     const [orderResult, materialsResult] = await Promise.all([
       query(
         `select wo.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
-                p.material_amount, p.labor_amount, p.vat_amount, p.total_amount
+                p.material_amount, p.labor_amount, p.vat_amount, p.total_amount, p.paid_amount,
+                case
+                  when p.status = 'debt' then coalesce(p.debt_amount, 0)
+                  when p.status = 'paid' then 0
+                  else greatest(coalesce(p.total_amount, 0) - coalesce(p.paid_amount, 0), 0)
+                end as debt_amount
          from work_orders wo
          join customers c on c.id = wo.customer_id
          left join payments p on p.work_order_id = wo.id
@@ -108,6 +113,8 @@ export async function GET(_request: Request, context: Context) {
             <tbody>${rows || "<tr><td colspan='4'>Không có vật tư</td></tr>"}</tbody>
           </table>
           <p class="total">Tổng tiền: ${money(order.total_amount)}</p>
+          <p>Đã thu: <strong>${money(order.paid_amount)}</strong></p>
+          <p>Còn lại: <strong>${money(order.debt_amount)}</strong></p>
           <div class="signature">
             <div><p>Đại diện kỹ thuật</p><br /><br /><strong>________________</strong></div>
             <div><p>Người nghiệm thu</p><br /><br /><strong>${escapeHtml(order.acceptance_name)}</strong></div>

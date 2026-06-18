@@ -39,6 +39,8 @@ export type WorkOrderListItem = {
   technician_name: string | null;
   assigned_technicians: AssignedTechnician[];
   total_amount: string;
+  paid_amount: string;
+  debt_amount: string;
   payment_status: string | null;
 };
 
@@ -140,6 +142,16 @@ export type HistoryItem = {
   note: string | null;
 };
 
+export type PaymentTransaction = {
+  id: string;
+  amount: string;
+  method: string;
+  transaction_ref: string;
+  note: string | null;
+  collected_by_name: string | null;
+  collected_at: string;
+};
+
 export type WorkOrderDetail = {
   workOrder: WorkOrderListItem & {
     internal_note: string | null;
@@ -157,6 +169,7 @@ export type WorkOrderDetail = {
   history: HistoryItem[];
   materials: Material[];
   files: WorkFile[];
+  paymentTransactions: PaymentTransaction[];
 };
 
 export type NotificationItem = {

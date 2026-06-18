@@ -192,6 +192,8 @@ create table payments (
   material_amount numeric(12, 2) not null default 0,
   vat_amount numeric(12, 2) not null default 0,
   total_amount numeric(12, 2) not null default 0,
+  paid_amount numeric(12, 2) not null default 0,
+  debt_amount numeric(12, 2) not null default 0,
   status payment_status not null default 'unpaid',
   method payment_method,
   transaction_ref text,
@@ -206,6 +208,22 @@ create table payments (
 );
 
 create index payments_status_confirmed_idx on payments(status, confirmed_at desc);
+
+create table payment_transactions (
+  id uuid primary key default gen_random_uuid(),
+  payment_id uuid not null references payments(id) on delete cascade,
+  work_order_id uuid not null references work_orders(id) on delete cascade,
+  amount numeric(12, 2) not null check (amount > 0),
+  method payment_method not null check (method <> 'debt'),
+  transaction_ref text not null unique,
+  note text,
+  collected_by uuid references users(id) on delete set null,
+  collected_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index payment_transactions_work_order_idx on payment_transactions(work_order_id, collected_at desc);
+create index payment_transactions_collected_idx on payment_transactions(collected_at desc);
 
 create table notifications (
   id uuid primary key default gen_random_uuid(),

@@ -81,6 +81,7 @@ export function WorkOrderDetailModal({
   });
   const visibleMaterials = pageItems(filteredMaterials, clampPage(materialPage, filteredMaterials.length));
   const visibleFiles = pageItems(filteredFiles, clampPage(filePage, filteredFiles.length));
+  const latestTransaction = detail.paymentTransactions[0];
 
   return (
     <Modal title={`Xem chi tiết công việc ${detail.workOrder.code}`} size="xl" onClose={onClose}>
@@ -221,8 +222,10 @@ export function WorkOrderDetailModal({
             <InfoItem label="VAT">{money(detail.workOrder.vat_amount)}</InfoItem>
             <InfoItem label="Tổng cộng">{money(detail.workOrder.total_amount)}</InfoItem>
             <InfoItem label="Thanh toán">{paymentStatus}</InfoItem>
+            <InfoItem label="Đã thu">{money(detail.workOrder.paid_amount)}</InfoItem>
+            <InfoItem label="Còn nợ">{money(detail.workOrder.debt_amount)}</InfoItem>
             <InfoItem label="Phương thức">{detail.workOrder.payment_method ?? "Chưa có"}</InfoItem>
-            <InfoItem label="Mã giao dịch">{detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>
+            <InfoItem label="Mã gần nhất">{latestTransaction?.transaction_ref ?? detail.workOrder.transaction_ref ?? "Chưa có"}</InfoItem>
             <InfoItem label="Hạn công nợ">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Không có"}</InfoItem>
             <div className="detail-card md:col-span-2 xl:col-span-4">
               <p className="detail-label">Ghi chú thanh toán</p>

@@ -118,7 +118,11 @@ export function PaymentsScreen({
                       <DeadlineBadge order={order} />
                     </div>
                   </td>
-                  <td data-label="Tổng tiền" className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
+                  <td data-label="Tổng tiền" className="text-right">
+                    <p className="font-bold text-zinc-900">{money(order.total_amount)}</p>
+                    <p className="mt-1 text-xs font-semibold text-emerald-700">Đã thu {money(order.paid_amount)}</p>
+                    <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(order.debt_amount)}</p>
+                  </td>
                   <td data-label="Thanh toán">
                     {order.payment_status === "paid" ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">

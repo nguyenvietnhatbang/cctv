@@ -106,15 +106,15 @@ export function CustomerDetailModal({
       order.code,
       paymentLabels[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thanh toán",
       money(order.total_amount),
+      money(order.paid_amount),
+      money(order.debt_amount),
     ].some((value) => value.toLowerCase().includes(normalizedPaymentsQuery));
   });
   const visibleCustomerPayments = pageItems(filteredCustomerPayments, clampPage(paymentsPage, filteredCustomerPayments.length));
   const paidTotal = customerOrders
-    .filter((order) => order.payment_status === "paid")
-    .reduce((sum, order) => sum + Number(order.total_amount), 0);
+    .reduce((sum, order) => sum + Number(order.paid_amount), 0);
   const debtTotal = customerOrders
-    .filter((order) => order.payment_status === "debt" || order.status === "debt")
-    .reduce((sum, order) => sum + Number(order.total_amount), 0);
+    .reduce((sum, order) => sum + Number(order.debt_amount), 0);
   const contacts = displayCustomerContacts(item);
 
   return (
@@ -259,7 +259,11 @@ export function CustomerDetailModal({
                   <StatusBadge order={order} />
                   <DeadlineBadge order={order} />
                 </div>
-                <p className="font-bold text-zinc-950 md:text-right">{money(order.total_amount)}</p>
+                <div className="text-right">
+                  <p className="font-bold text-zinc-950">{money(order.total_amount)}</p>
+                  <p className="mt-1 text-xs font-semibold text-emerald-700">Đã thu {money(order.paid_amount)}</p>
+                  <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(order.debt_amount)}</p>
+                </div>
               </div>
             ))}
           </section>
@@ -348,7 +352,9 @@ export function CustomerEditModal({
               <div key={order.id} className="grid gap-3 rounded-md border border-zinc-200 p-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
                 <div>
                   <p className="font-bold text-zinc-950">{order.code}</p>
-                  <p className="mt-1 text-zinc-500">{paymentLabels[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thanh toán"} · {money(order.total_amount)}</p>
+                  <p className="mt-1 text-zinc-500">
+                    {paymentLabels[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thanh toán"} · đã thu {money(order.paid_amount)} · nợ {money(order.debt_amount)}
+                  </p>
                 </div>
                 <ValidatedForm onSubmit={(event) => onBillUpload(order.id, event)} className="grid gap-2 sm:grid-cols-[minmax(180px,260px)_auto]">
                   <ImageUploadField name="file" className="input h-10" capture="environment" required disabled={uploadingBillOrderId === order.id} aria-label={`Ảnh bill ${order.code}`} previewLabel={`Xem trước ảnh bill ${order.code}`} />

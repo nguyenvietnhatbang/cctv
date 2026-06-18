@@ -57,7 +57,13 @@ export async function GET(_request: Request, context: Context) {
               assn.technician_name,
               coalesce(assn.assigned_technicians, '[]'::jsonb) as assigned_technicians,
               p.status as payment_status, p.method as payment_method, p.labor_amount,
-              p.material_amount, p.vat_amount, p.total_amount, p.transaction_ref,
+              p.material_amount, p.vat_amount, p.total_amount, p.paid_amount,
+              case
+                when p.status = 'debt' then coalesce(p.debt_amount, 0)
+                when p.status = 'paid' then 0
+                else greatest(coalesce(p.total_amount, 0) - coalesce(p.paid_amount, 0), 0)
+              end as debt_amount,
+              p.transaction_ref,
               p.debt_due_date, p.note as payment_note, p.confirmed_at
        from work_orders wo
        join customers c on c.id = wo.customer_id
@@ -73,7 +79,7 @@ export async function GET(_request: Request, context: Context) {
       return Response.json({ error: "Không tìm thấy phiếu" }, { status: 404 });
     }
 
-    const [historyResult, materialsResult, filesResult] = await Promise.all([
+    const [historyResult, materialsResult, filesResult, paymentTransactionsResult] = await Promise.all([
       query(
         `select h.*, u.full_name as changed_by_name
          from work_order_status_history h
@@ -96,6 +102,15 @@ export async function GET(_request: Request, context: Context) {
          order by uploaded_at desc`,
         [id],
       ),
+      query(
+        `select pt.id, pt.amount, pt.method, pt.transaction_ref, pt.note,
+                u.full_name as collected_by_name, pt.collected_at
+         from payment_transactions pt
+         left join users u on u.id = pt.collected_by
+         where pt.work_order_id = $1
+         order by pt.collected_at desc`,
+        [id],
+      ),
     ]);
 
     const files = await Promise.all(
@@ -113,6 +128,7 @@ export async function GET(_request: Request, context: Context) {
       history: historyResult.rows,
       materials: materialsResult.rows,
       files,
+      paymentTransactions: paymentTransactionsResult.rows,
     });
   } catch (error) {
     return handleRouteError(error);
@@ -171,7 +187,13 @@ export async function PATCH(request: Request, context: Context) {
              labor_amount = wo.labor_cost,
              vat_amount = round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
              total_amount = wo.labor_cost + coalesce(m.total, 0)
-               + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+               + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
+             debt_amount = greatest(
+               wo.labor_cost + coalesce(m.total, 0)
+                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+                 - p.paid_amount,
+               0
+             )
          from work_orders wo
          left join (
            select work_order_id, sum(line_total) as total

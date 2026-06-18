@@ -249,7 +249,13 @@ export async function syncWorkOrderPaymentAmounts(client: PoolClient, workOrderI
          labor_amount = wo.labor_cost,
          vat_amount = round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
          total_amount = wo.labor_cost + coalesce(m.total, 0)
-           + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+           + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
+         debt_amount = greatest(
+           wo.labor_cost + coalesce(m.total, 0)
+             + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+             - p.paid_amount,
+           0
+         )
      from work_orders wo
      left join (
        select work_order_id, sum(line_total) as total
@@ -260,6 +266,13 @@ export async function syncWorkOrderPaymentAmounts(client: PoolClient, workOrderI
      where p.work_order_id = wo.id and wo.id = $1`,
     [workOrderId],
   );
+}
+
+export function makePaymentTransactionRef(workOrderCode: string) {
+  const normalizedCode = workOrderCode.replace(/[^A-Z0-9]/gi, "").slice(-10).toUpperCase() || "PAY";
+  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
+  const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `TT-${normalizedCode}-${stamp}-${random}`;
 }
 
 export function makeWorkOrderCode() {

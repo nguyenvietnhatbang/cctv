@@ -3,7 +3,7 @@ import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createMaterialSchema } from "@/lib/validators";
-import { assertCanEditFinancials, assertCanMutateFieldWork } from "@/lib/work-orders";
+import { assertCanEditFinancials, assertCanMutateFieldWork, syncWorkOrderPaymentAmounts } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -47,23 +47,7 @@ export async function POST(request: Request, context: Context) {
         [id, body.name, body.quantity, body.unitPrice, user.id],
       );
 
-      await client.query(
-        `update payments p
-         set material_amount = coalesce(m.total, 0),
-             labor_amount = wo.labor_cost,
-             vat_amount = round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
-             total_amount = wo.labor_cost + coalesce(m.total, 0)
-               + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
-         from work_orders wo
-         left join (
-           select work_order_id, sum(line_total) as total
-           from work_order_materials
-           where work_order_id = $1
-           group by work_order_id
-         ) m on m.work_order_id = wo.id
-         where p.work_order_id = wo.id and wo.id = $1`,
-        [id],
-      );
+      await syncWorkOrderPaymentAmounts(client, id);
 
       return materialResult.rows[0];
     });

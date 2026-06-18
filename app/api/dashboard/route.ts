@@ -20,6 +20,14 @@ export async function GET() {
             and woa.technician_id = $1
         )`
       : "";
+    const transactionTechnicianFilter = technicianId
+      ? `and exists (
+          select 1 from work_order_assignments pt_woa
+          where pt_woa.work_order_id = pt.work_order_id
+            and pt_woa.unassigned_at is null
+            and pt_woa.technician_id = $1
+        )`
+      : "";
 
     if (technicianId) {
       params.push(technicianId);
@@ -58,10 +66,13 @@ export async function GET() {
           'completed', 'awaiting_payment', 'paid', 'debt',
           'paused', 'cancelled'
         )) as other,
-        coalesce(sum(p.total_amount) filter (
-          where p.status = 'paid' and p.confirmed_at >= $${todayStartParam} and p.confirmed_at < $${todayEndParam}
+        coalesce((
+          select sum(pt.amount)
+          from payment_transactions pt
+          where pt.collected_at >= $${todayStartParam} and pt.collected_at < $${todayEndParam}
+            ${transactionTechnicianFilter}
         ), 0) as paid_today,
-        coalesce(sum(p.total_amount) filter (where p.status = 'debt'), 0) as open_debt
+        coalesce(sum(p.debt_amount), 0) as open_debt
        from work_orders wo
        left join payments p on p.work_order_id = wo.id
        where true ${technicianFilter}`,

@@ -463,6 +463,8 @@ export function OpsApp() {
             payment_note: null,
             material_amount: "0",
             vat_amount: "0",
+            paid_amount: item.paid_amount ?? "0",
+            debt_amount: item.debt_amount ?? "0",
             transaction_ref: null,
             debt_due_date: null,
             customer_lat: item.customer_lat,
@@ -471,6 +473,7 @@ export function OpsApp() {
           history: [],
           materials: [],
           files: [],
+          paymentTransactions: [],
         });
       }
     }
@@ -505,6 +508,8 @@ export function OpsApp() {
         payment_note: null,
         material_amount: "0",
         vat_amount: "0",
+        paid_amount: item.paid_amount ?? "0",
+        debt_amount: item.debt_amount ?? "0",
         transaction_ref: null,
         debt_due_date: null,
         customer_lat: item.customer_lat,
@@ -513,6 +518,7 @@ export function OpsApp() {
       history: [],
       materials: [],
       files: [],
+      paymentTransactions: [],
     };
   }
 
@@ -818,7 +824,7 @@ export function OpsApp() {
       body: JSON.stringify({
         status: formData.get("status"),
         method: formData.get("method") || null,
-        transactionRef: formData.get("transactionRef") || null,
+        amount: formData.get("amount") || null,
         debtDueDate: formData.get("debtDueDate") || null,
         note: formData.get("note") || null,
       }),

@@ -110,7 +110,7 @@ export const updateMaterialSchema = z.object({
 export const updatePaymentSchema = z.object({
   status: z.enum(PAYMENT_STATUSES),
   method: z.enum(PAYMENT_METHODS).optional().nullable(),
-  transactionRef: optionalText,
+  amount: z.coerce.number().nonnegative().optional().nullable(),
   debtDueDate: z.string().date().optional().nullable(),
   note: optionalText,
 });
