@@ -53,8 +53,11 @@ type TechnicianJobModalProps = {
   detail: WorkOrderDetail;
   onClose: () => void;
   pendingAction: string | null;
+  deletingFileId: string | null;
   onStatus: (status: WorkOrderDetail["workOrder"]["status"], payload?: StatusNotePayload) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onFileDelete: (file: FileItem) => void | Promise<void>;
   onAcceptance: (payload: AcceptancePayload) => void | Promise<void>;
 };
 
@@ -312,8 +315,14 @@ export function OpsModalLayer({
           detail={detail}
           onClose={closeInlineModal}
           pendingAction={pendingAction}
+          deletingFileId={deletingFileId}
           onStatus={(status, payload) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...payload }) }); await afterMutation(); })}
           onUpdate={(event) => runMutation("update", () => submitWorkOrderPatch(event))}
+          onUpload={(event) => runMutation("upload", async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, { method: "POST", body: formData }); form.reset(); await afterMutation(); })}
+          onFileDelete={(file) => {
+            setDeletingFileId(file.id);
+            return runMutation("file-delete", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/files/${file.id}`, { method: "DELETE" }); await afterMutation(); }).finally(() => setDeletingFileId(null));
+          }}
           onAcceptance={(payload) => runMutation("acceptance", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/acceptance`, { method: "POST", body: JSON.stringify({ ...payload, agreed: true }) }); await afterMutation(); })}
         />
       ) : null}

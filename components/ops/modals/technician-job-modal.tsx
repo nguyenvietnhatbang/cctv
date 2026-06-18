@@ -11,6 +11,7 @@ import {
   Phone,
   Play,
   Save,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -23,8 +24,12 @@ import {
 import { dateTime, money } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
-import type { WorkOrderDetail } from "@/components/ops/types";
+import type { WorkFile, WorkOrderDetail } from "@/components/ops/types";
+import { ImageUploadField } from "@/components/ops/image-upload-field";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
+import { WorkFileGallery } from "@/components/ops/work-file-gallery";
+
+const FIELD_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "awaiting_payment", "paid", "debt", "paused", "cancelled"];
 
 const ACTION_ICONS: Partial<Record<WorkOrderStatus, LucideIcon>> = {
   accepted: Play,
@@ -106,20 +111,113 @@ function PaymentSummary({ detail }: { detail: WorkOrderDetail }) {
   );
 }
 
+function FieldCostForm({
+  detail,
+  locked,
+  isSubmitting,
+  onSubmit,
+}: {
+  detail: WorkOrderDetail;
+  locked: boolean;
+  isSubmitting: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+}) {
+  return (
+    <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-section">
+      <h3 className="section-title">Chi phí</h3>
+      {locked ? (
+        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Chi phí đã khóa sau nghiệm thu/thanh toán.</p>
+      ) : null}
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <input name="laborCost" className="input" type="number" step="1000" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="Tiền công" disabled={locked || isSubmitting} />
+        <input name="vatRate" className="input" type="number" step="0.1" defaultValue={Number(detail.workOrder.vat_rate)} placeholder="VAT %" disabled={locked || isSubmitting} />
+      </div>
+      <PendingButton className="btn-secondary mt-3 h-10" type="submit" disabled={locked} pending={isSubmitting} pendingLabel="Đang lưu...">
+        <Save size={15} />Lưu chi phí
+      </PendingButton>
+    </ValidatedForm>
+  );
+}
+
+function FieldDocumentUploadForm({
+  detail,
+  locked,
+  isUploading,
+  deletingFileId,
+  onSubmit,
+  onDelete,
+}: {
+  detail: WorkOrderDetail;
+  locked: boolean;
+  isUploading: boolean;
+  deletingFileId: string | null;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onDelete: (file: WorkFile) => void | Promise<void>;
+}) {
+  const fieldFiles = detail.files.filter((file) => file.purpose === "after" || file.purpose === "handover_document");
+
+  return (
+    <section className="modal-section">
+      <h3 className="section-title">Tài liệu sau thi công</h3>
+      {locked ? (
+        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Tài liệu đã khóa sau nghiệm thu/thanh toán.</p>
+      ) : null}
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isUploading} className="mt-3 grid gap-2">
+        <input type="hidden" name="purpose" value="after" />
+        <ImageUploadField name="file" capture="environment" required disabled={locked || isUploading} aria-label="ảnh sau thi công" previewLabel="Xem trước ảnh sau thi công" />
+        <PendingButton className="btn-secondary h-10" type="submit" disabled={locked} pending={isUploading} pendingLabel="Đang tải lên...">
+          <Upload size={15} />Tải ảnh sau thi công
+        </PendingButton>
+      </ValidatedForm>
+      <ValidatedForm onSubmit={onSubmit} aria-busy={isUploading} className="mt-3 grid gap-2">
+        <input type="hidden" name="purpose" value="handover_document" />
+        <input
+          name="file"
+          type="file"
+          className="input"
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+          required
+          disabled={locked || isUploading}
+          aria-label="biên bản hoặc phiếu bàn giao"
+        />
+        <PendingButton className="btn-secondary h-10" type="submit" disabled={locked} pending={isUploading} pendingLabel="Đang tải lên...">
+          <Upload size={15} />Tải biên bản / phiếu bàn giao
+        </PendingButton>
+      </ValidatedForm>
+      {fieldFiles.length > 0 ? (
+        <div className="mt-3">
+          <WorkFileGallery
+            files={fieldFiles}
+            canDelete={() => !locked}
+            onDelete={onDelete}
+            deletingFileId={deletingFileId}
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export function TechnicianJobModal({
   detail,
   onClose,
   onStatus,
   onUpdate,
+  onUpload,
+  onFileDelete,
   onAcceptance,
   pendingAction = null,
+  deletingFileId = null,
 }: {
   detail: WorkOrderDetail;
   onClose: () => void;
   onStatus: (status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onFileDelete: (file: WorkFile) => void | Promise<void>;
   onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
   pendingAction?: string | null;
+  deletingFileId?: string | null;
 }) {
   const [preparingStatus, setPreparingStatus] = useState(false);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
@@ -139,6 +237,7 @@ export function TechnicianJobModal({
     [status],
   );
   const currentStepIndex = stepIndex(status);
+  const fieldLocked = FIELD_LOCKED_STATUSES.includes(status);
   const canSignAcceptance = status === "awaiting_acceptance";
   const canMoveNext = Boolean(nextFieldTransition);
   const canCheckout = Boolean(checkoutTransition);
@@ -310,6 +409,15 @@ export function TechnicianJobModal({
           </section>
 
           <section className="grid gap-4">
+            <FieldCostForm detail={detail} locked={fieldLocked} isSubmitting={pendingAction === "update"} onSubmit={onUpdate} />
+            <FieldDocumentUploadForm
+              detail={detail}
+              locked={fieldLocked}
+              isUploading={pendingAction === "upload"}
+              deletingFileId={deletingFileId}
+              onSubmit={onUpload}
+              onDelete={onFileDelete}
+            />
             <PaymentSummary detail={detail} />
           </section>
         </div>
