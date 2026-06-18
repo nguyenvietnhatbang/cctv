@@ -1,10 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { CreditCard, Eye, Coins, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CreditCard, Eye, Coins, Search, UserRound, type LucideIcon } from "lucide-react";
 import { money } from "@/components/ops/format";
 import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
+
+type PaymentViewMode = "orders" | "customers";
+
+const viewTabs: ReadonlyArray<{ value: PaymentViewMode; label: string; icon: LucideIcon }> = [
+  { value: "orders", label: "Theo công việc", icon: CreditCard },
+  { value: "customers", label: "Theo khách hàng", icon: UserRound },
+];
+
+type CustomerPaymentGroup = {
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  orders: WorkOrderListItem[];
+  orderCount: number;
+  totalAmount: number;
+  paidAmount: number;
+  debtAmount: number;
+};
+
+function paymentStatusLabel(order: WorkOrderListItem) {
+  if (order.payment_status === "paid") return "Đã thanh toán";
+  if (order.payment_status === "debt") return "Công nợ";
+  return "Chưa thanh toán";
+}
+
+function PaymentStatusPill({ order }: { order: WorkOrderListItem }) {
+  if (order.payment_status === "paid") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+        Đã thanh toán
+      </span>
+    );
+  }
+
+  if (order.payment_status === "debt") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+        Công nợ
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-500">
+      Chưa thanh toán
+    </span>
+  );
+}
 
 export function PaymentsScreen({
   orders,
@@ -15,27 +64,71 @@ export function PaymentsScreen({
   onView: (id: string) => void;
   onPayment: (id: string) => void;
 }) {
+  const [viewMode, setViewMode] = useState<PaymentViewMode>("orders");
   const [filter, setFilter] = useState<"all" | "awaiting" | "paid" | "debt">("awaiting");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [customerPage, setCustomerPage] = useState(1);
   const allPaymentOrders = orders.filter((order) =>
     ["completed", "awaiting_payment", "debt", "paid"].includes(order.status),
   );
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const paymentOrders = allPaymentOrders.filter((order) => {
-    const q = searchQuery.trim().toLowerCase();
     const matchesFilter =
       filter === "awaiting" ? ["completed", "awaiting_payment"].includes(order.status)
       : filter === "paid" ? order.status === "paid" || order.payment_status === "paid"
       : filter === "debt" ? order.status === "debt" || order.payment_status === "debt"
       : true;
     const matchesSearch =
-      !q ||
-      [order.code, order.customer_name, order.customer_phone, order.technician_name ?? ""]
-        .some((value) => value.toLowerCase().includes(q));
+      !normalizedSearchQuery ||
+      [
+        order.code,
+        order.customer_name,
+        order.customer_phone,
+        order.customer_address,
+        order.technician_name ?? "",
+        paymentStatusLabel(order),
+      ].some((value) => value.toLowerCase().includes(normalizedSearchQuery));
     return matchesFilter && matchesSearch;
   });
+  const customerGroups = useMemo(() => {
+    const groups = new Map<string, CustomerPaymentGroup>();
+
+    for (const order of paymentOrders) {
+      const current = groups.get(order.customer_id);
+      if (current) {
+        current.orders.push(order);
+        current.orderCount += 1;
+        current.totalAmount += Number(order.total_amount);
+        current.paidAmount += Number(order.paid_amount);
+        current.debtAmount += Number(order.debt_amount);
+        continue;
+      }
+
+      groups.set(order.customer_id, {
+        customerId: order.customer_id,
+        customerName: order.customer_name,
+        customerPhone: order.customer_phone,
+        customerAddress: order.customer_address,
+        orders: [order],
+        orderCount: 1,
+        totalAmount: Number(order.total_amount),
+        paidAmount: Number(order.paid_amount),
+        debtAmount: Number(order.debt_amount),
+      });
+    }
+
+    return [...groups.values()].sort((left, right) =>
+      right.debtAmount - left.debtAmount
+      || right.orderCount - left.orderCount
+      || left.customerName.localeCompare(right.customerName, "vi"),
+    );
+  }, [paymentOrders]);
   const safePage = clampTablePage(page, paymentOrders.length);
   const visiblePaymentOrders = getPageItems(paymentOrders, safePage);
+  const safeCustomerPage = clampTablePage(customerPage, customerGroups.length);
+  const visibleCustomerGroups = getPageItems(customerGroups, safeCustomerPage);
+  const activeCount = viewMode === "orders" ? paymentOrders.length : customerGroups.length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +144,23 @@ export function PaymentsScreen({
       <TableShell>
         <div className="table-toolbar">
           <div className="table-filter-row">
+            {viewTabs.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                className={`tab-button h-9 gap-2 px-3 text-xs ${viewMode === value ? "tab-button-active" : ""}`}
+                onClick={() => {
+                  setViewMode(value);
+                  setPage(1);
+                  setCustomerPage(1);
+                }}
+                type="button"
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="table-filter-row">
             {[
               ["awaiting", "Chờ thanh toán"],
               ["paid", "Đã thanh toán"],
@@ -63,6 +173,7 @@ export function PaymentsScreen({
                 onClick={() => {
                   setFilter(value as typeof filter);
                   setPage(1);
+                  setCustomerPage(1);
                 }}
                 type="button"
               >
@@ -78,19 +189,95 @@ export function PaymentsScreen({
                 onChange={(event) => {
                   setSearchQuery(event.target.value);
                   setPage(1);
+                  setCustomerPage(1);
                 }}
                 className="input search-field-input h-9 !w-full py-1 text-xs"
-                placeholder="Tìm mã, khách, SĐT..."
+                placeholder="Tìm mã, khách, SĐT, trạng thái..."
               />
             </div>
             <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1">
               <Coins size={13} />
-              Số công việc: {paymentOrders.length}
+              {viewMode === "orders" ? "Số công việc" : "Số khách"}: {activeCount}
             </span>
           </div>
         </div>
 
-        {paymentOrders.length === 0 ? (
+        {viewMode === "customers" ? (
+          customerGroups.length === 0 ? (
+            <EmptyState>Chưa có khách hàng phù hợp với bộ lọc thanh toán.</EmptyState>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Khách hàng</th>
+                  <th className="text-right">Tổng hợp</th>
+                  <th>Phiếu liên quan</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {visibleCustomerGroups.map((group) => {
+                  const primaryOrder = group.orders.find((order) => Number(order.debt_amount) > 0) ?? group.orders[0];
+
+                  return (
+                    <tr key={group.customerId}>
+                      <td data-label="Khách hàng">
+                        <p className="font-semibold leading-tight text-zinc-900">{group.customerName}</p>
+                        <p className="mt-1 text-xs text-zinc-500">{group.customerPhone}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{group.customerAddress}</p>
+                      </td>
+                      <td data-label="Tổng hợp" className="text-right">
+                        <p className="font-bold text-zinc-900">{money(group.totalAmount)}</p>
+                        <p className="mt-1 text-xs font-semibold text-emerald-700">Đã thu {money(group.paidAmount)}</p>
+                        <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(group.debtAmount)}</p>
+                      </td>
+                      <td data-label="Phiếu liên quan">
+                        <div className="grid gap-2">
+                          {group.orders.slice(0, 3).map((order) => (
+                            <div key={order.id} className="flex flex-wrap items-center gap-2 text-xs">
+                              <button
+                                className="font-bold text-teal-700 hover:text-teal-800"
+                                onClick={() => onView(order.id)}
+                                type="button"
+                              >
+                                {order.code}
+                              </button>
+                              <PaymentStatusPill order={order} />
+                              <span className="font-semibold text-zinc-500">Nợ {money(order.debt_amount)}</span>
+                            </div>
+                          ))}
+                          {group.orders.length > 3 ? (
+                            <p className="text-xs font-semibold text-zinc-500">+{group.orders.length - 3} phiếu khác</p>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td data-label="">
+                        <div className="action-cell">
+                          <button
+                            className="icon-button"
+                            onClick={() => onView(primaryOrder.id)}
+                            type="button"
+                            aria-label="Xem thanh toán của khách"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            className="icon-button text-green-600 hover:border-green-200 hover:bg-green-50"
+                            onClick={() => onPayment(primaryOrder.id)}
+                            type="button"
+                            aria-label="Xử lý thanh toán của khách"
+                          >
+                            <CreditCard size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )
+        ) : paymentOrders.length === 0 ? (
           <EmptyState>Chưa có công việc cần xử lý thanh toán.</EmptyState>
         ) : (
           <table className="data-table">
@@ -124,19 +311,7 @@ export function PaymentsScreen({
                     <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(order.debt_amount)}</p>
                   </td>
                   <td data-label="Thanh toán">
-                    {order.payment_status === "paid" ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                        Đã thanh toán
-                      </span>
-                    ) : order.payment_status === "debt" ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                        Công nợ
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-50 text-zinc-500 border border-zinc-200">
-                        Chưa thanh toán
-                      </span>
-                    )}
+                    <PaymentStatusPill order={order} />
                   </td>
                   <td data-label="">
                     <div className="action-cell">
@@ -163,7 +338,11 @@ export function PaymentsScreen({
             </tbody>
           </table>
         )}
-        <TablePagination page={safePage} total={paymentOrders.length} onPageChange={setPage} />
+        {viewMode === "customers" ? (
+          <TablePagination page={safeCustomerPage} total={customerGroups.length} onPageChange={setCustomerPage} />
+        ) : (
+          <TablePagination page={safePage} total={paymentOrders.length} onPageChange={setPage} />
+        )}
       </TableShell>
     </div>
   );

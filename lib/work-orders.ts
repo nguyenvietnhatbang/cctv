@@ -242,6 +242,56 @@ export async function changeWorkOrderStatus(
   await syncTechnicianStatuses(client, assignmentResult.rows.map((row) => row.technician_id));
 }
 
+export async function changeWorkOrderPaymentStatus(
+  client: PoolClient,
+  workOrderId: string,
+  nextStatus: Extract<WorkOrderStatus, "paid" | "debt">,
+  user: SessionUser,
+  note: string | null,
+) {
+  const currentResult = await client.query<{
+    status: WorkOrderStatus;
+  }>(
+    `select status
+     from work_orders
+     where id = $1
+     for update`,
+    [workOrderId],
+  );
+
+  const current = currentResult.rows[0];
+  if (!current) {
+    throw new HttpError(404, "Không tìm thấy phiếu");
+  }
+
+  if (!["completed", "awaiting_payment", "debt"].includes(current.status)) {
+    throw new HttpError(422, "Chỉ cập nhật thanh toán khi phiếu đã nghiệm thu, chờ thu tiền hoặc đang công nợ");
+  }
+
+  await client.query(
+    `update work_orders
+     set status = $2,
+         updated_by = $3
+     where id = $1`,
+    [workOrderId, nextStatus, user.id],
+  );
+
+  await client.query(
+    `insert into work_order_status_history
+       (work_order_id, from_status, to_status, changed_by, note)
+     values ($1, $2, $3, $4, $5)`,
+    [workOrderId, current.status, nextStatus, user.id, note],
+  );
+
+  const assignmentResult = await client.query<{ technician_id: string }>(
+    `select technician_id
+     from work_order_assignments
+     where work_order_id = $1 and unassigned_at is null`,
+    [workOrderId],
+  );
+  await syncTechnicianStatuses(client, assignmentResult.rows.map((row) => row.technician_id));
+}
+
 export async function syncWorkOrderPaymentAmounts(client: PoolClient, workOrderId: string) {
   await client.query(
     `update payments p

@@ -32,7 +32,7 @@ export async function POST(request: Request, context: Context) {
     }
 
     if (purpose === "bill") {
-      if (!isPaymentManagerRole(user.role)) {
+      if (!isPaymentManagerRole(user.role) && user.role !== "technician") {
         throw new HttpError(403, "Bạn không có quyền upload bill thanh toán");
       }
       await assertCanReadWorkOrder(user, id);

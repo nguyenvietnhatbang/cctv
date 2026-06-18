@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import { updatePaymentSchema } from "@/lib/validators";
-import { changeWorkOrderStatus, makePaymentTransactionRef } from "@/lib/work-orders";
+import { assertCanReadWorkOrder, changeWorkOrderPaymentStatus, makePaymentTransactionRef } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -12,9 +12,11 @@ type Context = {
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "accountant"]);
+    const user = await requireUser(["admin", "dispatcher", "accountant", "technician"]);
     const { id } = await context.params;
     const body = updatePaymentSchema.parse(await request.json());
+
+    await assertCanReadWorkOrder(user, id);
 
     await withTransaction(async (client) => {
       const paymentResult = await client.query<{
@@ -119,14 +121,14 @@ export async function PATCH(request: Request, context: Context) {
       );
 
       if (nextPaymentStatus === "paid") {
-        await changeWorkOrderStatus(client, id, "paid", user, `Xác nhận đã thu đủ ${totalAmount.toLocaleString("vi-VN")}đ`);
+        await changeWorkOrderPaymentStatus(client, id, "paid", user, `Xác nhận đã thu đủ ${totalAmount.toLocaleString("vi-VN")}đ`);
       }
 
       if (nextPaymentStatus === "debt") {
         const note = collectionAmount > 0
           ? `Thu ${collectionAmount.toLocaleString("vi-VN")}đ, còn công nợ ${debtAfter.toLocaleString("vi-VN")}đ`
           : `Chuyển công nợ ${debtAfter.toLocaleString("vi-VN")}đ`;
-        await changeWorkOrderStatus(client, id, "debt", user, note);
+        await changeWorkOrderPaymentStatus(client, id, "debt", user, note);
       }
       await client.query(
         `insert into notifications (user_id, work_order_id, title, body)

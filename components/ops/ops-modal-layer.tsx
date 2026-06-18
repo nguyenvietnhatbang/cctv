@@ -58,6 +58,7 @@ type TechnicianJobModalProps = {
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onFileDelete: (file: FileItem) => void | Promise<void>;
+  onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAcceptance: (payload: AcceptancePayload) => void | Promise<void>;
 };
 
@@ -323,6 +324,7 @@ export function OpsModalLayer({
             setDeletingFileId(file.id);
             return runMutation("file-delete", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/files/${file.id}`, { method: "DELETE" }); await afterMutation(); }).finally(() => setDeletingFileId(null));
           }}
+          onPayment={(event) => runMutation("payment", () => submitPayment(event))}
           onAcceptance={(payload) => runMutation("acceptance", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/acceptance`, { method: "POST", body: JSON.stringify({ ...payload, agreed: true }) }); await afterMutation(); })}
         />
       ) : null}

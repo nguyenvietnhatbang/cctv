@@ -26,6 +26,7 @@ import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { WorkFile, WorkOrderDetail } from "@/components/ops/types";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
+import { PaymentForm } from "@/components/ops/modals/payment-form";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 
@@ -212,6 +213,7 @@ export function TechnicianJobModal({
   onUpdate,
   onUpload,
   onFileDelete,
+  onPayment,
   onAcceptance,
   pendingAction = null,
   deletingFileId = null,
@@ -222,6 +224,7 @@ export function TechnicianJobModal({
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onFileDelete: (file: WorkFile) => void | Promise<void>;
+  onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
   pendingAction?: string | null;
   deletingFileId?: string | null;
@@ -249,6 +252,7 @@ export function TechnicianJobModal({
   const canMoveNext = Boolean(nextFieldTransition);
   const canCheckout = Boolean(checkoutTransition);
   const canResume = Boolean(resumeTransition);
+  const canCollectPayment = ["completed", "awaiting_payment", "debt"].includes(status);
   const nextStatus = nextFieldTransition?.status ?? null;
   const NextIcon = nextStatus ? ACTION_ICONS[nextStatus] ?? Play : ClipboardCheck;
 
@@ -426,7 +430,11 @@ export function TechnicianJobModal({
               onSubmit={onUpload}
               onDelete={onFileDelete}
             />
-            <PaymentSummary detail={detail} />
+            {canCollectPayment ? (
+              <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} />
+            ) : (
+              <PaymentSummary detail={detail} />
+            )}
           </section>
         </div>
 
