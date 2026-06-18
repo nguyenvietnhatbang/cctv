@@ -72,9 +72,9 @@ export function OpsShell({
 
   return (
     <main className="app-frame">
-      <aside className="app-sidebar flex flex-col h-screen border-r border-slate-200 bg-white">
+      <aside className="app-sidebar flex flex-col h-screen">
         {/* Brand Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between border-b border-blue-100/70 bg-white/45 px-4 py-4 backdrop-blur-sm">
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-600 text-white font-bold text-sm shadow-sm shadow-blue-600/20">
               C
@@ -114,7 +114,7 @@ export function OpsShell({
         </div>
 
         {/* User Profile */}
-        <div className="mt-auto border-t border-slate-100 p-3 flex items-center justify-between gap-2 bg-slate-50/70">
+        <div className="mt-auto border-t border-blue-100/70 bg-white/45 p-3 flex items-center justify-between gap-2 backdrop-blur-sm">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs border border-teal-600 shrink-0">
               {user.fullName
