@@ -1,4 +1,5 @@
 create extension if not exists pgcrypto;
+create extension if not exists pg_trgm;
 
 create type app_role as enum ('admin', 'dispatcher', 'team_lead', 'technician', 'accountant');
 create type user_status as enum ('active', 'inactive');
@@ -36,6 +37,8 @@ create table users (
   constraint users_login_identifier_required check (email is not null or phone is not null)
 );
 
+create index users_email_lower_idx on users(lower(email));
+
 create table customers (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -52,6 +55,8 @@ create table customers (
 );
 
 create index customers_phone_idx on customers(phone);
+create index customers_name_trgm_idx on customers using gin (name gin_trgm_ops);
+create index customers_address_trgm_idx on customers using gin (address gin_trgm_ops);
 
 create table customer_contacts (
   id uuid primary key default gen_random_uuid(),
@@ -109,6 +114,13 @@ create table work_orders (
 create index work_orders_status_idx on work_orders(status);
 create index work_orders_customer_idx on work_orders(customer_id);
 create index work_orders_appointment_idx on work_orders(appointment_at);
+create index work_orders_created_at_idx on work_orders(created_at desc);
+create index work_orders_updated_at_idx on work_orders(updated_at desc);
+create index work_orders_status_appointment_idx on work_orders(status, appointment_at desc);
+create index work_orders_open_appointment_idx on work_orders(appointment_at desc, created_at desc)
+  where status not in ('paid', 'cancelled');
+create index work_orders_code_trgm_idx on work_orders using gin (code gin_trgm_ops);
+create index work_orders_description_trgm_idx on work_orders using gin (description gin_trgm_ops);
 
 create table work_order_assignments (
   id uuid primary key default gen_random_uuid(),
@@ -122,6 +134,14 @@ create table work_order_assignments (
 
 create unique index work_order_active_assignment_idx
   on work_order_assignments(work_order_id, technician_id)
+  where unassigned_at is null;
+
+create index work_order_assignments_technician_active_idx
+  on work_order_assignments(technician_id, work_order_id)
+  where unassigned_at is null;
+
+create index work_order_assignments_order_active_assigned_idx
+  on work_order_assignments(work_order_id, assigned_at)
   where unassigned_at is null;
 
 create table work_order_status_history (
@@ -147,6 +167,8 @@ create table work_order_materials (
   created_at timestamptz not null default now()
 );
 
+create index work_order_materials_order_created_idx on work_order_materials(work_order_id, created_at desc);
+
 create table work_order_files (
   id uuid primary key default gen_random_uuid(),
   work_order_id uuid not null references work_orders(id) on delete cascade,
@@ -160,6 +182,8 @@ create table work_order_files (
   uploaded_at timestamptz not null default now(),
   unique(bucket, path)
 );
+
+create index work_order_files_order_uploaded_idx on work_order_files(work_order_id, uploaded_at desc);
 
 create table payments (
   id uuid primary key default gen_random_uuid(),
@@ -181,6 +205,8 @@ create table payments (
   constraint debt_requires_note_or_due_date check (status <> 'debt' or note is not null or debt_due_date is not null)
 );
 
+create index payments_status_confirmed_idx on payments(status, confirmed_at desc);
+
 create table notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
@@ -190,6 +216,8 @@ create table notifications (
   read_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+create index notifications_user_created_idx on notifications(user_id, created_at desc);
 
 create or replace function touch_updated_at()
 returns trigger as $$

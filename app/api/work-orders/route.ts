@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { todayInVietnam, vietnamDayRangeUtc, vietnamMonthRangeUtc } from "@/lib/date-ranges";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonCreated, jsonOk } from "@/lib/http";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
@@ -135,22 +136,28 @@ export async function GET(request: Request) {
     }
 
     if (dateFrom) {
-      params.push(dateFrom);
-      filters.push(`wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date >= $${params.length}::date`);
+      const range = vietnamDayRangeUtc(dateFrom);
+      params.push(range.start);
+      filters.push(`wo.appointment_at >= $${params.length}`);
     }
 
     if (dateTo) {
-      params.push(dateTo);
-      filters.push(`wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date <= $${params.length}::date`);
+      const range = vietnamDayRangeUtc(dateTo);
+      params.push(range.end);
+      filters.push(`wo.appointment_at < $${params.length}`);
     }
 
     if (!status && !dateFrom && !dateTo) {
       if (scope === "open") {
         filters.push(`wo.status not in ('paid', 'cancelled')`);
       } else if (scope === "today") {
-        filters.push(`wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date`);
+        const range = vietnamDayRangeUtc(todayInVietnam());
+        params.push(range.start, range.end);
+        filters.push(`wo.appointment_at >= $${params.length - 1} and wo.appointment_at < $${params.length}`);
       } else if (scope === "this_month") {
-        filters.push(`wo.appointment_at is not null and date_trunc('month', wo.appointment_at at time zone 'Asia/Ho_Chi_Minh') = date_trunc('month', timezone('Asia/Ho_Chi_Minh', now()))`);
+        const range = vietnamMonthRangeUtc(todayInVietnam());
+        params.push(range.start, range.end);
+        filters.push(`wo.appointment_at >= $${params.length - 1} and wo.appointment_at < $${params.length}`);
       }
     }
 

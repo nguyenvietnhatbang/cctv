@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
+import { todayInVietnam, vietnamDateRangeUtc } from "@/lib/date-ranges";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
-import { todayInVietnam } from "@/components/ops/format";
 
 export const runtime = "nodejs";
 
@@ -12,6 +12,8 @@ export async function GET(request: Request) {
     const today = todayInVietnam();
     const from = searchParams.get("from") || today;
     const to = searchParams.get("to") || today;
+    const range = vietnamDateRangeUtc(from, to);
+    const params = [from, to, range.start, range.end];
 
     const [summary, byDisplayStatus, daily, byStatus, byTechnician, materials] = await Promise.all([
       query(
@@ -22,14 +24,14 @@ export async function GET(request: Request) {
            coalesce(sum(p.total_amount), 0) as gross_amount
          from work_orders wo
          left join payments p on p.work_order_id = wo.id
-         where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date`,
-        [from, to],
+         where wo.created_at >= $3 and wo.created_at < $4`,
+        params,
       ),
       query(
         `with scoped as (
            select wo.*
            from work_orders wo
-           where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+           where wo.created_at >= $3 and wo.created_at < $4
          ),
          buckets as (
            select 'todo' as status, 'Việc chưa làm' as label,
@@ -86,7 +88,7 @@ export async function GET(request: Request) {
            when 'other' then 8
            else 9
          end`,
-        [from, to],
+        params,
       ),
       query(
         `with days as (
@@ -96,7 +98,7 @@ export async function GET(request: Request) {
            select (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date as day,
                   count(*) as created_count
            from work_orders wo
-           where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+           where wo.created_at >= $3 and wo.created_at < $4
            group by 1
          ),
          completed_orders as (
@@ -104,7 +106,7 @@ export async function GET(request: Request) {
                   count(*) as completed_count
            from work_orders wo
            where wo.status in ('completed', 'awaiting_payment', 'paid', 'debt')
-             and (wo.updated_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+             and wo.updated_at >= $3 and wo.updated_at < $4
            group by 1
          ),
          paid as (
@@ -113,7 +115,7 @@ export async function GET(request: Request) {
                   coalesce(sum(p.total_amount) filter (where p.status = 'debt'), 0) as open_debt
            from payments p
            where p.confirmed_at is not null
-             and (p.confirmed_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+             and p.confirmed_at >= $3 and p.confirmed_at < $4
            group by 1
          )
          select d.day::text as date,
@@ -126,15 +128,15 @@ export async function GET(request: Request) {
          left join completed_orders c on c.day = d.day
          left join paid p on p.day = d.day
          order by d.day`,
-        [from, to],
+        params,
       ),
       query(
         `select wo.status, count(*) as count
          from work_orders wo
-         where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+         where wo.created_at >= $3 and wo.created_at < $4
          group by wo.status
          order by count desc`,
-        [from, to],
+        params,
       ),
       query(
         `select coalesce(u.full_name, 'Chưa phân công') as technician_name,
@@ -145,20 +147,20 @@ export async function GET(request: Request) {
          left join technicians t on t.id = woa.technician_id
          left join users u on u.id = t.user_id
          left join payments p on p.work_order_id = wo.id
-         where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+         where wo.created_at >= $3 and wo.created_at < $4
          group by u.full_name
          order by order_count desc`,
-        [from, to],
+        params,
       ),
       query(
         `select wom.name, sum(wom.quantity) as quantity, sum(wom.line_total) as total_amount
          from work_order_materials wom
          join work_orders wo on wo.id = wom.work_order_id
-         where (wo.created_at at time zone 'Asia/Ho_Chi_Minh')::date between $1::date and $2::date
+         where wo.created_at >= $3 and wo.created_at < $4
          group by wom.name
          order by total_amount desc
          limit 50`,
-        [from, to],
+        params,
       ),
     ]);
 

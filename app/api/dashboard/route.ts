@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { todayInVietnam, vietnamDayRangeUtc } from "@/lib/date-ranges";
 import { query } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
 import { requireTechnicianIdForUser } from "@/lib/work-orders";
@@ -24,6 +25,11 @@ export async function GET() {
       params.push(technicianId);
     }
 
+    const todayRange = vietnamDayRangeUtc(todayInVietnam());
+    params.push(todayRange.start, todayRange.end);
+    const todayStartParam = params.length - 1;
+    const todayEndParam = params.length;
+
     const result = await query<{
       total_today: string;
       todo: string;
@@ -38,7 +44,7 @@ export async function GET() {
       open_debt: string;
     }>(
       `select
-        count(*) filter (where wo.appointment_at is not null and (wo.appointment_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date) as total_today,
+        count(*) filter (where wo.appointment_at >= $${todayStartParam} and wo.appointment_at < $${todayEndParam}) as total_today,
         count(*) filter (where wo.status in ('pending_assignment', 'assigned', 'accepted', 'traveling')) as todo,
         count(*) filter (where wo.status in ('working', 'awaiting_acceptance') and (wo.appointment_at is null or wo.appointment_at >= now())) as doing,
         count(*) filter (where wo.status in ('working', 'awaiting_acceptance') and wo.appointment_at < now()) as doing_overdue,
@@ -53,7 +59,7 @@ export async function GET() {
           'paused', 'cancelled'
         )) as other,
         coalesce(sum(p.total_amount) filter (
-          where p.status = 'paid' and (p.confirmed_at at time zone 'Asia/Ho_Chi_Minh')::date = (timezone('Asia/Ho_Chi_Minh', now()))::date
+          where p.status = 'paid' and p.confirmed_at >= $${todayStartParam} and p.confirmed_at < $${todayEndParam}
         ), 0) as paid_today,
         coalesce(sum(p.total_amount) filter (where p.status = 'debt'), 0) as open_debt
        from work_orders wo

@@ -10,6 +10,16 @@ function shouldUseSsl(connectionString: string) {
   return !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1");
 }
 
+function readPositiveIntegerEnv(name: string, fallback: number) {
+  const value = process.env[name];
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function getPool() {
   if (globalThis.cctvPgPool) {
     return globalThis.cctvPgPool;
@@ -22,6 +32,9 @@ function getPool() {
 
   globalThis.cctvPgPool = new Pool({
     connectionString,
+    max: readPositiveIntegerEnv("PG_POOL_MAX", 10),
+    idleTimeoutMillis: readPositiveIntegerEnv("PG_IDLE_TIMEOUT_MS", 30_000),
+    connectionTimeoutMillis: readPositiveIntegerEnv("PG_CONNECTION_TIMEOUT_MS", 5_000),
     ssl: shouldUseSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
   });
 
