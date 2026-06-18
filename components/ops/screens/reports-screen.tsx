@@ -23,14 +23,14 @@ import { PendingButton, StatusBadge, TablePagination, ValidatedForm, clampTableP
 import type { ReportData } from "@/components/ops/types";
 
 const DISPLAY_STATUS_TONE: Record<string, { accent: string; bg: string; text: string }> = {
-  doing: { accent: "#0ea5e9", bg: "bg-sky-50", text: "text-sky-900" },
-  doing_overdue: { accent: "#f43f5e", bg: "bg-rose-50", text: "text-rose-900" },
+  doing: { accent: "#2563eb", bg: "bg-blue-50", text: "text-blue-900" },
+  doing_overdue: { accent: "#ef4444", bg: "bg-red-50", text: "text-red-900" },
   done: { accent: "#10b981", bg: "bg-emerald-50", text: "text-emerald-900" },
   done_overdue: { accent: "#f59e0b", bg: "bg-amber-50", text: "text-amber-900" },
-  todo: { accent: "#eab308", bg: "bg-yellow-50", text: "text-yellow-900" },
+  todo: { accent: "#f59e0b", bg: "bg-amber-50", text: "text-amber-900" },
   paused: { accent: "#64748b", bg: "bg-slate-100", text: "text-slate-800" },
-  cancelled: { accent: "#71717a", bg: "bg-zinc-100", text: "text-zinc-700" },
-  other: { accent: "#a1a1aa", bg: "bg-zinc-50", text: "text-zinc-600" },
+  cancelled: { accent: "#64748b", bg: "bg-slate-100", text: "text-slate-700" },
+  other: { accent: "#94a3b8", bg: "bg-slate-50", text: "text-slate-600" },
 };
 
 function asNumber(value: string | number | null | undefined) {

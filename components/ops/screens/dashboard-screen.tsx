@@ -93,8 +93,8 @@ export function DashboardScreen({
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-normal text-zinc-950">Tổng quan</h2>
-          <p className="mt-1 text-sm text-zinc-500">Các chức năng quản trị chính và tình hình công việc nhanh.</p>
+          <h2 className="text-3xl font-extrabold tracking-normal text-slate-950">Tổng quan</h2>
+          <p className="mt-1 text-sm text-slate-500">Các chức năng quản trị chính và tình hình công việc nhanh.</p>
         </div>
         <Link className="btn-primary h-10" href="/reports">
           <BarChart3 size={15} />Xem báo cáo hệ thống
@@ -108,17 +108,17 @@ export function DashboardScreen({
             <Link
               key={item.title}
               href={item.href}
-              className="group grid min-h-36 gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50 hover:shadow-md"
+              className="group grid min-h-36 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-zinc-950 text-white transition group-hover:bg-zinc-800">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm shadow-blue-600/20 transition group-hover:bg-blue-700">
                   <Icon size={18} />
                 </span>
-                <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600">{item.stat}</span>
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">{item.stat}</span>
               </div>
               <div>
-                <h3 className="text-base font-bold text-zinc-950">{item.title}</h3>
-                <p className="mt-1 text-sm leading-6 text-zinc-500">{item.description}</p>
+                <h3 className="text-base font-bold text-slate-950">{item.title}</h3>
+                <p className="mt-1 text-sm leading-6 text-slate-500">{item.description}</p>
               </div>
             </Link>
           );
@@ -129,7 +129,7 @@ export function DashboardScreen({
         <div className="panel-heading">
           <div>
             <h2>Tình hình nhanh</h2>
-            <p className="mt-1 text-sm text-zinc-500">Bấm vào từng trạng thái để mở danh sách công việc tương ứng.</p>
+            <p className="mt-1 text-sm text-slate-500">Bấm vào từng trạng thái để mở danh sách công việc tương ứng.</p>
           </div>
           <span>{metrics?.total_today ?? "0"} phiếu hẹn hôm nay</span>
         </div>
@@ -137,14 +137,14 @@ export function DashboardScreen({
           {quickStatuses.map((item) => (
             <button
               key={item.status}
-              className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-left transition hover:border-zinc-300 hover:bg-white"
+              className="rounded-md border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-200 hover:bg-white"
               onClick={() => onOpenOrders(item.status)}
               type="button"
             >
               <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${DISPLAY_STATUS_TONE[item.status as DisplayStatus]}`}>
                 {item.label}
               </span>
-              <p className="mt-2 text-2xl font-black text-zinc-950">{item.value}</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">{item.value}</p>
             </button>
           ))}
         </div>

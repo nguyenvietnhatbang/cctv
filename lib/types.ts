@@ -114,16 +114,16 @@ export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
 export const WORK_ORDER_STATUS_TONE: Record<WorkOrderStatus, string> = {
   pending_assignment: "bg-amber-50 text-amber-800 ring-amber-200",
   assigned: "bg-blue-50 text-blue-800 ring-blue-200",
-  accepted: "bg-indigo-50 text-indigo-800 ring-indigo-200",
+  accepted: "bg-teal-50 text-teal-800 ring-teal-200",
   traveling: "bg-cyan-50 text-cyan-800 ring-cyan-200",
-  working: "bg-orange-50 text-orange-800 ring-orange-200",
+  working: "bg-blue-100 text-blue-900 ring-blue-300",
   awaiting_acceptance: "bg-violet-50 text-violet-800 ring-violet-200",
   completed: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-  awaiting_payment: "bg-rose-50 text-rose-800 ring-rose-200",
-  paid: "bg-green-50 text-green-800 ring-green-200",
+  awaiting_payment: "bg-amber-50 text-amber-800 ring-amber-200",
+  paid: "bg-emerald-50 text-emerald-800 ring-emerald-200",
   debt: "bg-red-50 text-red-800 ring-red-200",
   paused: "bg-slate-100 text-slate-700 ring-slate-300",
-  cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
+  cancelled: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
 export const WORK_ORDER_STATUS_DESCRIPTIONS: Record<WorkOrderStatus, string> = {
@@ -256,11 +256,11 @@ export const WORK_ORDER_STAGE_DESCRIPTIONS: Record<WorkOrderStage, string> = {
 export const WORK_ORDER_STAGE_TONE: Record<WorkOrderStage, string> = {
   intake: "bg-amber-50 text-amber-800 ring-amber-200",
   dispatch: "bg-blue-50 text-blue-800 ring-blue-200",
-  field: "bg-cyan-50 text-cyan-800 ring-cyan-200",
+  field: "bg-teal-50 text-teal-800 ring-teal-200",
   acceptance: "bg-violet-50 text-violet-800 ring-violet-200",
-  payment: "bg-rose-50 text-rose-800 ring-rose-200",
+  payment: "bg-amber-50 text-amber-800 ring-amber-200",
   closed: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-  cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
+  cancelled: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
 export const WORK_ORDER_STAGE_ORDER: readonly WorkOrderStage[] = [
@@ -314,8 +314,8 @@ export const DISPLAY_STATUS_TONE: Record<DisplayStatus, string> = {
   done: "bg-emerald-50 text-emerald-800 ring-emerald-200",
   done_overdue: "bg-orange-50 text-orange-800 ring-orange-200",
   paused: "bg-slate-100 text-slate-700 ring-slate-300",
-  cancelled: "bg-zinc-100 text-zinc-700 ring-zinc-200",
-  other: "bg-zinc-50 text-zinc-600 ring-zinc-200",
+  cancelled: "bg-slate-100 text-slate-700 ring-slate-200",
+  other: "bg-slate-50 text-slate-600 ring-slate-200",
 };
 
 export function getDisplayStatus(order: {

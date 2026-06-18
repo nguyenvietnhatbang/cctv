@@ -344,7 +344,7 @@ export function TechnicianJobModal({
                   key={step}
                   className={`rounded-md border px-3 py-2 text-xs font-semibold ${
                     isCurrent
-                      ? "border-zinc-900 bg-zinc-950 text-white"
+                      ? "border-blue-600 bg-blue-600 text-white"
                       : isDone
                         ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                         : "border-zinc-200 bg-zinc-50 text-zinc-500"

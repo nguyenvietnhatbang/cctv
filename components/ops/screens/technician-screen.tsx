@@ -153,7 +153,7 @@ function TechnicianWorkCard({
   const appointmentLabel = dateTime(order.appointment_at);
 
   return (
-    <article className={`mobile-job grid gap-4 ${prominent ? "border-zinc-900 ring-2 ring-zinc-900" : ""}`}>
+    <article className={`mobile-job grid gap-4 ${prominent ? "border-blue-300 ring-2 ring-blue-600" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

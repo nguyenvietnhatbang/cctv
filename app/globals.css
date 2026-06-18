@@ -2,9 +2,15 @@
 
 :root {
   --background: #f8fafc;
-  --foreground: #09090b;
-  --primary: #09090b;
-  --primary-hover: #1f1f23;
+  --foreground: #0f172a;
+  --muted-foreground: #64748b;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-soft: #eff6ff;
+  --primary-border: #bfdbfe;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
   --border: #e2e8f0;
 }
 
@@ -70,7 +76,7 @@ a {
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   line-height: 1.4;
-  color: #09090b;
+  color: #0f172a;
   outline: none;
   transition:
     border-color 150ms ease,
@@ -79,8 +85,8 @@ a {
 }
 
 .input:focus {
-  border-color: #09090b;
-  box-shadow: 0 0 0 2px rgba(9, 9, 11, 0.08);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .input:invalid:not(:placeholder-shown) {
@@ -108,7 +114,7 @@ a {
   height: 2rem;
   width: 2rem;
   border-width: 3px;
-  color: #09090b;
+  color: var(--primary);
 }
 
 @keyframes spin {
@@ -124,7 +130,7 @@ a {
 .tab-button:focus-visible,
 .sidebar-link:focus-visible,
 .mobile-nav-link:focus-visible {
-  outline: 2px solid #09090b;
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -170,22 +176,23 @@ a {
 .btn-secondary {
   border: 1px solid #e2e8f0;
   background: #ffffff;
-  color: #27272a;
+  color: #0f172a;
 }
 
 .btn-secondary:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
 }
 
 .btn-danger {
-  background: #dc2626;
+  background: var(--danger);
   color: #ffffff;
   border: 1px solid transparent;
 }
 
 .btn-danger:hover {
-  background: #b91c1c;
+  background: #dc2626;
 }
 
 .icon-button {
@@ -197,15 +204,15 @@ a {
   border-radius: 0.375rem;
   border: 1px solid #e2e8f0;
   background: #ffffff;
-  color: #3f3f46;
+  color: #475569;
   transition: all 150ms ease;
   cursor: pointer;
 }
 
 .icon-button:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #09090b;
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary-hover);
 }
 
 .tab-button {
@@ -213,14 +220,14 @@ a {
   flex: 0 0 auto;
   border: 1px solid #e2e8f0;
   background: #ffffff;
-  color: #52525b;
+  color: #64748b;
   white-space: nowrap;
 }
 
 .tab-button-active {
-  border-color: #09090b;
-  background: #f4f4f5;
-  color: #09090b;
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
   font-weight: 600;
 }
 
@@ -251,7 +258,7 @@ a {
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1.2;
-  color: #71717a;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0;
 }
@@ -263,7 +270,7 @@ a {
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.55;
-  color: #18181b;
+  color: #0f172a;
 }
 
 .modal-section {
@@ -301,7 +308,7 @@ a {
   left: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #a1a1aa;
+  color: #94a3b8;
 }
 
 .search-field-input {
@@ -340,20 +347,20 @@ a {
   gap: 0.625rem;
   border-radius: 0.375rem;
   padding: 0 0.75rem;
-  color: #52525b;
+  color: #64748b;
   font-size: 0.875rem;
   font-weight: 500;
   transition: all 150ms ease;
 }
 
 .sidebar-link:hover {
-  background: #f4f4f5;
-  color: #09090b;
+  background: var(--primary-soft);
+  color: var(--primary-hover);
 }
 
 .sidebar-link-active {
-  background: #f4f4f5;
-  color: #09090b;
+  background: var(--primary-soft);
+  color: var(--primary-hover);
   font-weight: 600;
 }
 
@@ -410,13 +417,13 @@ a {
 .panel-heading h2 {
   font-size: 1rem;
   font-weight: 600;
-  color: #09090b;
+  color: #0f172a;
 }
 
 .panel-heading span {
   font-size: 0.82rem;
   font-weight: 500;
-  color: #71717a;
+  color: #64748b;
 }
 
 .metric-card {
@@ -435,7 +442,7 @@ a {
   display: block;
   font-size: 0.82rem;
   font-weight: 500;
-  color: #71717a;
+  color: #64748b;
 }
 
 .metric-card strong {
@@ -444,7 +451,7 @@ a {
   font-size: 1.5rem;
   line-height: 1;
   font-weight: 700;
-  color: #09090b;
+  color: #0f172a;
 }
 
 .compact-row,
@@ -470,7 +477,7 @@ a {
 
 .order-row:hover,
 .metric-card:hover {
-  border-color: #cbd5e1;
+  border-color: var(--primary-border);
   background: #f8fafc;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02);
@@ -487,7 +494,7 @@ a {
 .section-title {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #27272a;
+  color: #0f172a;
 }
 
 .table-shell {
@@ -505,7 +512,7 @@ a {
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 1px solid #f1f5f9;
-  background: rgba(248, 250, 252, 0.45);
+  background: rgba(239, 246, 255, 0.45);
   padding: 1rem;
 }
 
@@ -542,7 +549,7 @@ a {
   background: #ffffff;
   padding: 0 0.625rem;
   min-height: 2.25rem;
-  color: #71717a;
+  color: #64748b;
   font-size: 0.75rem;
 }
 
@@ -567,13 +574,13 @@ a {
   line-height: 1.15;
   font-weight: 800;
   letter-spacing: 0;
-  color: #18181b;
+  color: #0f172a;
 }
 
 .screen-header p {
   margin-top: 0.25rem;
   font-size: 0.75rem;
-  color: #71717a;
+  color: #64748b;
 }
 
 .table-pagination {
@@ -603,7 +610,7 @@ a {
   padding: 0.75rem 1rem;
   text-align: left;
   font-weight: 500;
-  color: #71717a;
+  color: #64748b;
   font-size: 0.825rem;
 }
 
@@ -629,7 +636,7 @@ a {
 
 /* Modal Styling with Glassmorphism Overlay */
 .fixed.inset-0.z-50 {
-  background-color: rgba(9, 9, 11, 0.3) !important;
+  background-color: rgba(15, 23, 42, 0.32) !important;
   backdrop-filter: blur(6px);
   transition: all 200ms ease;
 }
@@ -776,7 +783,7 @@ a {
 
   .data-table td::before {
     content: attr(data-label);
-    color: #71717a;
+    color: #64748b;
     font-size: 0.7rem;
     font-weight: 700;
     line-height: 1.35;
@@ -869,15 +876,15 @@ a {
     justify-content: center;
     gap: 0.18rem;
     border-radius: 0.375rem;
-    color: #71717a;
+    color: #64748b;
     font-size: 0.68rem;
     font-weight: 500;
     min-height: 3.25rem;
   }
 
   .mobile-nav-link-active {
-    background: #f4f4f5;
-    color: #09090b;
+    background: var(--primary-soft);
+    color: var(--primary-hover);
     font-weight: 600;
   }
 }

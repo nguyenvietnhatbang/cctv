@@ -159,14 +159,14 @@ export function OrdersScreen({
           return (
           <button
             key={status}
-            className={`rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 ${filters.status === status ? "ring-2 ring-zinc-900" : ""}`}
+            className={`rounded-md border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50/30 ${filters.status === status ? "border-blue-300 ring-2 ring-blue-600" : ""}`}
             onClick={() => applyFilter({ ...filters, status: filters.status === status ? "" : status })}
             type="button"
           >
             <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${DISPLAY_STATUS_TONE[status]}`}>
               {label}
             </span>
-            <p className="mt-2 text-2xl font-bold text-zinc-950">{statusSummary[status]}</p>
+            <p className="mt-2 text-2xl font-bold text-slate-950">{statusSummary[status]}</p>
           </button>
           );
         })}
@@ -364,8 +364,8 @@ export function OrdersScreen({
       <div className="grid gap-2 sm:grid-cols-3">
         {PAYMENT_STATUSES.map((status) => (
           <div key={status} className="rounded-md border border-zinc-200 bg-white p-3 shadow-sm">
-            <p className="text-xs font-bold uppercase text-zinc-500">{PAYMENT_STATUS_LABELS[status]}</p>
-            <p className="mt-1 text-2xl font-black text-zinc-950">{paymentSummary[status] ?? 0}</p>
+            <p className="text-xs font-bold uppercase text-slate-500">{PAYMENT_STATUS_LABELS[status]}</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">{paymentSummary[status] ?? 0}</p>
           </div>
         ))}
       </div>
