@@ -67,32 +67,41 @@ type UsersScreenProps = {
   onTriggerCreate: () => void;
 };
 
+const loadCustomersScreen = () => import("@/components/ops/screens/customers-screen").then((mod) => mod.CustomersScreen);
+const loadDispatchScreen = () => import("@/components/ops/screens/dispatch-screen").then((mod) => mod.DispatchScreen);
+const loadAssignmentHistoryScreen = () => import("@/components/ops/screens/assignment-history-screen").then((mod) => mod.AssignmentHistoryScreen);
+const loadTechniciansScreen = () => import("@/components/ops/screens/technicians-screen").then((mod) => mod.TechniciansScreen);
+const loadPaymentsScreen = () => import("@/components/ops/screens/payments-screen").then((mod) => mod.PaymentsScreen);
+const loadNotificationsScreen = () => import("@/components/ops/screens/notifications-screen").then((mod) => mod.NotificationsScreen);
+const loadUsersScreen = () => import("@/components/ops/screens/users-screen").then((mod) => mod.UsersScreen);
+const loadReportsScreen = () => import("@/components/ops/screens/reports-screen").then((mod) => mod.ReportsScreen);
+
 const CustomersScreen = dynamic<CustomersScreenProps>(
-  () => import("@/components/ops/screens/customers-screen").then((mod) => mod.CustomersScreen),
+  loadCustomersScreen,
   { loading: () => <ScreenLoading label="Đang tải khách hàng..." /> },
 );
 const DispatchScreen = dynamic<DispatchScreenProps>(
-  () => import("@/components/ops/screens/dispatch-screen").then((mod) => mod.DispatchScreen),
+  loadDispatchScreen,
   { loading: () => <ScreenLoading label="Đang tải phân công..." /> },
 );
 const AssignmentHistoryScreen = dynamic(
-  () => import("@/components/ops/screens/assignment-history-screen").then((mod) => mod.AssignmentHistoryScreen),
+  loadAssignmentHistoryScreen,
   { loading: () => <ScreenLoading label="Đang tải lịch sử..." /> },
 );
 const TechniciansScreen = dynamic<TechniciansScreenProps>(
-  () => import("@/components/ops/screens/technicians-screen").then((mod) => mod.TechniciansScreen),
+  loadTechniciansScreen,
   { loading: () => <ScreenLoading label="Đang tải kỹ thuật viên..." /> },
 );
 const PaymentsScreen = dynamic<PaymentsScreenProps>(
-  () => import("@/components/ops/screens/payments-screen").then((mod) => mod.PaymentsScreen),
+  loadPaymentsScreen,
   { loading: () => <ScreenLoading label="Đang tải thanh toán..." /> },
 );
 const NotificationsScreen = dynamic<NotificationsScreenProps>(
-  () => import("@/components/ops/screens/notifications-screen").then((mod) => mod.NotificationsScreen),
+  loadNotificationsScreen,
   { loading: () => <ScreenLoading label="Đang tải thông báo..." /> },
 );
 const UsersScreen = dynamic<UsersScreenProps>(
-  () => import("@/components/ops/screens/users-screen").then((mod) => mod.UsersScreen),
+  loadUsersScreen,
   { loading: () => <ScreenLoading label="Đang tải nhân viên..." /> },
 );
 
@@ -103,9 +112,20 @@ type ReportsScreenProps = {
 };
 
 const ReportsScreen = dynamic<ReportsScreenProps>(
-  () => import("@/components/ops/screens/reports-screen").then((mod) => mod.ReportsScreen),
+  loadReportsScreen,
   { loading: () => <ScreenLoading label="Đang tải màn hình báo cáo..." /> },
 );
+
+export function preloadOpsScreen(section: TabId) {
+  if (section === "customers") return void loadCustomersScreen();
+  if (section === "dispatch") return void loadDispatchScreen();
+  if (section === "assignment-history") return void loadAssignmentHistoryScreen();
+  if (section === "technicians") return void loadTechniciansScreen();
+  if (section === "payments") return void loadPaymentsScreen();
+  if (section === "notifications") return void loadNotificationsScreen();
+  if (section === "users") return void loadUsersScreen();
+  if (section === "reports") return void loadReportsScreen();
+}
 
 type OpsScreenSwitcherProps = {
   section: TabId;

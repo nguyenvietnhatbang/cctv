@@ -16,6 +16,7 @@ type OpsShellProps = {
   error: string | null;
   onLogout: () => void;
   onChangePassword: () => void;
+  onNavigateIntent?: (section: TabId) => void;
   modals?: ReactNode;
   children: ReactNode;
 };
@@ -33,6 +34,7 @@ export function OpsShell({
   error,
   onLogout,
   onChangePassword,
+  onNavigateIntent,
   modals,
   children,
 }: OpsShellProps) {
@@ -47,7 +49,10 @@ export function OpsShell({
       <Link
         key={item.id}
         href={`/${item.id}`}
-        prefetch={false}
+        prefetch
+        onMouseEnter={() => onNavigateIntent?.(item.id)}
+        onFocus={() => onNavigateIntent?.(item.id)}
+        onTouchStart={() => onNavigateIntent?.(item.id)}
         className={`sidebar-link flex items-center justify-between px-3 py-1.5 rounded-md transition-colors text-sm ${isActive ? "sidebar-link-active" : ""}`}
       >
         <div className="flex items-center gap-2.5">
@@ -76,7 +81,7 @@ export function OpsShell({
             </div>
             <div>
               <p className="text-xs font-bold text-zinc-900 leading-tight">CCTV Ops</p>
-              <p className="text-[10px] text-zinc-400 font-medium leading-none">v1.0.0</p>
+              <p className="text-[10px] text-zinc-400 font-medium leading-none">v1.1.0</p>
             </div>
           </div>
           <button className="text-zinc-400 hover:text-zinc-600">
@@ -233,7 +238,10 @@ export function OpsShell({
             <Link
               key={item.id}
               href={`/${item.id}`}
-              prefetch={false}
+              prefetch
+              onMouseEnter={() => onNavigateIntent?.(item.id)}
+              onFocus={() => onNavigateIntent?.(item.id)}
+              onTouchStart={() => onNavigateIntent?.(item.id)}
               className={`mobile-nav-link ${section === item.id ? "mobile-nav-link-active" : ""}`}
               aria-label={item.label}
             >

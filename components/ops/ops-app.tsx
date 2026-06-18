@@ -28,7 +28,7 @@ import type {
   WorkOrderListItem,
 } from "@/components/ops/types";
 import { OpsModalLayer } from "@/components/ops/ops-modal-layer";
-import { OpsScreenSwitcher } from "@/components/ops/ops-screen-switcher";
+import { OpsScreenSwitcher, preloadOpsScreen } from "@/components/ops/ops-screen-switcher";
 import { OpsShell } from "@/components/ops/ops-shell";
 import { LoadingScreen } from "@/components/ops/ui";
 import { BACK_OFFICE_ROLES, isOpsManagerRole } from "@/lib/types";
@@ -36,6 +36,7 @@ import { BACK_OFFICE_ROLES, isOpsManagerRole } from "@/lib/types";
 const ORDER_BACKED_SECTIONS = new Set<TabId>(["dashboard", "orders", "customers", "dispatch", "technician", "payments"]);
 const CUSTOMER_BACKED_SECTIONS = new Set<TabId>(["orders", "customers", "dispatch"]);
 const TECHNICIAN_BACKED_SECTIONS = new Set<TabId>(["orders", "dispatch", "technicians"]);
+const REPORT_SECTIONS = new Set<TabId>(["reports"]);
 
 function needsCustomers(section: TabId, role: Role) {
   return BACK_OFFICE_ROLES.includes(role) && CUSTOMER_BACKED_SECTIONS.has(section);
@@ -67,6 +68,8 @@ export function OpsApp() {
   const notificationIdsRef = useRef<Set<string> | null>(null);
   const resourcesLoadedRef = useRef({ customers: false, technicians: false, users: false });
   const initialLoadedRef = useRef<boolean>(false);
+  const prefetchedSectionsRef = useRef<Set<TabId>>(new Set());
+  const prefetchingDataRef = useRef<Set<string>>(new Set());
   const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
 
   const section = useMemo<TabId>(() => {
@@ -107,10 +110,10 @@ export function OpsApp() {
     return params.toString();
   }, [filters.dateFrom, filters.dateTo, filters.q, filters.scope, filters.status, filters.technicianId, filters.type]);
 
-  const workOrderListRequest = useCallback(() => {
-    const params = section === "dispatch" ? "" : workOrderQueryString();
+  const workOrderListRequest = useCallback((targetSection = section) => {
+    const params = targetSection === "dispatch" ? "" : workOrderQueryString();
     return {
-      key: section === "dispatch" ? "__dispatch_all__" : params,
+      key: targetSection === "dispatch" ? "__dispatch_all__" : params,
       url: params ? `/api/work-orders?${params}` : "/api/work-orders",
     };
   }, [section, workOrderQueryString]);
@@ -258,6 +261,62 @@ export function OpsApp() {
     }
   }, [loadDataForUser, user]);
 
+  const prefetchDataOnce = useCallback((key: string, callback: () => Promise<void>) => {
+    if (prefetchingDataRef.current.has(key)) return;
+    prefetchingDataRef.current.add(key);
+    callback().finally(() => {
+      prefetchingDataRef.current.delete(key);
+    });
+  }, []);
+
+  const prefetchSection = useCallback((targetSection: TabId) => {
+    router.prefetch(`/${targetSection}`);
+    preloadOpsScreen(targetSection);
+
+    if (!user || !initialLoadedRef.current) return;
+
+    if (ORDER_BACKED_SECTIONS.has(targetSection)) {
+      const request = workOrderListRequest(targetSection);
+      if (!ordersCacheRef.current[request.key]) {
+        prefetchDataOnce(`orders:${request.key}`, async () => {
+          const payload = await apiFetch<{ workOrders: AppData["orders"] }>(request.url);
+          ordersCacheRef.current[request.key] = payload.workOrders;
+        });
+      }
+    }
+
+    if (needsCustomers(targetSection, user.role) && !resourcesLoadedRef.current.customers) {
+      prefetchDataOnce("customers", async () => {
+        const payload = await apiFetch<{ customers: Customer[] }>("/api/customers");
+        resourcesLoadedRef.current.customers = true;
+        setData((current) => ({ ...current, customers: payload.customers }));
+      });
+    }
+
+    if (needsTechnicians(targetSection, user.role) && !resourcesLoadedRef.current.technicians) {
+      prefetchDataOnce("technicians", async () => {
+        const payload = await apiFetch<{ technicians: Technician[] }>("/api/technicians");
+        resourcesLoadedRef.current.technicians = true;
+        setData((current) => ({ ...current, technicians: payload.technicians }));
+      });
+    }
+
+    if (needsUsers(targetSection, user.role) && !resourcesLoadedRef.current.users) {
+      prefetchDataOnce("users", async () => {
+        const payload = await apiFetch<{ users: AppUser[] }>("/api/users");
+        resourcesLoadedRef.current.users = true;
+        setData((current) => ({ ...current, users: payload.users }));
+      });
+    }
+
+    const canViewReports = BACK_OFFICE_ROLES.includes(user.role) && user.role !== "team_lead";
+    if (REPORT_SECTIONS.has(targetSection) && canViewReports && !data.report && !reportLoading) {
+      prefetchDataOnce("report:default", async () => {
+        await refreshDefaultReport();
+      });
+    }
+  }, [data.report, prefetchDataOnce, refreshDefaultReport, reportLoading, router, user, workOrderListRequest]);
+
   useEffect(() => {
     let active = true;
     async function boot() {
@@ -293,6 +352,30 @@ export function OpsApp() {
       }
     }
   }, [filters, loading, section, user, loadDataForUser, refreshOrders, workOrderListRequest]);
+
+  useEffect(() => {
+    if (loading || !user || !initialLoadedRef.current) return;
+
+    const preloadVisibleRoutes = () => {
+      visibleTabs.forEach((tab) => {
+        if (prefetchedSectionsRef.current.has(tab.id)) return;
+        prefetchedSectionsRef.current.add(tab.id);
+        router.prefetch(`/${tab.id}`);
+        preloadOpsScreen(tab.id);
+      });
+    };
+
+    if (typeof window === "undefined") {
+      preloadVisibleRoutes();
+      return;
+    }
+
+    const requestIdleCallback = window.requestIdleCallback ?? ((callback: IdleRequestCallback) => window.setTimeout(() => callback({ didTimeout: false, timeRemaining: () => 0 }), 800));
+    const cancelIdleCallback = window.cancelIdleCallback ?? window.clearTimeout;
+    const idleId = requestIdleCallback(preloadVisibleRoutes, { timeout: 1800 });
+
+    return () => cancelIdleCallback(idleId);
+  }, [loading, router, user, visibleTabs]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -767,6 +850,7 @@ export function OpsApp() {
       error={error}
       onLogout={handleLogout}
       onChangePassword={() => setModal({ type: "own-password" })}
+      onNavigateIntent={prefetchSection}
       modals={(
         <OpsModalLayer
           modal={modal}
