@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Eye, Coins, Search, UserRound, type LucideIcon } from "lucide-react";
+import { CreditCard, Eye, Coins, Search, UserRound, ListFilter, type LucideIcon } from "lucide-react";
 import { money } from "@/components/ops/format";
 import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
@@ -130,6 +130,13 @@ export function PaymentsScreen({
   const visibleCustomerGroups = getPageItems(customerGroups, safeCustomerPage);
   const activeCount = viewMode === "orders" ? paymentOrders.length : customerGroups.length;
 
+  function showCustomerOrders(group: CustomerPaymentGroup) {
+    setViewMode("orders");
+    setSearchQuery(group.customerPhone || group.customerName);
+    setPage(1);
+    setCustomerPage(1);
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Description */}
@@ -210,70 +217,41 @@ export function PaymentsScreen({
               <thead>
                 <tr>
                   <th>Khách hàng</th>
-                  <th className="text-right">Tổng hợp</th>
-                  <th>Phiếu liên quan</th>
+                  <th className="text-right">Số phiếu</th>
+                  <th className="text-right">Tổng tiền</th>
+                  <th className="text-right">Đã thu</th>
+                  <th className="text-right">Còn nợ</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {visibleCustomerGroups.map((group) => {
-                  const primaryOrder = group.orders.find((order) => Number(order.debt_amount) > 0) ?? group.orders[0];
-
-                  return (
-                    <tr key={group.customerId}>
-                      <td data-label="Khách hàng">
-                        <p className="font-semibold leading-tight text-zinc-900">{group.customerName}</p>
-                        <p className="mt-1 text-xs text-zinc-500">{group.customerPhone}</p>
-                        <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{group.customerAddress}</p>
-                      </td>
-                      <td data-label="Tổng hợp" className="text-right">
-                        <p className="font-bold text-zinc-900">{money(group.totalAmount)}</p>
-                        <p className="mt-1 text-xs font-semibold text-emerald-700">Đã thu {money(group.paidAmount)}</p>
-                        <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(group.debtAmount)}</p>
-                      </td>
-                      <td data-label="Phiếu liên quan">
-                        <div className="grid gap-2">
-                          {group.orders.slice(0, 3).map((order) => (
-                            <div key={order.id} className="flex flex-wrap items-center gap-2 text-xs">
-                              <button
-                                className="font-bold text-teal-700 hover:text-teal-800"
-                                onClick={() => onView(order.id)}
-                                type="button"
-                              >
-                                {order.code}
-                              </button>
-                              <PaymentStatusPill order={order} />
-                              <span className="font-semibold text-zinc-500">Nợ {money(order.debt_amount)}</span>
-                            </div>
-                          ))}
-                          {group.orders.length > 3 ? (
-                            <p className="text-xs font-semibold text-zinc-500">+{group.orders.length - 3} phiếu khác</p>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td data-label="">
-                        <div className="action-cell">
-                          <button
-                            className="icon-button"
-                            onClick={() => onView(primaryOrder.id)}
-                            type="button"
-                            aria-label="Xem thanh toán của khách"
-                          >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            className="icon-button text-green-600 hover:border-green-200 hover:bg-green-50"
-                            onClick={() => onPayment(primaryOrder.id)}
-                            type="button"
-                            aria-label="Xử lý thanh toán của khách"
-                          >
-                            <CreditCard size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {visibleCustomerGroups.map((group) => (
+                  <tr key={group.customerId}>
+                    <td data-label="Khách hàng">
+                      <p className="font-semibold leading-tight text-zinc-900">{group.customerName}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{group.customerPhone}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-zinc-500">{group.customerAddress}</p>
+                    </td>
+                    <td data-label="Số phiếu" className="text-right">
+                      <p className="font-bold text-zinc-900">{group.orderCount}</p>
+                    </td>
+                    <td data-label="Tổng tiền" className="text-right font-bold text-zinc-900">{money(group.totalAmount)}</td>
+                    <td data-label="Đã thu" className="text-right font-semibold text-emerald-700">{money(group.paidAmount)}</td>
+                    <td data-label="Còn nợ" className="text-right font-semibold text-rose-700">{money(group.debtAmount)}</td>
+                    <td data-label="">
+                      <div className="action-cell">
+                        <button
+                          className="btn-secondary h-9 px-3 text-xs"
+                          onClick={() => showCustomerOrders(group)}
+                          type="button"
+                          aria-label={`Xem phiếu thanh toán của ${group.customerName}`}
+                        >
+                          <ListFilter size={14} />Xem phiếu
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )
@@ -287,6 +265,8 @@ export function PaymentsScreen({
                 <th>Khách hàng</th>
                 <th>Trạng thái</th>
                 <th className="text-right">Tổng tiền</th>
+                <th className="text-right">Đã thu</th>
+                <th className="text-right">Còn nợ</th>
                 <th>Thanh toán</th>
                 <th />
               </tr>
@@ -305,11 +285,9 @@ export function PaymentsScreen({
                       <DeadlineBadge order={order} />
                     </div>
                   </td>
-                  <td data-label="Tổng tiền" className="text-right">
-                    <p className="font-bold text-zinc-900">{money(order.total_amount)}</p>
-                    <p className="mt-1 text-xs font-semibold text-emerald-700">Đã thu {money(order.paid_amount)}</p>
-                    <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(order.debt_amount)}</p>
-                  </td>
+                  <td data-label="Tổng tiền" className="text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
+                  <td data-label="Đã thu" className="text-right font-semibold text-emerald-700">{money(order.paid_amount)}</td>
+                  <td data-label="Còn nợ" className="text-right font-semibold text-rose-700">{money(order.debt_amount)}</td>
                   <td data-label="Thanh toán">
                     <PaymentStatusPill order={order} />
                   </td>

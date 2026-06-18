@@ -396,7 +396,7 @@ export function WorkOrderEditModal({
           ) : null}
 
           {activeTab === "acceptance" ? (
-            <section className="grid gap-4 lg:grid-cols-2">
+            <section className="grid gap-4">
               {detail.workOrder.status === "awaiting_acceptance" ? (
                 <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
               ) : detail.workOrder.accepted_at ? (
@@ -413,7 +413,7 @@ export function WorkOrderEditModal({
           ) : null}
 
           {activeTab === "payment" ? (
-            <section className="grid gap-4 lg:grid-cols-2">
+            <section className="grid gap-4">
               {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} /> : null}
               {!canPay ? (
                 <div className="modal-section text-sm text-zinc-600">
