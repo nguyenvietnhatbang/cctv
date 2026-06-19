@@ -310,7 +310,7 @@ export function OrdersScreen({
         {orders.length === 0 ? (
           <EmptyState>Không có công việc phù hợp bộ lọc.</EmptyState>
         ) : (
-          <table className="data-table">
+          <table className="data-table orders-table">
             <thead>
               <tr>
                 <th className="w-[120px]">Mã công việc</th>
@@ -321,7 +321,9 @@ export function OrdersScreen({
                 <th>Thanh toán</th>
                 <th>Ngày hẹn</th>
                 <th>Ngày tạo</th>
-                <th className="text-right">Tổng</th>
+                <th className="text-right">Tổng tiền</th>
+                <th className="text-right">Đã thu</th>
+                <th className="text-right">Còn nợ</th>
                 <th />
               </tr>
             </thead>
@@ -355,11 +357,9 @@ export function OrdersScreen({
                   </td>
                   <td data-label="Ngày hẹn" className="text-xs text-zinc-500">{dateTime(order.appointment_at)}</td>
                   <td data-label="Ngày tạo" className="text-xs text-zinc-500">{dateTime(order.created_at)}</td>
-                  <td data-label="Tổng" className="text-right">
-                    <p className="font-bold text-zinc-900">{money(order.total_amount)}</p>
-                    <p className="mt-1 text-xs font-semibold text-emerald-700">Đã thu {money(order.paid_amount)}</p>
-                    <p className="mt-1 text-xs font-semibold text-rose-700">Nợ {money(order.debt_amount)}</p>
-                  </td>
+                  <td data-label="Tổng tiền" className="money-cell text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
+                  <td data-label="Đã thu" className="money-cell text-right font-semibold text-emerald-700">{money(order.paid_amount)}</td>
+                  <td data-label="Còn nợ" className="money-cell text-right font-semibold text-rose-700">{money(order.debt_amount)}</td>
                   <td data-label="">
                     <div className="action-cell">
                       <button

@@ -556,6 +556,48 @@ a {
   max-width: 100%;
 }
 
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dispatch-toolbar {
+  display: grid;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 0.75rem;
+}
+
+.dispatch-toolbar-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dispatch-toolbar-row:first-child {
+  justify-content: space-between;
+}
+
+.dispatch-customer-filter {
+  width: min(22rem, 100%);
+}
+
+.dispatch-date-range {
+  flex: 0 0 auto;
+}
+
+.dispatch-count {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.dispatch-search {
+  flex: 1 1 18rem;
+  width: min(24rem, 100%);
+}
+
 .date-range-control {
   display: flex;
   min-width: 0;
@@ -619,6 +661,20 @@ a {
 
 .data-table-compact {
   min-width: 0;
+}
+
+.orders-table {
+  min-width: 1240px;
+}
+
+.dispatch-table {
+  min-width: 1040px;
+}
+
+.data-table .money-cell {
+  min-width: 7.75rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .data-table th {
@@ -731,7 +787,24 @@ a {
     align-items: stretch;
   }
 
+  .table-scroll {
+    overflow: visible;
+  }
+
+  .dispatch-toolbar-row {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .dispatch-count {
+    margin-left: 0;
+    white-space: normal;
+  }
+
   .table-filter-row > *,
+  .dispatch-toolbar-row > *,
   .table-filter-row .input,
   .table-filter-row select,
   .table-search,
@@ -822,6 +895,11 @@ a {
   .data-table td.text-right,
   .data-table th.text-right {
     text-align: left;
+  }
+
+  .data-table .money-cell {
+    min-width: 0;
+    white-space: normal;
   }
 
   .data-table tr:hover td {

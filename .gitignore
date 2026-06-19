@@ -46,3 +46,6 @@ scratch/db_check.js
 scratch/debug_options.js
 scratch/inspect_modal.js
 scratch/test_flow.js
+docs/tong-ket-chi-phi-va-ban-giao.md
+.gitignore
+public/logo/markdown-preview.pdf
