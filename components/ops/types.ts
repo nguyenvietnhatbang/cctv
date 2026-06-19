@@ -187,6 +187,9 @@ export type ReportData = {
     order_count: string;
     paid_revenue: string;
     open_debt: string;
+    labor_amount: string;
+    material_amount: string;
+    vat_amount: string;
     gross_amount: string;
   };
   byDisplayStatus: Array<{

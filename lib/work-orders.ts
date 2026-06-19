@@ -327,17 +327,24 @@ export async function changeWorkOrderPaymentStatus(
 export async function syncWorkOrderPaymentAmounts(client: PoolClient, workOrderId: string) {
   await client.query(
     `update payments p
-     set material_amount = coalesce(m.total, 0),
-         labor_amount = wo.labor_cost,
-         vat_amount = round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
-         total_amount = wo.labor_cost + coalesce(m.total, 0)
-           + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
-         debt_amount = greatest(
-           wo.labor_cost + coalesce(m.total, 0)
-             + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
-             - p.paid_amount,
-           0
-         )
+         set material_amount = coalesce(m.total, 0),
+             labor_amount = wo.labor_cost,
+             vat_amount = round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
+             total_amount = wo.labor_cost + coalesce(m.total, 0)
+               + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
+             debt_amount = greatest(
+               wo.labor_cost + coalesce(m.total, 0)
+                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+                 - p.paid_amount,
+               0
+             ),
+             status = case
+               when p.paid_amount <= 0 and p.status = 'unpaid' then 'unpaid'
+               when p.paid_amount >= wo.labor_cost + coalesce(m.total, 0)
+                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2) then 'paid'
+               when p.status in ('paid', 'debt') then 'debt'
+               else p.status
+             end
      from work_orders wo
      left join (
        select work_order_id, sum(line_total) as total

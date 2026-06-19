@@ -12,13 +12,16 @@ export function PaymentForm({
   detail,
   onSubmit,
   isSubmitting = false,
+  allowFieldPayment = false,
 }: {
   detail: WorkOrderDetail;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   isSubmitting?: boolean;
+  allowFieldPayment?: boolean;
 }) {
   const currentStatus = detail.workOrder.status;
-  const canSubmit = ["completed", "awaiting_payment", "debt"].includes(currentStatus);
+  const isFieldPayment = allowFieldPayment && ["working", "awaiting_acceptance"].includes(currentStatus);
+  const canSubmit = isFieldPayment || ["completed", "awaiting_payment", "debt"].includes(currentStatus);
   const totalAmount = Number(detail.workOrder.total_amount);
   const paidAmount = Number(detail.workOrder.paid_amount);
   const storedDebtAmount = Number(detail.workOrder.debt_amount);
@@ -32,7 +35,7 @@ export function PaymentForm({
 
   return (
     <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-section">
-      <h3 className="section-title">Thanh toán</h3>
+      <h3 className="section-title">{isFieldPayment ? "Thanh toán / công nợ lần đầu" : "Thanh toán"}</h3>
       <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(20rem,1.1fr)]">
         <div className="grid content-start gap-3">
           <p className="text-2xl font-semibold">{money(detail.workOrder.total_amount)}</p>
@@ -46,6 +49,10 @@ export function PaymentForm({
           {!canSubmit ? (
             <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
               Chỉ cập nhật thanh toán khi phiếu đã hoàn thành, chờ thanh toán hoặc đang công nợ.
+            </p>
+          ) : isFieldPayment ? (
+            <p className="rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              Ghi nhận khoản thu hoặc công nợ đầu tiên tại hiện trường. Phiếu vẫn ở luồng kỹ thuật cho tới khi khách ký nghiệm thu.
             </p>
           ) : null}
         </div>
@@ -92,7 +99,7 @@ export function PaymentForm({
             Ảnh bill
             <ImageUploadField name="billFile" capture="environment" disabled={!canSubmit || isSubmitting} previewLabel="Xem trước ảnh bill" />
           </label>
-          <PendingButton className="btn-primary h-10" type="submit" disabled={!canSubmit} pending={isSubmitting} pendingLabel="Đang cập nhật..."><CreditCard size={15} />Xác nhận</PendingButton>
+          <PendingButton className="btn-primary h-10" type="submit" disabled={!canSubmit} pending={isSubmitting} pendingLabel="Đang cập nhật..."><CreditCard size={15} />{isFieldPayment ? "Ghi nhận" : "Xác nhận"}</PendingButton>
           {detail.files.some((file) => file.purpose === "bill") ? (
             <WorkFileGallery files={detail.files.filter((file) => file.purpose === "bill")} />
           ) : null}

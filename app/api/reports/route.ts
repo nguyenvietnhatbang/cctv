@@ -22,6 +22,9 @@ export async function GET(request: Request) {
            count(*) as order_count,
            coalesce(sum(p.paid_amount), 0) as paid_revenue,
            coalesce(sum(p.debt_amount), 0) as open_debt,
+           coalesce(sum(p.labor_amount), 0) as labor_amount,
+           coalesce(sum(p.material_amount), 0) as material_amount,
+           coalesce(sum(p.vat_amount), 0) as vat_amount,
            coalesce(sum(p.total_amount), 0) as gross_amount
          from work_orders wo
          left join payments p on p.work_order_id = wo.id

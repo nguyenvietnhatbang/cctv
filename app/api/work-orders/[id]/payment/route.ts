@@ -1,10 +1,14 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
+import type { WorkOrderStatus } from "@/lib/types";
 import { updatePaymentSchema } from "@/lib/validators";
 import { assertCanReadWorkOrder, changeWorkOrderPaymentStatus, makePaymentTransactionRef } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
+
+const FIELD_PAYMENT_STATUSES = new Set<WorkOrderStatus>(["working", "awaiting_acceptance"]);
+const PAYMENT_SETTLEMENT_STATUSES = new Set<WorkOrderStatus>(["completed", "awaiting_payment", "debt"]);
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -22,6 +26,7 @@ export async function PATCH(request: Request, context: Context) {
       const paymentResult = await client.query<{
         id: string;
         code: string;
+        current_status: WorkOrderStatus;
         total_amount: string;
         paid_amount: string;
       }>(
@@ -45,7 +50,7 @@ export async function PATCH(request: Request, context: Context) {
            group by work_order_id
          ) m on m.work_order_id = wo.id
          where p.work_order_id = wo.id and wo.id = $1
-         returning p.id, wo.code, p.total_amount, p.paid_amount`,
+         returning p.id, wo.code, wo.status as current_status, p.total_amount, p.paid_amount`,
         [id],
       );
 
@@ -55,6 +60,15 @@ export async function PATCH(request: Request, context: Context) {
       }
 
       await client.query("select id from payments where id = $1 for update", [payment.id]);
+
+      const isFieldPayment = FIELD_PAYMENT_STATUSES.has(payment.current_status);
+      const isSettlementPayment = PAYMENT_SETTLEMENT_STATUSES.has(payment.current_status);
+      if (!isFieldPayment && !isSettlementPayment) {
+        throw new HttpError(
+          422,
+          "Chỉ ghi nhận thanh toán khi phiếu đang xử lý hiện trường, chờ nghiệm thu, đã nghiệm thu, chờ thu tiền hoặc đang công nợ",
+        );
+      }
 
       const totalAmount = Number(payment.total_amount);
       const paidBefore = Number(payment.paid_amount);
@@ -120,11 +134,23 @@ export async function PATCH(request: Request, context: Context) {
         ],
       );
 
-      if (nextPaymentStatus === "paid") {
+      if (isFieldPayment) {
+        const historyNote = collectionAmount > 0
+          ? `Ghi nhận thanh toán hiện trường ${collectionAmount.toLocaleString("vi-VN")}đ, còn công nợ ${debtAfter.toLocaleString("vi-VN")}đ`
+          : `Ghi nhận công nợ hiện trường ${debtAfter.toLocaleString("vi-VN")}đ`;
+        await client.query(
+          `insert into work_order_status_history
+             (work_order_id, from_status, to_status, changed_by, note)
+           values ($1, $2, $2, $3, $4)`,
+          [id, payment.current_status, user.id, body.note ? `${historyNote}. ${body.note}` : historyNote],
+        );
+      }
+
+      if (isSettlementPayment && nextPaymentStatus === "paid") {
         await changeWorkOrderPaymentStatus(client, id, "paid", user, `Xác nhận đã thu đủ ${totalAmount.toLocaleString("vi-VN")}đ`);
       }
 
-      if (nextPaymentStatus === "debt") {
+      if (isSettlementPayment && nextPaymentStatus === "debt") {
         const note = collectionAmount > 0
           ? `Thu ${collectionAmount.toLocaleString("vi-VN")}đ, còn công nợ ${debtAfter.toLocaleString("vi-VN")}đ`
           : `Chuyển công nợ ${debtAfter.toLocaleString("vi-VN")}đ`;

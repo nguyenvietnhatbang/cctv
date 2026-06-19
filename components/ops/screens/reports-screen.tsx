@@ -120,6 +120,9 @@ export function ReportsScreen({
             { header: "Số công việc", value: (row) => row.order_count, align: "right" },
             { header: "Đã thu", value: (row) => money(row.paid_revenue), align: "right" },
             { header: "Công nợ", value: (row) => money(row.open_debt), align: "right" },
+            { header: "Nhân công", value: (row) => money(row.labor_amount), align: "right" },
+            { header: "Vật tư", value: (row) => money(row.material_amount), align: "right" },
+            { header: "VAT", value: (row) => money(row.vat_amount), align: "right" },
             { header: "Tổng phát sinh", value: (row) => money(row.gross_amount), align: "right" },
           ],
         }),
@@ -241,7 +244,7 @@ export function ReportsScreen({
 
       {report ? (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <div className="metric-card">
               <span>Số công việc</span>
               <strong>{report.summary.order_count}</strong>
@@ -253,6 +256,14 @@ export function ReportsScreen({
             <div className="metric-card">
               <span>Công nợ</span>
               <strong>{money(report.summary.open_debt)}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Nhân công</span>
+              <strong>{money(report.summary.labor_amount)}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Vật tư</span>
+              <strong>{money(report.summary.material_amount)}</strong>
             </div>
             <div className="metric-card">
               <span>Tổng phát sinh</span>

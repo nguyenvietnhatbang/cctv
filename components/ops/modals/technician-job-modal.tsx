@@ -134,9 +134,13 @@ function FieldCostForm({
   isSubmitting: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
 }) {
+  const materialAmount = Number(detail.workOrder.material_amount);
+  const vatAmount = Number(detail.workOrder.vat_amount);
+  const totalAmount = Number(detail.workOrder.total_amount);
+
   return (
     <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-section">
-      <h3 className="section-title">Chi phí</h3>
+      <h3 className="section-title">Chi phí nhân công</h3>
       {locked ? (
         <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Chi phí đã khóa sau nghiệm thu/thanh toán.</p>
       ) : null}
@@ -147,6 +151,20 @@ function FieldCostForm({
       <PendingButton className="btn-secondary mt-3 h-10" type="submit" disabled={locked} pending={isSubmitting} pendingLabel="Đang lưu...">
         <Save size={15} />Lưu chi phí
       </PendingButton>
+      <div className="mt-3 grid gap-2 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
+        <div className="flex items-center justify-between gap-3">
+          <span>Chi phí vật tư</span>
+          <strong className="text-zinc-950">{money(materialAmount)}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span>VAT</span>
+          <strong className="text-zinc-950">{money(vatAmount)}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-2">
+          <span>Tổng cộng</span>
+          <strong className="text-zinc-950">{money(totalAmount)}</strong>
+        </div>
+      </div>
     </ValidatedForm>
   );
 }
@@ -257,7 +275,7 @@ export function TechnicianJobModal({
   const canCheckout = Boolean(checkoutTransition);
   const canResume = Boolean(resumeTransition);
   const canQuickCheckIn = status === "assigned" || status === "accepted";
-  const canCollectPayment = ["completed", "awaiting_payment", "debt"].includes(status);
+  const canCollectPayment = ["working", "awaiting_acceptance", "completed", "awaiting_payment", "debt"].includes(status);
   const nextStatus = nextFieldTransition?.status ?? null;
   const NextIcon = nextStatus ? ACTION_ICONS[nextStatus] ?? Play : ClipboardCheck;
 
@@ -466,7 +484,7 @@ export function TechnicianJobModal({
               onDelete={onFileDelete}
             />
             {canCollectPayment ? (
-              <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} />
+              <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} allowFieldPayment />
             ) : (
               <PaymentSummary detail={detail} />
             )}

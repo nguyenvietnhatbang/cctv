@@ -19,10 +19,23 @@ export function WorkOrderCreateModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
 }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const selectedCustomer = useMemo(
     () => customers.find((customer) => customer.id === selectedCustomerId) ?? null,
     [customers, selectedCustomerId],
   );
+  const filteredCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+
+    return customers
+      .filter((customer) => {
+        if (!q) return true;
+        return [customer.name, customer.phone, customer.address]
+          .some((value) => value.toLowerCase().includes(q));
+      })
+      .sort((left, right) => left.name.localeCompare(right.name, "vi", { sensitivity: "base" }));
+  }, [customerQuery, customers]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     try {
@@ -39,12 +52,62 @@ export function WorkOrderCreateModal({
       <ValidatedForm onSubmit={handleSubmit} aria-busy={isSubmitting} className="grid gap-4">
         <fieldset disabled={isSubmitting} className="contents">
           <div className="grid gap-3 md:grid-cols-2">
-            <select name="customerId" className="input md:col-span-2" value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)}>
-            <option value="">Khách mới</option>
-            {customers.map((customer) => (
-              <option key={customer.id} value={customer.id}>{customer.name} · {customer.phone}</option>
-            ))}
-            </select>
+            <input type="hidden" name="customerId" value={selectedCustomerId} />
+            <div className="relative grid gap-1 md:col-span-2">
+              <span className="text-xs font-bold uppercase text-zinc-500">Chọn khách hàng</span>
+              <button
+                type="button"
+                className="input flex items-center justify-between gap-3 text-left"
+                onClick={() => setCustomerDropdownOpen((open) => !open)}
+                aria-expanded={customerDropdownOpen}
+              >
+                <span className="min-w-0 truncate">
+                  {selectedCustomer ? `${selectedCustomer.name} · ${selectedCustomer.phone}` : "Khách mới"}
+                </span>
+                <span className="text-xs font-semibold text-zinc-500">▾</span>
+              </button>
+              {customerDropdownOpen ? (
+                <div className="absolute left-0 right-0 top-full z-30 mt-1 rounded-md border border-zinc-200 bg-white p-2 shadow-lg">
+                  <input
+                    className="input"
+                    value={customerQuery}
+                    onChange={(event) => setCustomerQuery(event.target.value)}
+                    placeholder="Tìm theo tên, SĐT, địa chỉ..."
+                    autoFocus
+                  />
+                  <div className="mt-2 max-h-56 overflow-y-auto">
+                    <button
+                      type="button"
+                      className={`grid w-full gap-0.5 rounded-md p-2 text-left text-sm hover:bg-zinc-50 ${!selectedCustomerId ? "bg-blue-50 text-blue-900" : ""}`}
+                      onClick={() => {
+                        setSelectedCustomerId("");
+                        setCustomerDropdownOpen(false);
+                      }}
+                    >
+                      <span className="font-semibold">Khách mới</span>
+                      <span className="text-xs text-zinc-500">Nhập thông tin khách hàng mới bên dưới</span>
+                    </button>
+                    {filteredCustomers.map((customer) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        className={`mt-1 grid w-full gap-0.5 rounded-md p-2 text-left text-sm hover:bg-zinc-50 ${selectedCustomerId === customer.id ? "bg-blue-50 text-blue-900" : ""}`}
+                        onClick={() => {
+                          setSelectedCustomerId(customer.id);
+                          setCustomerDropdownOpen(false);
+                        }}
+                      >
+                        <span className="truncate font-semibold">{customer.name} · {customer.phone}</span>
+                        <span className="line-clamp-2 text-xs leading-5 text-zinc-500">{customer.address}</span>
+                      </button>
+                    ))}
+                    {filteredCustomers.length === 0 ? (
+                      <p className="rounded-md bg-zinc-50 px-3 py-4 text-center text-sm text-zinc-500">Không tìm thấy khách hàng phù hợp.</p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
             {selectedCustomer ? (
               <div className="rounded-md border border-cyan-200 bg-cyan-50 p-3 text-sm text-cyan-900 md:col-span-2">
                 <p className="font-semibold">{selectedCustomer.name} · {selectedCustomer.phone}</p>
