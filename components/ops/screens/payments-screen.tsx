@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Eye, Coins, Search, UserRound, ListFilter, type LucideIcon } from "lucide-react";
-import { money } from "@/components/ops/format";
+import { CreditCard, Download, Eye, Coins, Search, UserRound, ListFilter, type LucideIcon } from "lucide-react";
+import { dateTime, money } from "@/components/ops/format";
+import { exportTableToExcel } from "@/components/ops/export-excel";
 import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
 
@@ -137,6 +138,51 @@ export function PaymentsScreen({
     setCustomerPage(1);
   }
 
+  function exportPayments() {
+    if (viewMode === "customers") {
+      exportTableToExcel({
+        title: "Báo cáo công nợ theo khách hàng",
+        subtitle: `Số dòng: ${customerGroups.length}`,
+        filename: "bao-cao-cong-no-theo-khach-hang",
+        rows: customerGroups,
+        emptyText: "Chưa có khách hàng phù hợp với bộ lọc thanh toán.",
+        columns: [
+          { header: "STT", value: (_group, index) => index + 1, align: "center" },
+          { header: "Khách hàng", value: (group) => group.customerName },
+          { header: "Số điện thoại", value: (group) => group.customerPhone },
+          { header: "Địa chỉ", value: (group) => group.customerAddress },
+          { header: "Số phiếu", value: (group) => group.orderCount, align: "right" },
+          { header: "Tổng tiền", value: (group) => money(group.totalAmount), align: "right" },
+          { header: "Đã thu", value: (group) => money(group.paidAmount), align: "right" },
+          { header: "Còn nợ", value: (group) => money(group.debtAmount), align: "right" },
+          { header: "Danh sách phiếu", value: (group) => group.orders.map((order) => order.code).join(", ") },
+        ],
+      });
+      return;
+    }
+
+    exportTableToExcel({
+      title: "Báo cáo thanh toán theo công việc",
+      subtitle: `Số dòng: ${paymentOrders.length}`,
+      filename: "bao-cao-thanh-toan-theo-cong-viec",
+      rows: paymentOrders,
+      emptyText: "Chưa có công việc phù hợp với bộ lọc thanh toán.",
+      columns: [
+        { header: "STT", value: (_order, index) => index + 1, align: "center" },
+        { header: "Mã công việc", value: (order) => order.code },
+        { header: "Khách hàng", value: (order) => order.customer_name },
+        { header: "Số điện thoại", value: (order) => order.customer_phone },
+        { header: "Địa chỉ", value: (order) => order.customer_address },
+        { header: "Kỹ thuật viên", value: (order) => order.technician_name ?? "Chưa phân công" },
+        { header: "Trạng thái thanh toán", value: (order) => paymentStatusLabel(order) },
+        { header: "Ngày hẹn", value: (order) => dateTime(order.appointment_at) },
+        { header: "Tổng tiền", value: (order) => money(order.total_amount), align: "right" },
+        { header: "Đã thu", value: (order) => money(order.paid_amount), align: "right" },
+        { header: "Còn nợ", value: (order) => money(order.debt_amount), align: "right" },
+      ],
+    });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Description */}
@@ -145,6 +191,10 @@ export function PaymentsScreen({
           <h2>Thanh toán & Công nợ</h2>
           <p>Xác nhận thanh toán, theo dõi công nợ khách hàng và doanh thu điều phối</p>
         </div>
+        <button className="btn-secondary" onClick={exportPayments} type="button">
+          <Download size={16} />
+          Xuất Excel
+        </button>
       </div>
 
       {/* Table Shell with Tabs Header */}

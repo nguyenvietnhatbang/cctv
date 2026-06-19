@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import { LogIn } from "lucide-react";
 import { Field, PendingButton, ValidatedForm } from "@/components/ops/ui";
+import { brandAssets, companyProfile } from "@/lib/company";
 
 export function AuthScreen({
   error,
@@ -23,14 +25,18 @@ export function AuthScreen({
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top_left,#e0f2fe,transparent_28%),linear-gradient(135deg,#f8fafc,#eef2ff_45%,#ecfeff)] px-4 py-8">
+    <main className="grid min-h-screen place-items-center bg-[linear-gradient(135deg,#f8fafc,#eef2ff_48%,#ecfeff)] px-4 py-8">
       <ValidatedForm onSubmit={submit} className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="mb-6">
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-700">CCTV Ops</p>
-          <h1 className="mt-2 text-2xl font-semibold text-zinc-950">Đăng nhập hệ thống</h1>
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Đăng nhập với tài khoản quản trị hoặc kỹ thuật để quản lý công việc và vật tư. Liên hệ admin nếu bạn chưa có tài khoản.
-          </p>
+          <Image
+            src={brandAssets.fullLogo}
+            alt={companyProfile.legalName}
+            width={360}
+            height={158}
+            priority
+            className="mx-auto h-auto w-56 max-w-full"
+          />
+          <h1 className="mt-5 text-center text-2xl font-semibold text-zinc-950">Đăng nhập hệ thống</h1>
         </div>
         <div className="grid gap-4">
           <Field label="Email hoặc số điện thoại">

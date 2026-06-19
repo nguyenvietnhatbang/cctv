@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Eye, MapPinned, Phone, Search, UserPlus } from "lucide-react";
+import { Clock, Download, Eye, MapPinned, Phone, Search, UserPlus } from "lucide-react";
 import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, type WorkOrderStatus } from "@/lib/types";
 import { dateTime, todayInVietnam } from "@/components/ops/format";
+import { createExcelSection, exportSectionsToExcel } from "@/components/ops/export-excel";
 import { EmptyState, StatusBadge, TablePagination, TableShell, Toolbar, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -86,10 +87,59 @@ export function DispatchScreen({
   const safeTechnicianPage = clampTablePage(technicianPage, filteredTechnicians.length, 5);
   const visibleTechnicians = getPageItems(filteredTechnicians, safeTechnicianPage, 5);
 
+  function exportDispatch() {
+    exportSectionsToExcel({
+      title: "Kế hoạch điều phối",
+      subtitle: `Số phiếu: ${filteredDispatchOrders.length} - Số kỹ thuật viên: ${filteredTechnicians.length}`,
+      filename: "ke-hoach-dieu-phoi",
+      sections: [
+        createExcelSection({
+          title: "Danh sách phiếu điều phối",
+          rows: filteredDispatchOrders,
+          emptyText: "Không có phiếu điều phối phù hợp.",
+          columns: [
+            { header: "STT", value: (_order, index) => index + 1, align: "center" },
+            { header: "Mã phiếu", value: (order) => order.code },
+            { header: "Khách hàng", value: (order) => order.customer_name },
+            { header: "Số điện thoại", value: (order) => order.customer_phone },
+            { header: "Địa chỉ", value: (order) => order.customer_address },
+            { header: "Loại việc", value: (order) => WORK_ORDER_TYPE_LABELS[order.type] },
+            { header: "Mức ưu tiên", value: (order) => order.priority === "urgent" ? "Gấp" : "Bình thường" },
+            { header: "Mô tả", value: (order) => order.description },
+            { header: "Lịch hẹn", value: (order) => dateTime(order.appointment_at) },
+            { header: "Kỹ thuật viên", value: (order) => order.technician_name ?? "Chưa phân công" },
+            { header: "Thời điểm phân công", value: (order) => order.assigned_at ? dateTime(order.assigned_at) : "" },
+          ],
+        }),
+        createExcelSection({
+          title: "Danh sách kỹ thuật viên",
+          rows: filteredTechnicians,
+          emptyText: "Không có kỹ thuật viên phù hợp.",
+          columns: [
+            { header: "STT", value: (_technician, index) => index + 1, align: "center" },
+            { header: "Kỹ thuật viên", value: (technician) => technician.full_name },
+            { header: "Số điện thoại", value: (technician) => technician.phone ?? "" },
+            { header: "Email", value: (technician) => technician.email ?? "" },
+            { header: "Khu vực", value: (technician) => technician.service_area ?? "" },
+            { header: "Trạng thái", value: (technician) => TECHNICIAN_STATUS_LABELS[technician.status] },
+            { header: "Việc hôm nay", value: (technician) => technician.jobs_today, align: "right" },
+          ],
+        }),
+      ],
+    });
+  }
+
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
       <section className="grid gap-4">
-        <Toolbar title="Điều phối công việc" subtitle="Theo dõi phiếu chưa gán, phiếu đã gán và tải việc kỹ thuật viên" />
+        <Toolbar title="Điều phối công việc" subtitle="Theo dõi phiếu chưa gán, phiếu đã gán và tải việc kỹ thuật viên">
+          <div className="mt-4 flex justify-end">
+            <button className="btn-secondary" onClick={exportDispatch} type="button">
+              <Download size={16} />
+              Xuất Excel
+            </button>
+          </div>
+        </Toolbar>
         <TableShell>
           <div className="table-toolbar">
             <div className="table-filter-row">

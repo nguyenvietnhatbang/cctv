@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Search, Trash2 } from "lucide-react";
+import { Download, Edit, Search, Trash2 } from "lucide-react";
 import { TECHNICIAN_STATUS_LABELS } from "@/lib/types";
 import { EmptyState, TablePagination, TableShell, Toolbar, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Technician } from "@/components/ops/types";
+import { exportTableToExcel } from "@/components/ops/export-excel";
 
 export function TechniciansScreen({
   technicians,
@@ -30,9 +31,35 @@ export function TechniciansScreen({
   const safePage = clampTablePage(page, filteredTechnicians.length);
   const visibleTechnicians = getPageItems(filteredTechnicians, safePage);
 
+  function exportTechnicians() {
+    exportTableToExcel({
+      title: "Danh sách kỹ thuật viên",
+      subtitle: `Số dòng: ${filteredTechnicians.length}`,
+      filename: "danh-sach-ky-thuat-vien",
+      rows: filteredTechnicians,
+      emptyText: "Không có kỹ thuật viên phù hợp.",
+      columns: [
+        { header: "STT", value: (_technician, index) => index + 1, align: "center" },
+        { header: "Kỹ thuật viên", value: (technician) => technician.full_name },
+        { header: "Số điện thoại", value: (technician) => technician.phone ?? "" },
+        { header: "Email", value: (technician) => technician.email ?? "" },
+        { header: "Khu vực phụ trách", value: (technician) => technician.service_area ?? "" },
+        { header: "Trạng thái", value: (technician) => TECHNICIAN_STATUS_LABELS[technician.status] },
+        { header: "Việc hôm nay", value: (technician) => technician.jobs_today, align: "right" },
+      ],
+    });
+  }
+
   return (
     <>
-      <Toolbar title="Kỹ thuật viên" subtitle="Quản lý trạng thái, khu vực và hồ sơ kỹ thuật" />
+      <Toolbar title="Kỹ thuật viên" subtitle="Quản lý trạng thái, khu vực và hồ sơ kỹ thuật">
+        <div className="mt-4 flex justify-end">
+          <button className="btn-secondary" onClick={exportTechnicians} type="button">
+            <Download size={16} />
+            Xuất Excel
+          </button>
+        </div>
+      </Toolbar>
       <TableShell>
         <div className="table-toolbar">
           <span className="text-xs font-semibold text-zinc-500">Tổng số: {filteredTechnicians.length} kỹ thuật viên</span>

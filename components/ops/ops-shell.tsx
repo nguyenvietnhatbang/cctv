@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { Bell, KeyRound, LogOut, ChevronsUpDown, Sun, Search } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
+import { brandAssets, companyProfile } from "@/lib/company";
 import { tabIcons, type TabId } from "@/components/ops/app-config";
 import type { SessionUser } from "@/components/ops/types";
 
@@ -75,13 +77,20 @@ export function OpsShell({
       <aside className="app-sidebar flex flex-col h-screen">
         {/* Brand Header */}
         <div className="flex items-center justify-between border-b border-blue-100/70 bg-white/45 px-4 py-4 backdrop-blur-sm">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-600 text-white font-bold text-sm shadow-sm shadow-blue-600/20">
-              C
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-blue-100 bg-white shadow-sm">
+              <Image
+                src={brandAssets.mark}
+                alt={companyProfile.displayName}
+                width={30}
+                height={30}
+                priority
+                className="h-7 w-7 object-contain"
+              />
             </div>
-            <div>
-              <p className="text-xs font-bold text-slate-950 leading-tight">CCTV Ops</p>
-              <p className="text-[10px] text-slate-400 font-medium leading-none">v1.1.0</p>
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold text-slate-950 leading-tight">{companyProfile.appName}</p>
+              <p className="truncate text-[10px] text-slate-400 font-medium leading-none">{companyProfile.website}</p>
             </div>
           </div>
           <button className="text-slate-400 hover:text-blue-700">
@@ -154,9 +163,9 @@ export function OpsShell({
         <header className="app-topbar bg-white/85 backdrop-blur-md flex items-center justify-between border-b border-slate-200">
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
-              <span>Dashboard</span>
+              <span>Vận hành</span>
               <span className="text-[10px]">/</span>
-              <span>CCTV Ops</span>
+              <span>{companyProfile.displayName}</span>
               <span className="text-[10px]">/</span>
               <span className="text-blue-700 font-semibold">{currentTab.label}</span>
             </div>

@@ -16,9 +16,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, CalendarDays, ClipboardCheck, CreditCard, PackageCheck, Search, TrendingUp, Users2 } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, CreditCard, Download, PackageCheck, Search, TrendingUp, Users2 } from "lucide-react";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
 import { money, monthStartInVietnam, todayInVietnam } from "@/components/ops/format";
+import { createExcelSection, exportSectionsToExcel } from "@/components/ops/export-excel";
 import { PendingButton, StatusBadge, TablePagination, ValidatedForm, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { ReportData } from "@/components/ops/types";
 
@@ -104,6 +105,80 @@ export function ReportsScreen({
     }
   }
 
+  function exportReport() {
+    if (!report) return;
+
+    exportSectionsToExcel({
+      title: "Báo cáo hệ thống",
+      subtitle: `Kỳ báo cáo: ${report.range.from} đến ${report.range.to}`,
+      filename: `bao-cao-he-thong-${report.range.from}-den-${report.range.to}`,
+      sections: [
+        createExcelSection({
+          title: "Tổng quan",
+          rows: [report.summary],
+          columns: [
+            { header: "Số công việc", value: (row) => row.order_count, align: "right" },
+            { header: "Đã thu", value: (row) => money(row.paid_revenue), align: "right" },
+            { header: "Công nợ", value: (row) => money(row.open_debt), align: "right" },
+            { header: "Tổng phát sinh", value: (row) => money(row.gross_amount), align: "right" },
+          ],
+        }),
+        createExcelSection({
+          title: "Tiến độ và dòng tiền theo ngày",
+          rows: report.daily,
+          emptyText: "Không có dữ liệu theo ngày.",
+          columns: [
+            { header: "Ngày", value: (row) => row.date },
+            { header: "Công việc tạo mới", value: (row) => row.created_count, align: "right" },
+            { header: "Công việc hoàn thành", value: (row) => row.completed_count, align: "right" },
+            { header: "Đã thu", value: (row) => money(row.paid_revenue), align: "right" },
+            { header: "Công nợ", value: (row) => money(row.open_debt), align: "right" },
+          ],
+        }),
+        createExcelSection({
+          title: "Theo nhóm trạng thái trực quan",
+          rows: report.byDisplayStatus,
+          emptyText: "Không có dữ liệu trạng thái.",
+          columns: [
+            { header: "Trạng thái", value: (row) => row.label },
+            { header: "Số công việc", value: (row) => row.count, align: "right" },
+            { header: "Tổng công việc", value: (row) => row.total, align: "right" },
+            { header: "Tỷ lệ", value: (row) => `${row.percent}%`, align: "right" },
+          ],
+        }),
+        createExcelSection({
+          title: "Theo trạng thái nghiệp vụ",
+          rows: report.byStatus,
+          emptyText: "Không có dữ liệu trạng thái nghiệp vụ.",
+          columns: [
+            { header: "Trạng thái", value: (row) => WORK_ORDER_STATUS_LABELS[row.status] },
+            { header: "Số công việc", value: (row) => row.count, align: "right" },
+          ],
+        }),
+        createExcelSection({
+          title: "Theo kỹ thuật viên",
+          rows: report.byTechnician,
+          emptyText: "Không có dữ liệu kỹ thuật viên.",
+          columns: [
+            { header: "Kỹ thuật viên", value: (row) => row.technician_name },
+            { header: "Số công việc", value: (row) => row.order_count, align: "right" },
+            { header: "Doanh thu đã thu", value: (row) => money(row.paid_revenue), align: "right" },
+          ],
+        }),
+        createExcelSection({
+          title: "Vật tư đã dùng",
+          rows: report.materials,
+          emptyText: "Không có dữ liệu vật tư.",
+          columns: [
+            { header: "Tên vật tư", value: (row) => row.name },
+            { header: "Số lượng", value: (row) => row.quantity, align: "right" },
+            { header: "Tổng tiền", value: (row) => money(row.total_amount), align: "right" },
+          ],
+        }),
+      ],
+    });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="screen-header">
@@ -111,6 +186,12 @@ export function ReportsScreen({
           <h2>Báo cáo hệ thống</h2>
           <p>Tổng hợp công việc, tiến độ, doanh thu, công nợ, kỹ thuật viên và vật tư.</p>
         </div>
+        {report ? (
+          <button className="btn-secondary" onClick={exportReport} type="button">
+            <Download size={16} />
+            Xuất Excel
+          </button>
+        ) : null}
       </div>
 
       <section className="panel flex flex-wrap items-center justify-between gap-4">

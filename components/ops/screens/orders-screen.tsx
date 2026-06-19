@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Edit, Eye, Plus, XCircle, Search } from "lucide-react";
+import { Download, Edit, Eye, Plus, XCircle, Search } from "lucide-react";
 import {
   DISPLAY_STATUS_LABELS,
   DISPLAY_STATUS_ORDER,
@@ -18,6 +18,7 @@ import {
   type DisplayStatus,
 } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
+import { exportTableToExcel } from "@/components/ops/export-excel";
 import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer, Filters, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 
@@ -119,6 +120,34 @@ export function OrdersScreen({
   const safePage = clampTablePage(page, orders.length);
   const visibleOrders = useMemo(() => getPageItems(orders, safePage), [orders, safePage]);
 
+  function exportOrders() {
+    exportTableToExcel({
+      title: "Danh sách công việc",
+      subtitle: `Số dòng: ${orders.length}`,
+      filename: "danh-sach-cong-viec",
+      rows: orders,
+      emptyText: "Không có công việc phù hợp bộ lọc.",
+      columns: [
+        { header: "STT", value: (_order, index) => index + 1, align: "center" },
+        { header: "Mã công việc", value: (order) => order.code },
+        { header: "Khách hàng", value: (order) => order.customer_name },
+        { header: "Số điện thoại", value: (order) => order.customer_phone },
+        { header: "Địa chỉ", value: (order) => order.customer_address },
+        { header: "Loại việc", value: (order) => WORK_ORDER_TYPE_LABELS[order.type] },
+        { header: "Mức ưu tiên", value: (order) => order.priority === "urgent" ? "Gấp" : "Bình thường" },
+        { header: "Mô tả", value: (order) => order.description },
+        { header: "Kỹ thuật viên", value: (order) => order.assigned_technicians?.length ? order.assigned_technicians.map((item) => item.full_name).join(", ") : order.technician_name ?? "Chưa phân công" },
+        { header: "Trạng thái", value: (order) => WORK_ORDER_STATUS_LABELS[order.status] },
+        { header: "Thanh toán", value: (order) => PAYMENT_STATUS_LABELS[order.payment_status ?? "unpaid"] ?? "Chưa thu" },
+        { header: "Ngày hẹn", value: (order) => dateTime(order.appointment_at) },
+        { header: "Ngày tạo", value: (order) => dateTime(order.created_at) },
+        { header: "Tổng tiền", value: (order) => money(order.total_amount), align: "right" },
+        { header: "Đã thu", value: (order) => money(order.paid_amount), align: "right" },
+        { header: "Còn nợ", value: (order) => money(order.debt_amount), align: "right" },
+      ],
+    });
+  }
+
   function applyFilter(nextFilters: Filters) {
     setPage(1);
     onFilter(nextFilters);
@@ -145,12 +174,18 @@ export function OrdersScreen({
           <h2>Công việc</h2>
           <p>Lập kế hoạch, theo dõi tiến độ thi công và xử lý sự cố kỹ thuật</p>
         </div>
-        {canCreate ? (
-          <button className="btn-primary" onClick={() => setCreating(true)} type="button">
-            <Plus size={16} />
-            Tạo công việc
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn-secondary" onClick={exportOrders} type="button">
+            <Download size={16} />
+            Xuất Excel
           </button>
-        ) : null}
+          {canCreate ? (
+            <button className="btn-primary" onClick={() => setCreating(true)} type="button">
+              <Plus size={16} />
+              Tạo công việc
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">

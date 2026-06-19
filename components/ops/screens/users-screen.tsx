@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, History, KeyRound, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
+import { Download, Edit, History, KeyRound, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { AppUser } from "@/components/ops/types";
+import { exportTableToExcel } from "@/components/ops/export-excel";
 
 export function UsersScreen({
   users,
@@ -39,6 +40,25 @@ export function UsersScreen({
   const safePage = clampTablePage(page, filteredUsers.length);
   const visibleUsers = getPageItems(filteredUsers, safePage);
 
+  function exportUsers() {
+    exportTableToExcel({
+      title: "Danh sách nhân viên",
+      subtitle: `Số dòng: ${filteredUsers.length}`,
+      filename: "danh-sach-nhan-vien",
+      rows: filteredUsers,
+      emptyText: "Không tìm thấy nhân viên phù hợp.",
+      columns: [
+        { header: "STT", value: (_user, index) => index + 1, align: "center" },
+        { header: "Họ và tên", value: (user) => user.full_name },
+        { header: "Số điện thoại", value: (user) => user.phone ?? "" },
+        { header: "Email", value: (user) => user.email ?? "" },
+        { header: "Vai trò", value: (user) => ROLE_LABELS[user.role] },
+        { header: "Khu vực phụ trách", value: (user) => user.service_area ?? "" },
+        { header: "Trạng thái", value: (user) => user.status === "active" ? "Hoạt động" : "Ngưng hoạt động" },
+      ],
+    });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Action Header */}
@@ -47,10 +67,16 @@ export function UsersScreen({
           <h2>Nhân viên</h2>
           <p>Quản lý tài khoản nội bộ và phân quyền hệ thống</p>
         </div>
-        <button onClick={onTriggerCreate} className="btn-primary" type="button">
-          <Plus size={16} />
-          Thêm nhân viên
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={exportUsers} className="btn-secondary" type="button">
+            <Download size={16} />
+            Xuất Excel
+          </button>
+          <button onClick={onTriggerCreate} className="btn-primary" type="button">
+            <Plus size={16} />
+            Thêm nhân viên
+          </button>
+        </div>
       </div>
 
       {/* Users Table Shell with Compact Filter Header */}

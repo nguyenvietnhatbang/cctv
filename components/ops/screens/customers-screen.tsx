@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Edit, Eye, Trash2, Plus, Search, MapPin, Filter } from "lucide-react";
+import { Download, Edit, Eye, Trash2, Plus, Search, MapPin, Filter } from "lucide-react";
 import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer } from "@/components/ops/types";
 import { displayCustomerContacts } from "@/components/ops/app-utils";
+import { exportTableToExcel } from "@/components/ops/export-excel";
 
 export function CustomersScreen({
   customers,
@@ -40,6 +41,25 @@ export function CustomersScreen({
   const safePage = clampTablePage(page, filteredCustomers.length);
   const visibleCustomers = getPageItems(filteredCustomers, safePage);
 
+  function exportCustomers() {
+    exportTableToExcel({
+      title: "Danh sách khách hàng",
+      subtitle: `Số dòng: ${filteredCustomers.length}`,
+      filename: "danh-sach-khach-hang",
+      rows: filteredCustomers,
+      emptyText: "Không tìm thấy khách hàng phù hợp.",
+      columns: [
+        { header: "STT", value: (_customer, index) => index + 1, align: "center" },
+        { header: "Tên khách hàng", value: (customer) => customer.name },
+        { header: "Số điện thoại chính", value: (customer) => customer.phone },
+        { header: "Người liên hệ", value: (customer) => displayCustomerContacts(customer).map((contact) => `${contact.name} - ${contact.phone}${contact.note ? ` (${contact.note})` : ""}`).join("\n") },
+        { header: "Địa chỉ", value: (customer) => customer.address },
+        { header: "Ghi chú địa chỉ", value: (customer) => customer.address_note ?? "" },
+        { header: "Tọa độ", value: (customer) => customer.lat && customer.lng ? `${customer.lat}, ${customer.lng}` : "" },
+      ],
+    });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       {/* Screen Title & Action Header */}
@@ -48,10 +68,16 @@ export function CustomersScreen({
           <h2>Khách hàng</h2>
           <p>Quản lý danh sách, liên hệ và địa điểm lắp đặt</p>
         </div>
-        <button onClick={onTriggerCreate} className="btn-primary" type="button">
-          <Plus size={16} />
-          Thêm khách hàng
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={exportCustomers} className="btn-secondary" type="button">
+            <Download size={16} />
+            Xuất Excel
+          </button>
+          <button onClick={onTriggerCreate} className="btn-primary" type="button">
+            <Plus size={16} />
+            Thêm khách hàng
+          </button>
+        </div>
       </div>
 
       {/* Customers Table Shell with Compact Filter Header */}
