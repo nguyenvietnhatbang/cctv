@@ -111,10 +111,13 @@ export function OpsApp() {
   }, [filters.dateFrom, filters.dateTo, filters.q, filters.scope, filters.status, filters.technicianId, filters.type]);
 
   const workOrderListRequest = useCallback((targetSection = section) => {
-    const params = targetSection === "dispatch" ? "" : workOrderQueryString();
+    const params = new URLSearchParams(targetSection === "dispatch" ? "" : workOrderQueryString());
+    if (targetSection === "technician") params.set("view", "technician");
+    const queryString = params.toString();
+
     return {
-      key: targetSection === "dispatch" ? "__dispatch_all__" : params,
-      url: params ? `/api/work-orders?${params}` : "/api/work-orders",
+      key: targetSection === "dispatch" ? "__dispatch_all__" : queryString,
+      url: queryString ? `/api/work-orders?${queryString}` : "/api/work-orders",
     };
   }, [section, workOrderQueryString]);
 
@@ -207,23 +210,26 @@ export function OpsApp() {
 
   const refreshOrderContext = useCallback(async () => {
     const canManageOps = userRole ? isOpsManagerRole(userRole) : false;
+    const needsDashboardRefresh = userRole !== "technician";
     await Promise.all([
       refreshOrders(),
-      refreshDashboard(),
+      needsDashboardRefresh ? refreshDashboard() : Promise.resolve(null),
       canManageOps ? refreshTechnicians() : Promise.resolve(null),
       refreshOpenDetail(),
     ]);
   }, [refreshDashboard, refreshOpenDetail, refreshOrders, refreshTechnicians, userRole]);
 
   const loadDataForUser = useCallback(async (currentUser: SessionUser) => {
-    const ordersRequest = workOrderListRequest();
-    const shouldLoadOrders = ORDER_BACKED_SECTIONS.has(section);
-    const shouldLoadTechnicians = needsTechnicians(section, currentUser.role);
-    const shouldLoadCustomers = needsCustomers(section, currentUser.role);
-    const shouldLoadUsers = needsUsers(section, currentUser.role);
+    const dataSection = currentUser.role === "technician" ? "technician" : section;
+    const ordersRequest = workOrderListRequest(dataSection);
+    const shouldLoadOrders = ORDER_BACKED_SECTIONS.has(dataSection);
+    const shouldLoadDashboard = currentUser.role !== "technician";
+    const shouldLoadTechnicians = needsTechnicians(dataSection, currentUser.role);
+    const shouldLoadCustomers = needsCustomers(dataSection, currentUser.role);
+    const shouldLoadUsers = needsUsers(dataSection, currentUser.role);
 
     const [dashboard, orders, notifications, technicians, customers, users] = await Promise.all([
-      apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard"),
+      shouldLoadDashboard ? apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard") : Promise.resolve(null),
       shouldLoadOrders ? apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url) : Promise.resolve(null),
       apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications"),
       shouldLoadTechnicians ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
@@ -232,7 +238,7 @@ export function OpsApp() {
     ]);
 
     setData({
-      metrics: dashboard.metrics,
+      metrics: dashboard?.metrics ?? emptyData.metrics,
       orders: orders?.workOrders ?? [],
       notifications: notifications.notifications,
       technicians: technicians?.technicians ?? [],

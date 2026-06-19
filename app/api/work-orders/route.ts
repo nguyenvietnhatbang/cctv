@@ -72,7 +72,9 @@ export async function GET(request: Request) {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
     const scope = searchParams.get("scope") ?? "open";
+    const view = searchParams.get("view");
     const q = searchParams.get("q")?.trim();
+    const technicianView = view === "technician";
 
     const params: unknown[] = [];
     const filters = ["true"];
@@ -163,14 +165,17 @@ export async function GET(request: Request) {
 
     if (q) {
       params.push(q);
-      filters.push(
-        `(wo.code ilike '%' || $${params.length} || '%'
-          or wo.description ilike '%' || $${params.length} || '%'
-          or c.name ilike '%' || $${params.length} || '%'
-          or c.phone ilike '%' || $${params.length} || '%'
-          or c.address ilike '%' || $${params.length} || '%'
-          or coalesce(assn.technician_name, '') ilike '%' || $${params.length} || '%')`,
-      );
+      const searchFields = [
+        `wo.code ilike '%' || $${params.length} || '%'`,
+        `wo.description ilike '%' || $${params.length} || '%'`,
+        `c.name ilike '%' || $${params.length} || '%'`,
+        `c.phone ilike '%' || $${params.length} || '%'`,
+        `c.address ilike '%' || $${params.length} || '%'`,
+      ];
+      if (!technicianView) {
+        searchFields.push(`coalesce(assn.technician_name, '') ilike '%' || $${params.length} || '%'`);
+      }
+      filters.push(`(${searchFields.join(" or ")})`);
     }
 
     if (user.role === "technician") {
@@ -187,8 +192,20 @@ export async function GET(request: Request) {
       );
     }
 
-    const result = await query(
-      `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
+    const selectSql = technicianView
+      ? `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
+              wo.appointment_at, null::timestamptz as assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
+              c.id as customer_id,
+              c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
+              c.lat as customer_lat, c.lng as customer_lng,
+              null::uuid as technician_id, null::text as technician_name, '[]'::jsonb as assigned_technicians,
+              0::numeric as total_amount,
+              0::numeric as paid_amount,
+              0::numeric as debt_amount,
+              null::payment_status as payment_status
+       from work_orders wo
+       join customers c on c.id = wo.customer_id`
+      : `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
               wo.appointment_at, assn.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
@@ -205,7 +222,10 @@ export async function GET(request: Request) {
        from work_orders wo
        join customers c on c.id = wo.customer_id
        ${assignmentLateralJoin}
-       left join payments p on p.work_order_id = wo.id
+       left join payments p on p.work_order_id = wo.id`;
+
+    const result = await query(
+      `${selectSql}
        where ${filters.join(" and ")}
        order by wo.appointment_at desc nulls last, wo.created_at desc
        limit 80`,
