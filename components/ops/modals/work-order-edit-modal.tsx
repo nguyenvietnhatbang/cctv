@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { CalendarClock, CheckCircle2, ClipboardList, CreditCard, FileBox, MapPinned, PauseCircle, Phone, Play, ReceiptText, XCircle, type LucideIcon } from "lucide-react";
-import { getAllowedWorkOrderTransitions, isOpsManagerRole, isPaymentManagerRole, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
+import { getAllowedWorkOrderTransitions, isFieldRole, isOpsManagerRole, isPaymentManagerRole, NEXT_STATUS_ACTIONS, WORK_ORDER_STATUS_DESCRIPTIONS, WORK_ORDER_STATUS_LABELS, WORK_ORDER_TYPE_LABELS } from "@/lib/types";
 import { dateTime, inputDate } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
@@ -183,6 +183,7 @@ export function WorkOrderEditModal({
   const resumeTransition = detail.workOrder.status === "paused"
     ? allowedTransitions.find((transition) => transition.status === "working")
     : null;
+  const canQuickCheckIn = isFieldRole(role) && ["assigned", "accepted"].includes(detail.workOrder.status);
   const canCancel = allowedTransitions.some((transition) => transition.status === "cancelled");
   const financialLocked = FINANCIAL_LOCKED_STATUSES.includes(detail.workOrder.status) && role !== "admin";
   const signatureFile = detail.files.find((file) => file.purpose === "signature");
@@ -200,6 +201,21 @@ export function WorkOrderEditModal({
         return;
       }
       await onStatus(nextAction.status, checkIn ?? undefined);
+    } finally {
+      setPreparingStatus(false);
+    }
+  }
+
+  async function handleQuickCheckIn() {
+    setPreparingStatus(true);
+    setLocationWarning(null);
+    try {
+      const checkIn = await getCurrentPosition();
+      if (!checkIn) {
+        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
+        return;
+      }
+      await onStatus("working", checkIn);
     } finally {
       setPreparingStatus(false);
     }
@@ -334,6 +350,17 @@ export function WorkOrderEditModal({
                   <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>
                     <CheckCircle2 size={15} />{nextAction.label}
                   </PendingButton>
+                  {canQuickCheckIn ? (
+                    <PendingButton
+                      className="btn-secondary mt-3 h-10"
+                      onClick={handleQuickCheckIn}
+                      type="button"
+                      pending={pendingAction === "status" || preparingStatus}
+                      pendingLabel={preparingStatus ? "Đang lấy vị trí..." : "Đang lưu..."}
+                    >
+                      <MapPinned size={15} />Check-in
+                    </PendingButton>
+                  ) : null}
                 </div>
               ) : null}
               {role === "technician" && !canNext ? (
