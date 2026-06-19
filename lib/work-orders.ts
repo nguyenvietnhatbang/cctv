@@ -15,6 +15,7 @@ import {
 
 const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "debt", "cancelled"]);
 const CHECK_IN_RADIUS_METERS = 300;
+const FIELD_PROGRESS_STATUSES: WorkOrderStatus[] = ["assigned", "accepted", "traveling", "working"];
 
 function distanceInMeters(left: { lat: number; lng: number }, right: { lat: number; lng: number }) {
   const toRadians = (degrees: number) => degrees * Math.PI / 180;
@@ -149,6 +150,17 @@ export function assertStatusTransition(from: WorkOrderStatus, to: WorkOrderStatu
   }
 }
 
+function isStaleFieldProgression(from: WorkOrderStatus, to: WorkOrderStatus, user: SessionUser) {
+  if (!isFieldRole(user.role)) {
+    return false;
+  }
+
+  const currentIndex = FIELD_PROGRESS_STATUSES.indexOf(from);
+  const nextIndex = FIELD_PROGRESS_STATUSES.indexOf(to);
+
+  return currentIndex >= 0 && nextIndex >= 0 && currentIndex > nextIndex;
+}
+
 export async function changeWorkOrderStatus(
   client: PoolClient,
   workOrderId: string,
@@ -174,6 +186,21 @@ export async function changeWorkOrderStatus(
   const current = currentResult.rows[0];
   if (!current) {
     throw new HttpError(404, "Không tìm thấy phiếu");
+  }
+
+  if (isStaleFieldProgression(current.status, nextStatus, user)) {
+    await client.query(
+      `insert into work_order_status_history
+         (work_order_id, from_status, to_status, changed_by, note)
+       values ($1, $2, $2, $3, $4)`,
+      [
+        workOrderId,
+        current.status,
+        user.id,
+        note ?? `Bỏ qua thao tác cũ "${WORK_ORDER_STATUS_LABELS[nextStatus]}" vì phiếu đã ở bước "${WORK_ORDER_STATUS_LABELS[current.status]}".`,
+      ],
+    );
+    return;
   }
 
   assertStatusTransition(current.status, nextStatus, user);
