@@ -807,11 +807,18 @@ export function OpsApp() {
   }
 
   async function updateTechnicianStatus(id: string, status: WorkOrderListItem["status"], payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) {
-    await apiFetch(`/api/work-orders/${id}/status`, {
-      method: "POST",
-      body: JSON.stringify({ status, ...payload }),
-    });
-    await afterMutation();
+    try {
+      setError(null);
+      await apiFetch(`/api/work-orders/${id}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status, ...payload }),
+      });
+      await afterMutation();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không cập nhật được trạng thái phiếu";
+      setError(message);
+      throw error;
+    }
   }
 
   async function submitPayment(event: FormEvent<HTMLFormElement>, closeAfterSubmit = false) {

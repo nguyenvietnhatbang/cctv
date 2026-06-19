@@ -139,6 +139,7 @@ function TechnicianWorkCard({
   order,
   prominent = false,
   pending = false,
+  actionError = null,
   onView,
   onEdit,
   onNextAction,
@@ -148,6 +149,7 @@ function TechnicianWorkCard({
   order: WorkOrderListItem;
   prominent?: boolean;
   pending?: boolean;
+  actionError?: string | null;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onNextAction: (order: WorkOrderListItem) => void;
@@ -231,6 +233,11 @@ function TechnicianWorkCard({
           <Wrench size={15} />Chi tiết
         </button>
       </div>
+      {actionError ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium leading-6 text-amber-900" role="alert">
+          {actionError}
+        </p>
+      ) : null}
     </article>
   );
 }
@@ -250,6 +257,7 @@ export function TechnicianScreen({
 }) {
   const [pendingStatusOrderId, setPendingStatusOrderId] = useState<string | null>(null);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<{ orderId: string; message: string } | null>(null);
 
   const activeOrders = orders
     .filter((order) => ACTIVE_STATUSES.has(order.status))
@@ -277,6 +285,7 @@ export function TechnicianScreen({
 
     setPendingStatusOrderId(order.id);
     setLocationWarning(null);
+    setActionError(null);
     try {
       const checkIn = action.status === "working" ? await getCurrentPosition() : null;
       if (action.status === "working" && !checkIn) {
@@ -285,7 +294,9 @@ export function TechnicianScreen({
       }
       await onStatus(order.id, action.status, checkIn ?? undefined);
     } catch (error) {
-      setLocationWarning(getErrorMessage(error, "Không cập nhật được trạng thái phiếu. Vui lòng thử lại."));
+      const message = getErrorMessage(error, "Không cập nhật được trạng thái phiếu. Vui lòng thử lại.");
+      setLocationWarning(message);
+      setActionError({ orderId: order.id, message });
     } finally {
       setPendingStatusOrderId(null);
     }
@@ -294,6 +305,7 @@ export function TechnicianScreen({
   async function runCheckIn(order: WorkOrderListItem) {
     setPendingStatusOrderId(order.id);
     setLocationWarning(null);
+    setActionError(null);
     try {
       const checkIn = await getCurrentPosition();
       if (!checkIn) {
@@ -302,7 +314,9 @@ export function TechnicianScreen({
       }
       await onStatus(order.id, "working", checkIn);
     } catch (error) {
-      setLocationWarning(getErrorMessage(error, "Không check-in được. Vui lòng thử lại."));
+      const message = getErrorMessage(error, "Không check-in được. Vui lòng thử lại.");
+      setLocationWarning(message);
+      setActionError({ orderId: order.id, message });
     } finally {
       setPendingStatusOrderId(null);
     }
@@ -359,7 +373,7 @@ export function TechnicianScreen({
                 <Clock3 size={15} className="text-zinc-500" />
                 <p className="text-xs font-bold uppercase text-zinc-700">Việc cần làm tiếp theo</p>
               </div>
-              <TechnicianWorkCard role={role} order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
+              <TechnicianWorkCard role={role} order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} actionError={actionError?.orderId === nextOrder.id ? actionError.message : null} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
             </div>
           ) : null}
 
@@ -378,7 +392,7 @@ export function TechnicianScreen({
                 </div>
                 <div className="grid gap-3">
                   {visibleOrders.map((order) => (
-                    <TechnicianWorkCard key={order.id} role={role} order={order} pending={pendingStatusOrderId === order.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
+                    <TechnicianWorkCard key={order.id} role={role} order={order} pending={pendingStatusOrderId === order.id} actionError={actionError?.orderId === order.id ? actionError.message : null} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
                   ))}
                 </div>
               </div>
