@@ -50,6 +50,10 @@ function getCurrentPosition() {
   });
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 function getInitialTab(role: Role, status: WorkOrderStatus): EditTab {
   if (role === "technician") return "basic";
   if (["pending_assignment", "assigned", "accepted", "traveling", "working"].includes(status)) return "workflow";
@@ -201,6 +205,8 @@ export function WorkOrderEditModal({
         return;
       }
       await onStatus(nextAction.status, checkIn ?? undefined);
+    } catch (error) {
+      setLocationWarning(getErrorMessage(error, "Không cập nhật được trạng thái phiếu. Vui lòng thử lại."));
     } finally {
       setPreparingStatus(false);
     }
@@ -216,6 +222,8 @@ export function WorkOrderEditModal({
         return;
       }
       await onStatus("working", checkIn);
+    } catch (error) {
+      setLocationWarning(getErrorMessage(error, "Không check-in được. Vui lòng thử lại."));
     } finally {
       setPreparingStatus(false);
     }

@@ -489,11 +489,23 @@ a {
 }
 
 .mobile-job {
+  min-width: 0;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
   background: #ffffff;
   padding: 1rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.mobile-job .btn-primary,
+.mobile-job .btn-secondary {
+  min-width: 0;
+  white-space: normal;
+}
+
+.mobile-job .btn-primary svg,
+.mobile-job .btn-secondary svg {
+  flex: 0 0 auto;
 }
 
 .section-title {

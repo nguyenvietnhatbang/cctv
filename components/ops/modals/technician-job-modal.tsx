@@ -67,6 +67,10 @@ function getCurrentPosition() {
   });
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 function stepIndex(status: WorkOrderStatus) {
   const index = STEP_ORDER.indexOf(status);
   if (index >= 0) return index;
@@ -268,6 +272,8 @@ export function TechnicianJobModal({
         return;
       }
       await onStatus(nextFieldTransition.status, checkIn ?? undefined);
+    } catch (error) {
+      setLocationWarning(getErrorMessage(error, "Không cập nhật được trạng thái phiếu. Vui lòng thử lại."));
     } finally {
       setPreparingStatus(false);
     }
@@ -283,6 +289,8 @@ export function TechnicianJobModal({
         return;
       }
       await onStatus("working", checkIn);
+    } catch (error) {
+      setLocationWarning(getErrorMessage(error, "Không check-in được. Vui lòng thử lại."));
     } finally {
       setPreparingStatus(false);
     }
