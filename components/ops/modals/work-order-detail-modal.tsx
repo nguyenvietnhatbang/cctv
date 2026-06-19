@@ -309,8 +309,14 @@ export function WorkOrderDetailModal({
                 </div>
               </div>
               <div className="modal-section">
-                <h3 className="section-title">Nghiệm thu</h3>
+                <h3 className="section-title">Phiếu in / PDF</h3>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <a className="btn-secondary h-10" href={`/api/work-orders/${detail.workOrder.id}/quotation`} target="_blank" rel="noreferrer">
+                    <FileText size={15} />Báo giá
+                  </a>
+                  <a className="btn-secondary h-10" href={`/api/work-orders/${detail.workOrder.id}/payment-receipt`} target="_blank" rel="noreferrer">
+                    <CreditCard size={15} />Phiếu thu
+                  </a>
                   <a className="btn-secondary h-10" href={`/api/work-orders/${detail.workOrder.id}/receipt`} target="_blank" rel="noreferrer">
                     <ReceiptText size={15} />Biên bản
                   </a>

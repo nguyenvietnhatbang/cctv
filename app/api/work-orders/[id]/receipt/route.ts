@@ -97,6 +97,7 @@ export async function GET(_request: Request, context: Context) {
       <html lang="vi">
         <head>
           <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>Biên bản nghiệm thu ${escapeHtml(order.code)}</title>
           <style>
             @page { size: A4; margin: 16mm; }
@@ -131,6 +132,20 @@ export async function GET(_request: Request, context: Context) {
             .signature small { display: block; margin-top: 4px; color: #64748b; }
             .signature-line { margin-top: 70px; font-weight: 800; }
             footer { margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 10px; color: #64748b; text-align: center; }
+            @media (max-width: 720px) {
+              body { background: #ffffff; }
+              .print-actions { position: sticky; top: 0; z-index: 10; margin: 0; padding: 10px; background: #ffffff; border-bottom: 1px solid #e5e7eb; }
+              .print-actions button { width: 100%; min-height: 44px; }
+              .page { width: 100%; min-height: auto; padding: 16px; }
+              header { grid-template-columns: 1fr; gap: 10px; text-align: center; }
+              .logo { width: 150px; margin: 0 auto; }
+              h1 { font-size: 18px; line-height: 1.25; }
+              .info-grid { grid-template-columns: 1fr; }
+              .section-body { padding: 8px; }
+              th, td { padding: 6px; font-size: 10px; }
+              .totals { width: 100%; }
+              .signature { grid-template-columns: 1fr; gap: 36px; }
+            }
             @media print {
               body { background: #ffffff; }
               .print-actions { display: none; }

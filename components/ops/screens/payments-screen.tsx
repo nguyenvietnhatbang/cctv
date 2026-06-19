@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Download, Eye, Coins, Search, UserRound, ListFilter, type LucideIcon } from "lucide-react";
+import { CreditCard, Download, Eye, Coins, ReceiptText, Search, UserRound, ListFilter, type LucideIcon } from "lucide-react";
 import { dateTime, money } from "@/components/ops/format";
 import { exportTableToExcel } from "@/components/ops/export-excel";
 import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
@@ -298,6 +298,15 @@ export function PaymentsScreen({
                         >
                           <ListFilter size={14} />Xem phiếu
                         </button>
+                        <a
+                          className="btn-secondary h-9 px-3 text-xs"
+                          href={`/api/customers/${group.customerId}/debt-notice`}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`In phiếu báo công nợ của ${group.customerName}`}
+                        >
+                          <ReceiptText size={14} />Công nợ
+                        </a>
                       </div>
                     </td>
                   </tr>
@@ -359,6 +368,15 @@ export function PaymentsScreen({
                       >
                         <CreditCard size={15} />
                       </button>
+                      <a
+                        className="icon-button"
+                        href={`/api/work-orders/${order.id}/payment-receipt`}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="In phiếu thu"
+                      >
+                        <ReceiptText size={15} />
+                      </a>
                     </div>
                   </td>
                 </tr>
