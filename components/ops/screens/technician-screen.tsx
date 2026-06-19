@@ -138,6 +138,7 @@ function TechnicianWorkCard({
   onView,
   onEdit,
   onNextAction,
+  onCheckIn,
   role,
 }: {
   order: WorkOrderListItem;
@@ -146,11 +147,13 @@ function TechnicianWorkCard({
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onNextAction: (order: WorkOrderListItem) => void;
+  onCheckIn: (order: WorkOrderListItem) => void;
   role: Role;
 }) {
   const action = getTechnicianPrimaryAction(order, role);
   const ActionIcon = action.icon;
   const appointmentLabel = dateTime(order.appointment_at);
+  const canQuickCheckIn = order.status === "assigned" || order.status === "accepted";
 
   return (
     <article className={`mobile-job grid gap-4 ${prominent ? "border-blue-300 ring-2 ring-blue-600" : ""}`}>
@@ -199,7 +202,7 @@ function TechnicianWorkCard({
         </a>
         <button className="btn-secondary h-12" onClick={() => onView(order.id)} type="button"><Eye size={15} />Xem</button>
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+      <div className={`grid gap-2 ${canQuickCheckIn ? "grid-cols-[minmax(0,1fr)_auto_auto]" : "grid-cols-[minmax(0,1fr)_auto]"}`}>
         <PendingButton
           className="btn-primary h-12"
           onClick={() => onNextAction(order)}
@@ -209,6 +212,17 @@ function TechnicianWorkCard({
         >
           <ActionIcon size={15} />{action.label}
         </PendingButton>
+        {canQuickCheckIn ? (
+          <PendingButton
+            className="btn-secondary h-12 px-4"
+            onClick={() => onCheckIn(order)}
+            type="button"
+            pending={pending}
+            pendingLabel="Đang lưu..."
+          >
+            <MapPinned size={15} />Check-in
+          </PendingButton>
+        ) : null}
         <button className="btn-secondary h-12 px-4" onClick={() => onEdit(order.id)} type="button">
           <Wrench size={15} />Chi tiết
         </button>
@@ -271,6 +285,21 @@ export function TechnicianScreen({
     }
   }
 
+  async function runCheckIn(order: WorkOrderListItem) {
+    setPendingStatusOrderId(order.id);
+    setLocationWarning(null);
+    try {
+      const checkIn = await getCurrentPosition();
+      if (!checkIn) {
+        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
+        return;
+      }
+      await onStatus(order.id, "working", checkIn);
+    } finally {
+      setPendingStatusOrderId(null);
+    }
+  }
+
   return (
     <section className="mx-auto grid w-full max-w-7xl gap-5">
       <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm lg:p-5">
@@ -322,7 +351,7 @@ export function TechnicianScreen({
                 <Clock3 size={15} className="text-zinc-500" />
                 <p className="text-xs font-bold uppercase text-zinc-700">Việc cần làm tiếp theo</p>
               </div>
-              <TechnicianWorkCard role={role} order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
+              <TechnicianWorkCard role={role} order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
             </div>
           ) : null}
 
@@ -341,7 +370,7 @@ export function TechnicianScreen({
                 </div>
                 <div className="grid gap-3 xl:grid-cols-2">
                   {visibleOrders.map((order) => (
-                    <TechnicianWorkCard key={order.id} role={role} order={order} pending={pendingStatusOrderId === order.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} />
+                    <TechnicianWorkCard key={order.id} role={role} order={order} pending={pendingStatusOrderId === order.id} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
                   ))}
                 </div>
               </div>

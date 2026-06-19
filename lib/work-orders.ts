@@ -5,6 +5,7 @@ import { query } from "@/lib/db";
 import { HttpError } from "@/lib/http";
 import {
   canTransitionWorkOrderStatus,
+  isFieldRole,
   isOpsManagerRole,
   ROLE_LABELS,
   WORK_ORDER_STATUS_LABELS,
@@ -136,6 +137,10 @@ export function assertStatusTransition(from: WorkOrderStatus, to: WorkOrderStatu
     return;
   }
 
+  if (to === "working" && ["assigned", "accepted", "traveling"].includes(from) && isFieldRole(user.role)) {
+    return;
+  }
+
   if (!canTransitionWorkOrderStatus(from, to, user.role)) {
     throw new HttpError(
       422,
@@ -173,7 +178,7 @@ export async function changeWorkOrderStatus(
 
   assertStatusTransition(current.status, nextStatus, user);
 
-  const setCheckIn = current.status === "traveling" && nextStatus === "working";
+  const setCheckIn = ["assigned", "accepted", "traveling"].includes(current.status) && nextStatus === "working";
   const acceptedAt = nextStatus === "completed" ? ", accepted_at = coalesce(accepted_at, now())" : "";
   let checkedInLat: number | null = null;
   let checkedInLng: number | null = null;

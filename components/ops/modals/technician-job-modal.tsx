@@ -252,6 +252,7 @@ export function TechnicianJobModal({
   const canMoveNext = Boolean(nextFieldTransition);
   const canCheckout = Boolean(checkoutTransition);
   const canResume = Boolean(resumeTransition);
+  const canQuickCheckIn = status === "assigned" || status === "accepted";
   const canCollectPayment = ["completed", "awaiting_payment", "debt"].includes(status);
   const nextStatus = nextFieldTransition?.status ?? null;
   const NextIcon = nextStatus ? ACTION_ICONS[nextStatus] ?? Play : ClipboardCheck;
@@ -267,6 +268,21 @@ export function TechnicianJobModal({
         return;
       }
       await onStatus(nextFieldTransition.status, checkIn ?? undefined);
+    } finally {
+      setPreparingStatus(false);
+    }
+  }
+
+  async function handleQuickCheckIn() {
+    setPreparingStatus(true);
+    setLocationWarning(null);
+    try {
+      const checkIn = await getCurrentPosition();
+      if (!checkIn) {
+        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
+        return;
+      }
+      await onStatus("working", checkIn);
     } finally {
       setPreparingStatus(false);
     }
@@ -331,6 +347,17 @@ export function TechnicianJobModal({
                 pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}
               >
                 <NextIcon size={15} />{nextFieldTransition.label}
+              </PendingButton>
+            ) : null}
+            {canQuickCheckIn ? (
+              <PendingButton
+                className="btn-secondary h-11"
+                onClick={handleQuickCheckIn}
+                type="button"
+                pending={pendingAction === "status" || preparingStatus}
+                pendingLabel={preparingStatus ? "Đang lấy vị trí..." : "Đang lưu..."}
+              >
+                <MapPinned size={15} />Check-in
               </PendingButton>
             ) : null}
             {canResume && resumeTransition ? (
