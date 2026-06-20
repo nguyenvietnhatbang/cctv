@@ -341,9 +341,19 @@ export async function syncWorkOrderPaymentAmounts(client: PoolClient, workOrderI
              status = case
                when p.paid_amount <= 0 and p.status = 'unpaid' then 'unpaid'
                when p.paid_amount >= wo.labor_cost + coalesce(m.total, 0)
-                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2) then 'paid'
+                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+                 and p.method is not null then 'paid'
                when p.status in ('paid', 'debt') then 'debt'
                else p.status
+             end,
+             note = case
+               when p.status in ('paid', 'debt')
+                 and p.paid_amount < wo.labor_cost + coalesce(m.total, 0)
+                   + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+                 and p.note is null
+                 and p.debt_due_date is null
+               then 'Phát sinh công nợ do cập nhật chi phí'
+               else p.note
              end
      from work_orders wo
      left join (

@@ -33,9 +33,18 @@ export function MaterialsForm({
       ) : (
         <ValidatedForm onSubmit={onCreate} aria-busy={pendingAction?.type === "create"}>
           <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_5rem_7rem]">
-            <input name="name" className="input" placeholder="Tên vật tư" required disabled={pendingAction?.type === "create"} />
-            <input name="quantity" className="input" type="number" step="0.01" placeholder="SL" required disabled={pendingAction?.type === "create"} />
-            <input name="unitPrice" className="input" type="number" step="1000" placeholder="Giá" required disabled={pendingAction?.type === "create"} />
+            <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+              Tên vật tư
+              <input name="name" className="input" placeholder="VD: Camera, dây mạng, đầu ghi..." required disabled={pendingAction?.type === "create"} />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+              Số lượng
+              <input name="quantity" className="input" type="number" step="0.01" placeholder="VD: 2" required disabled={pendingAction?.type === "create"} />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+              Đơn giá
+              <input name="unitPrice" className="input" type="number" step="1000" placeholder="VD: 250000" required disabled={pendingAction?.type === "create"} />
+            </label>
           </div>
           <PendingButton className="btn-secondary mt-2 h-10 w-full" type="submit" pending={pendingAction?.type === "create"} pendingLabel="Đang thêm...">Thêm vật tư</PendingButton>
         </ValidatedForm>
@@ -50,9 +59,18 @@ export function MaterialsForm({
           ) : (
             <ValidatedForm key={material.id} onSubmit={(event) => onUpdate(material, event)} className="grid gap-2 rounded-md bg-zinc-50 p-2" aria-busy={isCurrentMaterialPending(material.id)}>
               <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_5rem_7rem]">
-                <input name="name" className="input" defaultValue={material.name} aria-label="Tên vật tư" required disabled={isCurrentMaterialPending(material.id)} />
-                <input name="quantity" className="input" type="number" step="0.01" defaultValue={Number(material.quantity)} aria-label="Số lượng" required disabled={isCurrentMaterialPending(material.id)} />
-                <input name="unitPrice" className="input" type="number" step="1000" defaultValue={Number(material.unit_price)} aria-label="Đơn giá" required disabled={isCurrentMaterialPending(material.id)} />
+                <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+                  Tên vật tư
+                  <input name="name" className="input" defaultValue={material.name} required disabled={isCurrentMaterialPending(material.id)} />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+                  Số lượng
+                  <input name="quantity" className="input" type="number" step="0.01" defaultValue={Number(material.quantity)} required disabled={isCurrentMaterialPending(material.id)} />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+                  Đơn giá
+                  <input name="unitPrice" className="input" type="number" step="1000" defaultValue={Number(material.unit_price)} required disabled={isCurrentMaterialPending(material.id)} />
+                </label>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <strong className="text-sm">{money(material.line_total)}</strong>

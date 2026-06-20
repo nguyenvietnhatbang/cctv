@@ -23,10 +23,22 @@ export function CostNoteForm({
         <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Chi phí đã khóa sau nghiệm thu/thanh toán. Chỉ admin được điều chỉnh tiền công và VAT.</p>
       ) : null}
       <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <input name="laborCost" className="input" type="number" step="1000" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="Tiền công" disabled={financialLocked || isSubmitting} />
-        <input name="vatRate" className="input" type="number" step="0.1" defaultValue={Number(detail.workOrder.vat_rate)} placeholder="VAT %" disabled={financialLocked || isSubmitting} />
-        <textarea name="completionNote" className="input min-h-20 md:col-span-2" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Ghi chú hoàn thành/phát sinh" disabled={isSubmitting} />
-        <input name="internalNote" className="input md:col-span-2" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú nội bộ" disabled={isSubmitting} />
+        <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+          Chi phí nhân công
+          <input name="laborCost" className="input" type="number" step="1000" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 500000" disabled={financialLocked || isSubmitting} />
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+          VAT (%)
+          <input name="vatRate" className="input" type="number" step="0.1" defaultValue={Number(detail.workOrder.vat_rate)} placeholder="VD: 10" disabled={financialLocked || isSubmitting} />
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-zinc-600 md:col-span-2">
+          Ghi chú hoàn thành/phát sinh
+          <textarea name="completionNote" className="input min-h-20" defaultValue={detail.workOrder.completion_note ?? ""} placeholder="Nội dung đã làm, phát sinh, lưu ý nghiệm thu" disabled={isSubmitting} />
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-zinc-600 md:col-span-2">
+          Ghi chú nội bộ
+          <input name="internalNote" className="input" defaultValue={detail.workOrder.internal_note ?? ""} placeholder="Ghi chú chỉ dùng nội bộ" disabled={isSubmitting} />
+        </label>
       </div>
       <PendingButton className="btn-secondary mt-3 h-10" type="submit" pending={isSubmitting} pendingLabel="Đang lưu..."><Save size={15} />Lưu</PendingButton>
     </ValidatedForm>

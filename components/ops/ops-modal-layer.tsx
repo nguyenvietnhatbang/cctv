@@ -53,9 +53,13 @@ type TechnicianJobModalProps = {
   detail: WorkOrderDetail;
   onClose: () => void;
   pendingAction: string | null;
+  materialPendingAction: MaterialPendingAction;
   deletingFileId: string | null;
   onStatus: (status: WorkOrderDetail["workOrder"]["status"], payload?: StatusNotePayload) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialUpdate: (material: MaterialItem, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialDelete: (material: MaterialItem) => void | Promise<void>;
   onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onFileDelete: (file: FileItem) => void | Promise<void>;
   onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -316,9 +320,13 @@ export function OpsModalLayer({
           detail={detail}
           onClose={closeInlineModal}
           pendingAction={pendingAction}
+          materialPendingAction={materialPendingAction}
           deletingFileId={deletingFileId}
           onStatus={(status, payload) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...payload }) }); await afterMutation(); })}
           onUpdate={(event) => runMutation("update", () => submitWorkOrderPatch(event))}
+          onMaterialCreate={(event) => runMaterialMutation({ type: "create" }, async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials`, { method: "POST", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); form.reset(); await afterMutation(); })}
+          onMaterialUpdate={(material, event) => runMaterialMutation({ type: "update", id: material.id }, async () => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "PATCH", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); await afterMutation(); })}
+          onMaterialDelete={(material) => runMaterialMutation({ type: "delete", id: material.id }, async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "DELETE" }); await afterMutation(); })}
           onUpload={(event) => runMutation("upload", async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, { method: "POST", body: formData }); form.reset(); await afterMutation(); })}
           onFileDelete={(file) => {
             setDeletingFileId(file.id);

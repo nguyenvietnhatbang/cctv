@@ -24,8 +24,9 @@ import {
 import { dateTime, money } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
-import type { WorkFile, WorkOrderDetail } from "@/components/ops/types";
+import type { Material, WorkFile, WorkOrderDetail } from "@/components/ops/types";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
+import { MaterialsForm } from "@/components/ops/modals/materials-form";
 import { PaymentForm } from "@/components/ops/modals/payment-form";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
@@ -145,8 +146,14 @@ function FieldCostForm({
         <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Chi phí đã khóa sau nghiệm thu/thanh toán.</p>
       ) : null}
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <input name="laborCost" className="input" type="number" step="1000" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="Tiền công" disabled={locked || isSubmitting} />
-        <input name="vatRate" className="input" type="number" step="0.1" defaultValue={Number(detail.workOrder.vat_rate)} placeholder="VAT %" disabled={locked || isSubmitting} />
+        <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+          Chi phí nhân công
+          <input name="laborCost" className="input" type="number" step="1000" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 500000" disabled={locked || isSubmitting} />
+        </label>
+        <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+          VAT (%)
+          <input name="vatRate" className="input" type="number" step="0.1" defaultValue={Number(detail.workOrder.vat_rate)} placeholder="VD: 10" disabled={locked || isSubmitting} />
+        </label>
       </div>
       <PendingButton className="btn-secondary mt-3 h-10" type="submit" disabled={locked} pending={isSubmitting} pendingLabel="Đang lưu...">
         <Save size={15} />Lưu chi phí
@@ -235,9 +242,13 @@ export function TechnicianJobModal({
   onUpdate,
   onUpload,
   onFileDelete,
+  onMaterialCreate,
+  onMaterialUpdate,
+  onMaterialDelete,
   onPayment,
   onAcceptance,
   pendingAction = null,
+  materialPendingAction = null,
   deletingFileId = null,
 }: {
   detail: WorkOrderDetail;
@@ -246,9 +257,13 @@ export function TechnicianJobModal({
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onFileDelete: (file: WorkFile) => void | Promise<void>;
+  onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialUpdate: (material: Material, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onMaterialDelete: (material: Material) => void | Promise<void>;
   onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
   pendingAction?: string | null;
+  materialPendingAction?: { type: "create" } | { type: "update" | "delete"; id: string } | null;
   deletingFileId?: string | null;
 }) {
   const [preparingStatus, setPreparingStatus] = useState(false);
@@ -475,6 +490,14 @@ export function TechnicianJobModal({
 
           <section className="grid gap-4">
             <FieldCostForm detail={detail} locked={fieldLocked} isSubmitting={pendingAction === "update"} onSubmit={onUpdate} />
+            <MaterialsForm
+              detail={detail}
+              locked={fieldLocked}
+              pendingAction={materialPendingAction}
+              onCreate={onMaterialCreate}
+              onUpdate={onMaterialUpdate}
+              onDelete={onMaterialDelete}
+            />
             <FieldDocumentUploadForm
               detail={detail}
               locked={fieldLocked}
