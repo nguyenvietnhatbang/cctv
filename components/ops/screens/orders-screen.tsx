@@ -324,7 +324,7 @@ export function OrdersScreen({
                 <th className="text-right">Tổng tiền</th>
                 <th className="text-right">Đã thu</th>
                 <th className="text-right">Còn nợ</th>
-                <th />
+                <th className="orders-action-column" />
               </tr>
             </thead>
             <tbody>
@@ -360,7 +360,7 @@ export function OrdersScreen({
                   <td data-label="Tổng tiền" className="money-cell text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
                   <td data-label="Đã thu" className="money-cell text-right font-semibold text-emerald-700">{money(order.paid_amount)}</td>
                   <td data-label="Còn nợ" className="money-cell text-right font-semibold text-rose-700">{money(order.debt_amount)}</td>
-                  <td data-label="">
+                  <td data-label="" className="orders-action-column">
                     <div className="action-cell">
                       <button
                         className="icon-button"
