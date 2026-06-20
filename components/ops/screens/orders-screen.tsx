@@ -310,92 +310,94 @@ export function OrdersScreen({
         {orders.length === 0 ? (
           <EmptyState>Không có công việc phù hợp bộ lọc.</EmptyState>
         ) : (
-          <table className="data-table orders-table">
-            <thead>
-              <tr>
-                <th className="w-[120px]">Mã công việc</th>
-                <th>Khách hàng</th>
-                <th>Loại việc</th>
-                <th>Kỹ thuật</th>
-                <th>Trạng thái</th>
-                <th>Thanh toán</th>
-                <th>Ngày hẹn</th>
-                <th>Ngày tạo</th>
-                <th className="text-right">Tổng tiền</th>
-                <th className="text-right">Đã thu</th>
-                <th className="text-right">Còn nợ</th>
-                <th className="orders-action-column" />
-              </tr>
-            </thead>
-            <tbody>
-              {visibleOrders.map((order) => (
-                <tr key={order.id}>
-                  <td data-label="Mã" className="font-semibold">{order.code}</td>
-                  <td data-label="Khách hàng">
-                    <p className="font-semibold text-zinc-900 leading-tight">{order.customer_name}</p>
-                    <p className="mt-1 line-clamp-2 max-w-xs text-xs font-medium text-zinc-700">{order.description}</p>
-                    <p className="text-xs text-zinc-500 mt-1 truncate max-w-xs">
-                      {order.customer_phone} · {order.customer_address}
-                    </p>
-                  </td>
-                  <td data-label="Loại việc">
-                    <span className="inline-flex px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 text-xs font-semibold">
-                      {WORK_ORDER_TYPE_LABELS[order.type]}
-                    </span>
-                  </td>
-                  <td data-label="Kỹ thuật" className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
-                  <td data-label="Trạng thái">
-                    <div className="flex flex-wrap gap-1.5">
-                      <StatusBadge order={order} />
-                      <DeadlineBadge order={order} />
-                    </div>
-                  </td>
-                  <td data-label="Thanh toán">
-                    <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200">
-                      {PAYMENT_STATUS_LABELS[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thu"}
-                    </span>
-                  </td>
-                  <td data-label="Ngày hẹn" className="text-xs text-zinc-500">{dateTime(order.appointment_at)}</td>
-                  <td data-label="Ngày tạo" className="text-xs text-zinc-500">{dateTime(order.created_at)}</td>
-                  <td data-label="Tổng tiền" className="money-cell text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
-                  <td data-label="Đã thu" className="money-cell text-right font-semibold text-emerald-700">{money(order.paid_amount)}</td>
-                  <td data-label="Còn nợ" className="money-cell text-right font-semibold text-rose-700">{money(order.debt_amount)}</td>
-                  <td data-label="" className="orders-action-column">
-                    <div className="action-cell">
-                      <button
-                        className="icon-button"
-                        onClick={() => onView(order.id)}
-                        type="button"
-                        aria-label="Xem"
-                      >
-                        <Eye size={15} />
-                      </button>
-                      {isOpsManagerRole(role) ? (
+          <div className="table-scroll orders-table-scroll">
+            <table className="data-table orders-table">
+              <thead>
+                <tr>
+                  <th className="w-[120px]">Mã công việc</th>
+                  <th>Khách hàng</th>
+                  <th>Loại việc</th>
+                  <th>Kỹ thuật</th>
+                  <th>Trạng thái</th>
+                  <th>Thanh toán</th>
+                  <th>Ngày hẹn</th>
+                  <th>Ngày tạo</th>
+                  <th className="text-right">Tổng tiền</th>
+                  <th className="text-right">Đã thu</th>
+                  <th className="text-right">Còn nợ</th>
+                  <th className="orders-action-column" />
+                </tr>
+              </thead>
+              <tbody>
+                {visibleOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td data-label="Mã" className="font-semibold">{order.code}</td>
+                    <td data-label="Khách hàng">
+                      <p className="font-semibold text-zinc-900 leading-tight">{order.customer_name}</p>
+                      <p className="mt-1 line-clamp-2 max-w-xs text-xs font-medium text-zinc-700">{order.description}</p>
+                      <p className="text-xs text-zinc-500 mt-1 truncate max-w-xs">
+                        {order.customer_phone} · {order.customer_address}
+                      </p>
+                    </td>
+                    <td data-label="Loại việc">
+                      <span className="inline-flex px-2 py-0.5 rounded bg-zinc-100 text-zinc-800 text-xs font-semibold">
+                        {WORK_ORDER_TYPE_LABELS[order.type]}
+                      </span>
+                    </td>
+                    <td data-label="Kỹ thuật" className="text-sm text-zinc-700">{order.technician_name ?? "Chưa phân công"}</td>
+                    <td data-label="Trạng thái">
+                      <div className="flex flex-wrap gap-1.5">
+                        <StatusBadge order={order} />
+                        <DeadlineBadge order={order} />
+                      </div>
+                    </td>
+                    <td data-label="Thanh toán">
+                      <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 ring-1 ring-zinc-200">
+                        {PAYMENT_STATUS_LABELS[order.payment_status ?? "unpaid"] ?? order.payment_status ?? "Chưa thu"}
+                      </span>
+                    </td>
+                    <td data-label="Ngày hẹn" className="text-xs text-zinc-500">{dateTime(order.appointment_at)}</td>
+                    <td data-label="Ngày tạo" className="text-xs text-zinc-500">{dateTime(order.created_at)}</td>
+                    <td data-label="Tổng tiền" className="money-cell text-right font-bold text-zinc-900">{money(order.total_amount)}</td>
+                    <td data-label="Đã thu" className="money-cell text-right font-semibold text-emerald-700">{money(order.paid_amount)}</td>
+                    <td data-label="Còn nợ" className="money-cell text-right font-semibold text-rose-700">{money(order.debt_amount)}</td>
+                    <td data-label="" className="orders-action-column">
+                      <div className="action-cell">
                         <button
                           className="icon-button"
-                          onClick={() => onEdit(order.id)}
+                          onClick={() => onView(order.id)}
                           type="button"
-                          aria-label="Sửa"
+                          aria-label="Xem"
                         >
-                          <Edit size={15} />
+                          <Eye size={15} />
                         </button>
-                      ) : null}
-                      {getAllowedWorkOrderTransitions(order.status, role).some((transition) => transition.status === "cancelled") ? (
-                        <button
-                          className="icon-button hover:text-red-600 hover:border-red-200"
-                          onClick={() => onCancel(order)}
-                          type="button"
-                          aria-label="Hủy công việc"
-                        >
-                          <XCircle size={15} />
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        {isOpsManagerRole(role) ? (
+                          <button
+                            className="icon-button"
+                            onClick={() => onEdit(order.id)}
+                            type="button"
+                            aria-label="Sửa"
+                          >
+                            <Edit size={15} />
+                          </button>
+                        ) : null}
+                        {getAllowedWorkOrderTransitions(order.status, role).some((transition) => transition.status === "cancelled") ? (
+                          <button
+                            className="icon-button hover:text-red-600 hover:border-red-200"
+                            onClick={() => onCancel(order)}
+                            type="button"
+                            aria-label="Hủy công việc"
+                          >
+                            <XCircle size={15} />
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         <TablePagination page={safePage} total={orders.length} onPageChange={setPage} />
       </TableShell>

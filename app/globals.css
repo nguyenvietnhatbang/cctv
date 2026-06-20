@@ -575,6 +575,11 @@ a {
 .table-scroll {
   width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.orders-table-scroll {
+  max-width: 100%;
 }
 
 .dispatch-toolbar {
@@ -991,6 +996,76 @@ a {
     min-width: 0;
     background: transparent;
     box-shadow: none;
+  }
+
+  .orders-table-scroll {
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .orders-table-scroll .orders-table {
+    display: table;
+    min-width: 70rem;
+    border-collapse: collapse;
+    background: #ffffff;
+  }
+
+  .orders-table-scroll .orders-table thead {
+    display: table-header-group;
+  }
+
+  .orders-table-scroll .orders-table tbody {
+    display: table-row-group;
+    padding: 0;
+  }
+
+  .orders-table-scroll .orders-table tr {
+    display: table-row;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .orders-table-scroll .orders-table th,
+  .orders-table-scroll .orders-table td {
+    display: table-cell;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 0.75rem 0.875rem;
+    vertical-align: middle;
+  }
+
+  .orders-table-scroll .orders-table td::before {
+    content: none;
+  }
+
+  .orders-table-scroll .orders-table td.text-right,
+  .orders-table-scroll .orders-table th.text-right {
+    text-align: right;
+  }
+
+  .orders-table-scroll .orders-table .money-cell {
+    min-width: 7.25rem;
+    white-space: nowrap;
+  }
+
+  .orders-table-scroll .orders-table .orders-action-column {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    width: 7.5rem;
+    min-width: 7.5rem;
+    background: #ffffff;
+    box-shadow: -10px 0 16px -16px rgba(15, 23, 42, 0.45);
+  }
+
+  .orders-table-scroll .orders-table th.orders-action-column {
+    z-index: 2;
+    background: #f8fafc;
+  }
+
+  .orders-table-scroll .orders-table tr:hover td.orders-action-column {
+    background: #f8fafc;
   }
 
   .data-table tr:hover td {
