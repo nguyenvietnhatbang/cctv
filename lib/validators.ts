@@ -13,6 +13,34 @@ import {
 
 const optionalText = z.string().trim().optional().nullable().transform((value) => value || null);
 const requiredText = z.string().trim().min(1, "Bắt buộc nhập");
+function normalizeMoneyInput(value: unknown) {
+  if (typeof value !== "string") return value;
+  const normalized = value.replace(/[^\d-]/g, "");
+  return normalized ? Number(normalized) : "";
+}
+
+const moneyInput = z.preprocess((value) => {
+  return normalizeMoneyInput(value);
+}, z.number().nonnegative());
+const optionalMoneyInput = z.preprocess((value) => {
+  if (typeof value === "string" && !value.trim()) return undefined;
+  return normalizeMoneyInput(value);
+}, z.number().nonnegative().optional());
+const nullableMoneyInput = z.preprocess((value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && !value.trim()) return null;
+  return normalizeMoneyInput(value);
+}, z.number().nonnegative().nullable().optional());
+const percentInput = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().replace(",", ".");
+  return normalized ? Number(normalized) : value;
+}, z.number().min(0).max(100));
+const positiveDecimalInput = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().replace(",", ".");
+  return normalized ? Number(normalized) : value;
+}, z.number().positive());
 
 export const loginSchema = z.object({
   identifier: requiredText,
@@ -72,8 +100,8 @@ export const updateWorkOrderSchema = z.object({
   description: requiredText.optional(),
   appointmentAt: z.string().datetime().optional().nullable(),
   internalNote: optionalText,
-  laborCost: z.coerce.number().nonnegative().optional(),
-  vatRate: z.coerce.number().min(0).max(100).optional(),
+  laborCost: optionalMoneyInput,
+  vatRate: percentInput.optional(),
   completionNote: optionalText,
   acceptanceName: optionalText,
   acceptancePhone: optionalText,
@@ -97,20 +125,20 @@ export const changeStatusSchema = z.object({
 
 export const createMaterialSchema = z.object({
   name: requiredText,
-  quantity: z.coerce.number().positive(),
-  unitPrice: z.coerce.number().nonnegative().default(0),
+  quantity: positiveDecimalInput,
+  unitPrice: moneyInput.default(0),
 });
 
 export const updateMaterialSchema = z.object({
   name: requiredText.optional(),
-  quantity: z.coerce.number().positive().optional(),
-  unitPrice: z.coerce.number().nonnegative().optional(),
+  quantity: positiveDecimalInput.optional(),
+  unitPrice: optionalMoneyInput,
 });
 
 export const updatePaymentSchema = z.object({
   status: z.enum(PAYMENT_STATUSES),
   method: z.enum(PAYMENT_METHODS).optional().nullable(),
-  amount: z.coerce.number().nonnegative().optional().nullable(),
+  amount: nullableMoneyInput,
   debtDueDate: z.string().date().optional().nullable(),
   note: optionalText,
 });

@@ -161,6 +161,7 @@ export type WorkOrderDetail = {
     accepted_at: string | null;
     payment_method: string | null;
     payment_note: string | null;
+    labor_amount: string | null;
     material_amount: string;
     vat_amount: string;
     transaction_ref: string | null;

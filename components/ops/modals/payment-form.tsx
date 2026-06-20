@@ -22,6 +22,7 @@ export function PaymentForm({
   const currentStatus = detail.workOrder.status;
   const isFieldPayment = allowFieldPayment && ["working", "awaiting_acceptance"].includes(currentStatus);
   const canSubmit = isFieldPayment || ["completed", "awaiting_payment", "debt"].includes(currentStatus);
+  const laborAmount = Number(detail.workOrder.labor_amount ?? detail.workOrder.labor_cost ?? 0);
   const totalAmount = Number(detail.workOrder.total_amount);
   const paidAmount = Number(detail.workOrder.paid_amount);
   const storedDebtAmount = Number(detail.workOrder.debt_amount);
@@ -40,7 +41,7 @@ export function PaymentForm({
         <div className="grid content-start gap-3">
           <p className="text-2xl font-semibold">{money(detail.workOrder.total_amount)}</p>
           <div className="grid gap-1 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
-            <p>Tiền công: <strong>{money(detail.workOrder.labor_cost)}</strong></p>
+            <p>Tiền công: <strong>{money(laborAmount)}</strong></p>
             <p>Vật tư: <strong>{money(detail.workOrder.material_amount)}</strong></p>
             <p>VAT: <strong>{money(detail.workOrder.vat_amount)}</strong></p>
             <p>Đã thu: <strong>{money(detail.workOrder.paid_amount)}</strong></p>
@@ -75,13 +76,10 @@ export function PaymentForm({
           <input
             name="amount"
             className="input"
-            type="number"
-            min="0"
-            max={debtAmount}
-            step="1000"
+            inputMode="numeric"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            placeholder="Số tiền thực thu"
+            placeholder="Số tiền thực thu, VD: 200.000"
             disabled={!canSubmit || isSubmitting}
           />
           <select name="method" className="input" value={canChoosePaymentMethod ? method : "debt"} onChange={(event) => setMethod(event.target.value)} disabled={!canSubmit || isSubmitting || !canChoosePaymentMethod}>

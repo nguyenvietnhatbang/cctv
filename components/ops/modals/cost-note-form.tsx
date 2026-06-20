@@ -25,7 +25,7 @@ export function CostNoteForm({
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
           Chi phí nhân công
-          <input name="laborCost" className="input" type="number" step="1000" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 500000" disabled={financialLocked || isSubmitting} />
+          <input name="laborCost" className="input" inputMode="numeric" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 200000 hoặc 200.000" disabled={financialLocked || isSubmitting} />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
           VAT (%)

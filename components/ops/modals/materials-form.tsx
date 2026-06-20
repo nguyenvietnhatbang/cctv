@@ -43,7 +43,7 @@ export function MaterialsForm({
             </label>
             <label className="grid gap-1 text-xs font-semibold text-zinc-600">
               Đơn giá
-              <input name="unitPrice" className="input" type="number" step="1000" placeholder="VD: 250000" required disabled={pendingAction?.type === "create"} />
+              <input name="unitPrice" className="input" inputMode="numeric" placeholder="VD: 250000 hoặc 250.000" required disabled={pendingAction?.type === "create"} />
             </label>
           </div>
           <PendingButton className="btn-secondary mt-2 h-10 w-full" type="submit" pending={pendingAction?.type === "create"} pendingLabel="Đang thêm...">Thêm vật tư</PendingButton>
@@ -69,7 +69,7 @@ export function MaterialsForm({
                 </label>
                 <label className="grid gap-1 text-xs font-semibold text-zinc-600">
                   Đơn giá
-                  <input name="unitPrice" className="input" type="number" step="1000" defaultValue={Number(material.unit_price)} required disabled={isCurrentMaterialPending(material.id)} />
+                  <input name="unitPrice" className="input" inputMode="numeric" defaultValue={Number(material.unit_price)} required disabled={isCurrentMaterialPending(material.id)} />
                 </label>
               </div>
               <div className="flex items-center justify-between gap-2">

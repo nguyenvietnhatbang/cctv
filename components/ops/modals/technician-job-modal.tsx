@@ -138,6 +138,7 @@ function FieldCostForm({
   const materialAmount = Number(detail.workOrder.material_amount);
   const vatAmount = Number(detail.workOrder.vat_amount);
   const totalAmount = Number(detail.workOrder.total_amount);
+  const laborAmount = Number(detail.workOrder.labor_cost);
 
   return (
     <ValidatedForm onSubmit={onSubmit} aria-busy={isSubmitting} className="modal-section">
@@ -148,7 +149,7 @@ function FieldCostForm({
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
           Chi phí nhân công
-          <input name="laborCost" className="input" type="number" step="1000" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 500000" disabled={locked || isSubmitting} />
+          <input name="laborCost" className="input" inputMode="numeric" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 200000 hoặc 200.000" disabled={locked || isSubmitting} />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
           VAT (%)
@@ -159,6 +160,10 @@ function FieldCostForm({
         <Save size={15} />Lưu chi phí
       </PendingButton>
       <div className="mt-3 grid gap-2 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
+        <div className="flex items-center justify-between gap-3">
+          <span>Chi phí nhân công</span>
+          <strong className="text-zinc-950">{money(laborAmount)}</strong>
+        </div>
         <div className="flex items-center justify-between gap-3">
           <span>Chi phí vật tư</span>
           <strong className="text-zinc-950">{money(materialAmount)}</strong>
