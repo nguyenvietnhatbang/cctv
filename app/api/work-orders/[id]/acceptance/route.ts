@@ -5,7 +5,7 @@ import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { uploadWorkOrderBytes } from "@/lib/storage";
 import { acceptanceSchema } from "@/lib/validators";
-import { assertCanMutateFieldWork, changeWorkOrderStatus } from "@/lib/work-orders";
+import { assertCanMutateFieldWork, changeWorkOrderPaymentStatus, changeWorkOrderStatus } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -56,6 +56,20 @@ export async function POST(request: Request, context: Context) {
         [id, uploaded.bucket, uploaded.path, "signature.png", bytes.length, user.id],
       );
       await changeWorkOrderStatus(client, id, "completed", user, "Khách ký nghiệm thu");
+
+      const paymentResult = await client.query<{ status: "paid" | "debt" | "unpaid"; debt_amount: string }>(
+        `select status, debt_amount
+         from payments
+         where work_order_id = $1`,
+        [id],
+      );
+      const payment = paymentResult.rows[0];
+      if (payment?.status === "paid") {
+        await changeWorkOrderPaymentStatus(client, id, "paid", user, "Tự đồng bộ trạng thái sau nghiệm thu vì đã ghi nhận thanh toán");
+      }
+      if (payment?.status === "debt") {
+        await changeWorkOrderPaymentStatus(client, id, "debt", user, `Tự đồng bộ công nợ sau nghiệm thu: ${Number(payment.debt_amount).toLocaleString("vi-VN")}đ`);
+      }
     });
 
     return jsonOk({ ok: true });

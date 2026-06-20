@@ -118,7 +118,8 @@ export function ReportsScreen({
           rows: [report.summary],
           columns: [
             { header: "Số công việc", value: (row) => row.order_count, align: "right" },
-            { header: "Đã thu", value: (row) => money(row.paid_revenue), align: "right" },
+            { header: "Đã thu theo phiếu tạo", value: (row) => money(row.paid_revenue), align: "right" },
+            { header: "Tiền thu trong kỳ", value: (row) => money(row.collected_amount), align: "right" },
             { header: "Công nợ", value: (row) => money(row.open_debt), align: "right" },
             { header: "Nhân công", value: (row) => money(row.labor_amount), align: "right" },
             { header: "Vật tư", value: (row) => money(row.material_amount), align: "right" },
@@ -244,14 +245,18 @@ export function ReportsScreen({
 
       {report ? (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
             <div className="metric-card">
               <span>Số công việc</span>
               <strong>{report.summary.order_count}</strong>
             </div>
             <div className="metric-card">
-              <span>Đã thu</span>
+              <span>Đã thu theo phiếu</span>
               <strong>{money(report.summary.paid_revenue)}</strong>
+            </div>
+            <div className="metric-card">
+              <span>Thu trong kỳ</span>
+              <strong>{money(report.summary.collected_amount)}</strong>
             </div>
             <div className="metric-card">
               <span>Công nợ</span>

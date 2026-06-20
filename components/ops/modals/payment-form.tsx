@@ -6,6 +6,7 @@ import { money } from "@/components/ops/format";
 import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
+import { MoneyInput } from "@/components/ops/money-input";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 
 export function PaymentForm({
@@ -73,12 +74,11 @@ export function PaymentForm({
             <option value="paid">Thu tiền</option>
             <option value="debt">Công nợ / thu một phần</option>
           </select>
-          <input
+          <MoneyInput
             name="amount"
             className="input"
-            inputMode="numeric"
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
+            onValueChange={setAmount}
             placeholder="Số tiền thực thu, VD: 200.000"
             disabled={!canSubmit || isSubmitting}
           />

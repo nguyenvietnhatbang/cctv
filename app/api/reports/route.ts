@@ -25,7 +25,12 @@ export async function GET(request: Request) {
            coalesce(sum(p.labor_amount), 0) as labor_amount,
            coalesce(sum(p.material_amount), 0) as material_amount,
            coalesce(sum(p.vat_amount), 0) as vat_amount,
-           coalesce(sum(p.total_amount), 0) as gross_amount
+           coalesce(sum(p.total_amount), 0) as gross_amount,
+           (
+             select coalesce(sum(pt.amount), 0)
+             from payment_transactions pt
+             where pt.collected_at >= $1 and pt.collected_at < $2
+           ) as collected_amount
          from work_orders wo
          left join payments p on p.work_order_id = wo.id
          where wo.created_at >= $1 and wo.created_at < $2`,

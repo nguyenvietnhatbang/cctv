@@ -187,6 +187,7 @@ export type ReportData = {
   summary: {
     order_count: string;
     paid_revenue: string;
+    collected_amount: string;
     open_debt: string;
     labor_amount: string;
     material_amount: string;

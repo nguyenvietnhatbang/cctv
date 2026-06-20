@@ -5,11 +5,14 @@ import {
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
+  CreditCard,
+  FileBox,
   MapPinned,
   Navigation,
   PauseCircle,
   Phone,
   Play,
+  ReceiptText,
   Save,
   Upload,
   type LucideIcon,
@@ -23,6 +26,7 @@ import {
 } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
+import { MoneyInput } from "@/components/ops/money-input";
 import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, ValidatedForm } from "@/components/ops/ui";
 import type { Material, WorkFile, WorkOrderDetail } from "@/components/ops/types";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
@@ -46,6 +50,16 @@ const CHECKOUT_REASONS = [
   "Hết giờ làm",
   "Tạm dừng để đi việc gấp khác",
 ] as const;
+
+type TechnicianModalTab = "progress" | "costs" | "files" | "payment" | "acceptance";
+
+const TECHNICIAN_MODAL_TABS: ReadonlyArray<{ id: TechnicianModalTab; label: string; icon: LucideIcon }> = [
+  { id: "progress", label: "Tiến độ", icon: ClipboardCheck },
+  { id: "costs", label: "Chi phí", icon: ReceiptText },
+  { id: "files", label: "Ảnh", icon: FileBox },
+  { id: "payment", label: "Thanh toán", icon: CreditCard },
+  { id: "acceptance", label: "Nghiệm thu", icon: CheckCircle2 },
+];
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   unpaid: "Chưa thanh toán",
@@ -149,7 +163,7 @@ function FieldCostForm({
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
           Chi phí nhân công
-          <input name="laborCost" className="input" inputMode="numeric" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 200000 hoặc 200.000" disabled={locked || isSubmitting} />
+          <MoneyInput name="laborCost" className="input" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 200.000" disabled={locked || isSubmitting} />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
           VAT (%)
@@ -273,6 +287,7 @@ export function TechnicianJobModal({
 }) {
   const [preparingStatus, setPreparingStatus] = useState(false);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TechnicianModalTab>("progress");
   const status = detail.workOrder.status;
   const nextFieldTransition = useMemo(
     () => getAllowedWorkOrderTransitions(status, "technician").find((transition) => transition.intent === "field"),
@@ -378,131 +393,164 @@ export function TechnicianJobModal({
           </div>
         </section>
 
-        <section className="modal-section">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 className="section-title">Bước hiện tại</h3>
-              <p className="mt-1 text-sm leading-6 text-zinc-600">{WORK_ORDER_STATUS_DESCRIPTIONS[status]}</p>
-            </div>
-            {canMoveNext && nextFieldTransition ? (
-              <PendingButton
-                className="btn-primary h-11"
-                onClick={handleNextStatus}
+        <nav className="modal-tabbar technician-tabbar" aria-label="Xử lý hiện trường">
+          {TECHNICIAN_MODAL_TABS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                className={`tab-button gap-2 ${activeTab === tab.id ? "tab-button-active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
                 type="button"
-                pending={pendingAction === "status" || preparingStatus}
-                pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}
               >
-                <NextIcon size={15} />{nextFieldTransition.label}
-              </PendingButton>
-            ) : null}
-            {canQuickCheckIn ? (
-              <PendingButton
-                className="btn-secondary h-11"
-                onClick={handleQuickCheckIn}
-                type="button"
-                pending={pendingAction === "status" || preparingStatus}
-                pendingLabel={preparingStatus ? "Đang lấy vị trí..." : "Đang lưu..."}
-              >
-                <MapPinned size={15} />Check-in
-              </PendingButton>
-            ) : null}
-            {canResume && resumeTransition ? (
-              <PendingButton
-                className="btn-primary h-11"
-                onClick={handleResume}
-                type="button"
-                pending={pendingAction === "status"}
-                pendingLabel="Đang lưu..."
-              >
-                <Play size={15} />{resumeTransition.label}
-              </PendingButton>
-            ) : null}
-          </div>
+                <Icon size={15} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {STEP_ORDER.map((step, index) => {
-              const isCurrent = status === step;
-              const isDone = currentStepIndex > index;
-              return (
-                <div
-                  key={step}
-                  className={`rounded-md border px-3 py-2 text-xs font-semibold ${
-                    isCurrent
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : isDone
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-zinc-200 bg-zinc-50 text-zinc-500"
-                  }`}
-                >
-                  {WORK_ORDER_STATUS_LABELS[step]}
+        <div className="modal-edit-shell technician-modal-shell">
+          {activeTab === "progress" ? (
+            <section className="grid gap-4">
+              <div className="modal-section">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="section-title">Bước hiện tại</h3>
+                    <p className="mt-1 text-sm leading-6 text-zinc-600">{WORK_ORDER_STATUS_DESCRIPTIONS[status]}</p>
+                  </div>
+                  <div className="grid w-full gap-2 sm:w-auto sm:grid-flow-col">
+                    {canMoveNext && nextFieldTransition ? (
+                      <PendingButton
+                        className="btn-primary h-11"
+                        onClick={handleNextStatus}
+                        type="button"
+                        pending={pendingAction === "status" || preparingStatus}
+                        pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}
+                      >
+                        <NextIcon size={15} />{nextFieldTransition.label}
+                      </PendingButton>
+                    ) : null}
+                    {canQuickCheckIn ? (
+                      <PendingButton
+                        className="btn-secondary h-11"
+                        onClick={handleQuickCheckIn}
+                        type="button"
+                        pending={pendingAction === "status" || preparingStatus}
+                        pendingLabel={preparingStatus ? "Đang lấy vị trí..." : "Đang lưu..."}
+                      >
+                        <MapPinned size={15} />Check-in
+                      </PendingButton>
+                    ) : null}
+                    {canResume && resumeTransition ? (
+                      <PendingButton
+                        className="btn-primary h-11"
+                        onClick={handleResume}
+                        type="button"
+                        pending={pendingAction === "status"}
+                        pendingLabel="Đang lưu..."
+                      >
+                        <Play size={15} />{resumeTransition.label}
+                      </PendingButton>
+                    ) : null}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
 
-          {locationWarning ? (
-            <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{locationWarning}</p>
-          ) : null}
-        </section>
+                <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                  {STEP_ORDER.map((step, index) => {
+                    const isCurrent = status === step;
+                    const isDone = currentStepIndex > index;
+                    return (
+                      <div
+                        key={step}
+                        className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+                          isCurrent
+                            ? "border-blue-600 bg-blue-600 text-white"
+                            : isDone
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                              : "border-zinc-200 bg-zinc-50 text-zinc-500"
+                        }`}
+                      >
+                        {WORK_ORDER_STATUS_LABELS[step]}
+                      </div>
+                    );
+                  })}
+                </div>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <section className="grid gap-4">
-            <div className="modal-section">
-              <h3 className="section-title">Thông tin đi làm</h3>
-              <div className="mt-3 grid gap-3 text-sm text-zinc-700">
-                <p className="flex items-start gap-2">
-                  <MapPinned size={15} className="mt-0.5 shrink-0 text-zinc-500" />
-                  <span>{detail.workOrder.customer_address}</span>
-                </p>
-                <p className="flex items-center gap-2">
-                  <CalendarClock size={15} className="shrink-0 text-zinc-500" />
-                  <span>{dateTime(detail.workOrder.appointment_at)}</span>
-                </p>
+                {locationWarning ? (
+                  <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{locationWarning}</p>
+                ) : null}
               </div>
-            </div>
 
-            <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="modal-section">
-              <h3 className="section-title">Ghi chú hiện trường</h3>
-              <textarea
-                name="completionNote"
-                className="input mt-3 min-h-28"
-                defaultValue={detail.workOrder.completion_note ?? ""}
-                placeholder="Nội dung đã làm, phát sinh, lưu ý cho nghiệm thu"
-                disabled={pendingAction === "update" || status === "cancelled"}
-              />
-              <PendingButton className="btn-secondary mt-3 h-10" type="submit" pending={pendingAction === "update"} pendingLabel="Đang lưu...">
-                <Save size={15} />Lưu ghi chú
-              </PendingButton>
-            </ValidatedForm>
-
-            {canCheckout ? (
-              <ValidatedForm onSubmit={handleCheckout} aria-busy={pendingAction === "status"} className="modal-section">
-                <h3 className="section-title">Check-out</h3>
-                <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <select name="checkoutReason" className="input" defaultValue={CHECKOUT_REASONS[0]} disabled={pendingAction === "status"}>
-                    {CHECKOUT_REASONS.map((reason) => (
-                      <option key={reason} value={reason}>{reason}</option>
-                    ))}
-                  </select>
-                  <PendingButton className="btn-secondary h-10" type="submit" pending={pendingAction === "status"} pendingLabel="Đang lưu...">
-                    <PauseCircle size={15} />Check-out
-                  </PendingButton>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="modal-section">
+                  <h3 className="section-title">Thông tin đi làm</h3>
+                  <div className="mt-3 grid gap-3 text-sm text-zinc-700">
+                    <p className="flex items-start gap-2">
+                      <MapPinned size={15} className="mt-0.5 shrink-0 text-zinc-500" />
+                      <span>{detail.workOrder.customer_address}</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <CalendarClock size={15} className="shrink-0 text-zinc-500" />
+                      <span>{dateTime(detail.workOrder.appointment_at)}</span>
+                    </p>
+                  </div>
                 </div>
-              </ValidatedForm>
-            ) : null}
 
-          </section>
+                <ValidatedForm onSubmit={onUpdate} aria-busy={pendingAction === "update"} className="modal-section">
+                  <h3 className="section-title">Ghi chú hiện trường</h3>
+                  <textarea
+                    name="completionNote"
+                    className="input mt-3 min-h-28"
+                    defaultValue={detail.workOrder.completion_note ?? ""}
+                    placeholder="Nội dung đã làm, phát sinh, lưu ý cho nghiệm thu"
+                    disabled={pendingAction === "update" || status === "cancelled"}
+                  />
+                  <PendingButton className="btn-secondary mt-3 h-10" type="submit" pending={pendingAction === "update"} pendingLabel="Đang lưu...">
+                    <Save size={15} />Lưu ghi chú
+                  </PendingButton>
+                </ValidatedForm>
+              </div>
 
-          <section className="grid gap-4">
-            <FieldCostForm detail={detail} locked={fieldLocked} isSubmitting={pendingAction === "update"} onSubmit={onUpdate} />
-            <MaterialsForm
-              detail={detail}
-              locked={fieldLocked}
-              pendingAction={materialPendingAction}
-              onCreate={onMaterialCreate}
-              onUpdate={onMaterialUpdate}
-              onDelete={onMaterialDelete}
-            />
+              {canCheckout ? (
+                <ValidatedForm onSubmit={handleCheckout} aria-busy={pendingAction === "status"} className="modal-section">
+                  <h3 className="section-title">Check-out</h3>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <select name="checkoutReason" className="input" defaultValue={CHECKOUT_REASONS[0]} disabled={pendingAction === "status"}>
+                      {CHECKOUT_REASONS.map((reason) => (
+                        <option key={reason} value={reason}>{reason}</option>
+                      ))}
+                    </select>
+                    <PendingButton className="btn-secondary h-10" type="submit" pending={pendingAction === "status"} pendingLabel="Đang lưu...">
+                      <PauseCircle size={15} />Check-out
+                    </PendingButton>
+                  </div>
+                </ValidatedForm>
+              ) : null}
+
+              {!canMoveNext && !canSignAcceptance && status !== "completed" && !["awaiting_payment", "paid", "debt", "paused", "cancelled"].includes(status) ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Phiếu chưa có thao tác kế tiếp cho kỹ thuật viên. Admin cần kiểm tra lại trạng thái hoặc phân công.
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
+          {activeTab === "costs" ? (
+            <section className="grid gap-4 lg:grid-cols-2">
+              <FieldCostForm detail={detail} locked={fieldLocked} isSubmitting={pendingAction === "update"} onSubmit={onUpdate} />
+              <MaterialsForm
+                detail={detail}
+                locked={fieldLocked}
+                pendingAction={materialPendingAction}
+                onCreate={onMaterialCreate}
+                onUpdate={onMaterialUpdate}
+                onDelete={onMaterialDelete}
+              />
+            </section>
+          ) : null}
+
+          {activeTab === "files" ? (
             <FieldDocumentUploadForm
               detail={detail}
               locked={fieldLocked}
@@ -511,32 +559,31 @@ export function TechnicianJobModal({
               onSubmit={onUpload}
               onDelete={onFileDelete}
             />
-            {canCollectPayment ? (
+          ) : null}
+
+          {activeTab === "payment" ? (
+            canCollectPayment ? (
               <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} allowFieldPayment />
             ) : (
               <PaymentSummary detail={detail} />
-            )}
-          </section>
+            )
+          ) : null}
+
+          {activeTab === "acceptance" ? (
+            canSignAcceptance ? (
+              <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
+            ) : (
+              <div className="modal-section">
+                <h3 className="section-title">Nghiệm thu</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">
+                  {status === "completed" || detail.workOrder.accepted_at
+                    ? `Đã nghiệm thu: ${dateTime(detail.workOrder.accepted_at)}`
+                    : "Hoàn tất xử lý xong thì nút nghiệm thu sẽ hiện tại đây để khách ký xác nhận."}
+                </p>
+              </div>
+            )
+          ) : null}
         </div>
-
-        {canSignAcceptance ? (
-          <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
-        ) : (
-          <div className="modal-section">
-            <h3 className="section-title">Nghiệm thu</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              {status === "completed" || detail.workOrder.accepted_at
-                ? `Đã nghiệm thu: ${dateTime(detail.workOrder.accepted_at)}`
-                : "Hoàn tất xử lý xong thì nút nghiệm thu sẽ hiện tại đây để khách ký xác nhận."}
-            </p>
-          </div>
-        )}
-
-        {!canMoveNext && !canSignAcceptance && status !== "completed" && !["awaiting_payment", "paid", "debt", "paused", "cancelled"].includes(status) ? (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Phiếu chưa có thao tác kế tiếp cho kỹ thuật viên. Admin cần kiểm tra lại trạng thái hoặc phân công.
-          </p>
-        ) : null}
       </div>
     </Modal>
   );

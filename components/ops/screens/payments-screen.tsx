@@ -76,7 +76,7 @@ export function PaymentsScreen({
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const paymentOrders = allPaymentOrders.filter((order) => {
     const matchesFilter =
-      filter === "awaiting" ? ["completed", "awaiting_payment"].includes(order.status)
+      filter === "awaiting" ? ["completed", "awaiting_payment"].includes(order.status) && !["paid", "debt"].includes(order.payment_status ?? "unpaid")
       : filter === "paid" ? order.status === "paid" || order.payment_status === "paid"
       : filter === "debt" ? order.status === "debt" || order.payment_status === "debt"
       : true;
