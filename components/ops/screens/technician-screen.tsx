@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
-  Eye,
+  History,
   MapPinned,
   Navigation,
   Phone,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { dateTime } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
-import { DeadlineBadge, PendingButton, StageBadge, StatusBadge } from "@/components/ops/ui";
+import { DeadlineBadge, PendingButton, StageBadge, StatusBadge, Modal } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
 import {
   getAllowedWorkOrderTransitions,
@@ -27,7 +27,10 @@ import {
   WORK_ORDER_TYPE_LABELS,
   type Role,
   type WorkOrderStatus,
+  type WorkOrderType,
 } from "@/lib/types";
+import { apiFetch } from "@/components/ops/api";
+
 
 const TECHNICIAN_WORK_STAGES: ReadonlyArray<{
   id: string;
@@ -140,20 +143,20 @@ function TechnicianWorkCard({
   prominent = false,
   pending = false,
   actionError = null,
-  onView,
   onEdit,
   onNextAction,
   onCheckIn,
+  onHistory,
   role,
 }: {
   order: WorkOrderListItem;
   prominent?: boolean;
   pending?: boolean;
   actionError?: string | null;
-  onView: (id: string) => void;
   onEdit: (id: string) => void;
   onNextAction: (order: WorkOrderListItem) => void;
   onCheckIn: (order: WorkOrderListItem) => void;
+  onHistory: (customerId: string, customerName: string) => void;
   role: Role;
 }) {
   const action = getTechnicianPrimaryAction(order, role);
@@ -196,43 +199,69 @@ function TechnicianWorkCard({
           <span>{appointmentLabel}</span>
         </p>
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <a className="btn-primary h-12" href={`tel:${order.customer_phone}`}><Phone size={15} />Gọi</a>
+
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <PendingButton
+          className={`btn-primary h-12 text-xs px-1 sm:text-sm sm:px-3 ${!canQuickCheckIn ? "col-span-2" : ""}`}
+          onClick={() => onNextAction(order)}
+          type="button"
+          pending={pending && action.type === "status"}
+          pendingLabel="..."
+        >
+          <ActionIcon size={14} className="shrink-0" />
+          <span className="truncate">{action.label}</span>
+        </PendingButton>
+
+        {canQuickCheckIn ? (
+          <PendingButton
+            className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
+            onClick={() => onCheckIn(order)}
+            type="button"
+            pending={pending}
+            pendingLabel="..."
+          >
+            <MapPinned size={14} className="shrink-0" />
+            <span className="truncate">Check-in</span>
+          </PendingButton>
+        ) : null}
+
+        <button
+          className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
+          onClick={() => onEdit(order.id)}
+          type="button"
+        >
+          <Wrench size={14} className="shrink-0" />
+          <span className="truncate">Chi tiết</span>
+        </button>
+
         <a
-          className="btn-secondary h-12"
+          className="btn-primary h-12 text-xs px-1 sm:text-sm sm:px-3"
+          href={`tel:${order.customer_phone}`}
+        >
+          <Phone size={14} className="shrink-0" />
+          <span className="truncate">Gọi</span>
+        </a>
+
+        <a
+          className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
           href={mapSearchUrl({ address: order.customer_address, lat: order.customer_lat, lng: order.customer_lng })}
           target="_blank"
           rel="noreferrer"
         >
-          <MapPinned size={15} />Bản đồ
+          <MapPinned size={14} className="shrink-0" />
+          <span className="truncate">Bản đồ</span>
         </a>
-        <button className="btn-secondary h-12" onClick={() => onView(order.id)} type="button"><Eye size={15} />Xem</button>
-      </div>
-      <div className={`grid grid-cols-1 gap-2 ${canQuickCheckIn ? "sm:grid-cols-3" : "sm:grid-cols-[minmax(0,1fr)_auto]"}`}>
-        <PendingButton
-          className="btn-primary h-12"
-          onClick={() => onNextAction(order)}
+
+        <button
+          className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
+          onClick={() => onHistory(order.customer_id, order.customer_name)}
           type="button"
-          pending={pending && action.type === "status"}
-          pendingLabel="Đang lưu..."
         >
-          <ActionIcon size={15} />{action.label}
-        </PendingButton>
-        {canQuickCheckIn ? (
-          <PendingButton
-            className="btn-secondary h-12 px-4"
-            onClick={() => onCheckIn(order)}
-            type="button"
-            pending={pending}
-            pendingLabel="Đang lưu..."
-          >
-            <MapPinned size={15} />Check-in
-          </PendingButton>
-        ) : null}
-        <button className="btn-secondary h-12 px-4" onClick={() => onEdit(order.id)} type="button">
-          <Wrench size={15} />Chi tiết
+          <History size={14} className="shrink-0" />
+          <span className="truncate">Lịch sử</span>
         </button>
       </div>
+
       {actionError ? (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium leading-6 text-amber-900" role="alert">
           {actionError}
@@ -258,6 +287,7 @@ export function TechnicianScreen({
   const [pendingStatusOrderId, setPendingStatusOrderId] = useState<string | null>(null);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ orderId: string; message: string } | null>(null);
+  const [historyCustomer, setHistoryCustomer] = useState<{ id: string; name: string } | null>(null);
 
   const activeOrders = orders
     .filter((order) => ACTIVE_STATUSES.has(order.status))
@@ -373,7 +403,7 @@ export function TechnicianScreen({
                 <Clock3 size={15} className="text-zinc-500" />
                 <p className="text-xs font-bold uppercase text-zinc-700">Việc cần làm tiếp theo</p>
               </div>
-              <TechnicianWorkCard role={role} order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} actionError={actionError?.orderId === nextOrder.id ? actionError.message : null} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
+              <TechnicianWorkCard role={role} order={nextOrder} prominent pending={pendingStatusOrderId === nextOrder.id} actionError={actionError?.orderId === nextOrder.id ? actionError.message : null} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} onHistory={(customerId, customerName) => setHistoryCustomer({ id: customerId, name: customerName })} />
             </div>
           ) : null}
 
@@ -392,7 +422,7 @@ export function TechnicianScreen({
                 </div>
                 <div className="grid gap-3">
                   {visibleOrders.map((order) => (
-                    <TechnicianWorkCard key={order.id} role={role} order={order} pending={pendingStatusOrderId === order.id} actionError={actionError?.orderId === order.id ? actionError.message : null} onView={onView} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} />
+                    <TechnicianWorkCard key={order.id} role={role} order={order} pending={pendingStatusOrderId === order.id} actionError={actionError?.orderId === order.id ? actionError.message : null} onEdit={onEdit} onNextAction={runNextAction} onCheckIn={runCheckIn} onHistory={(customerId, customerName) => setHistoryCustomer({ id: customerId, name: customerName })} />
                   ))}
                 </div>
               </div>
@@ -466,6 +496,151 @@ export function TechnicianScreen({
 
         </aside>
       </div>
+
+      {historyCustomer && (
+        <CustomerHistoryModal
+          customerId={historyCustomer.id}
+          customerName={historyCustomer.name}
+          onClose={() => setHistoryCustomer(null)}
+        />
+      )}
     </section>
+  );
+}
+
+type HistoryWorkOrder = {
+  id: string;
+  code: string;
+  type: WorkOrderType;
+  status: WorkOrderStatus;
+  description: string;
+  appointment_at: string | null;
+  created_at: string;
+  completion_note: string | null;
+  materials: Array<{ name: string; quantity: number | string }>;
+};
+
+function CustomerHistoryModal({
+  customerId,
+  customerName,
+  onClose,
+}: {
+  customerId: string;
+  customerName: string;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [historyList, setHistoryList] = useState<HistoryWorkOrder[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadHistory() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await apiFetch<{ history: HistoryWorkOrder[] }>(`/api/customers/${customerId}/history`);
+        if (active) {
+          setHistoryList(data.history);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Không tải được lịch sử khách hàng");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+    loadHistory();
+    return () => {
+      active = false;
+    };
+  }, [customerId]);
+
+  return (
+    <Modal title={`Lịch sử kỹ thuật - ${customerName}`} onClose={onClose} size="lg">
+      {loading ? (
+        <div className="flex h-48 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-800" />
+        </div>
+      ) : error ? (
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {error}
+        </div>
+      ) : historyList.length === 0 ? (
+        <div className="p-8 text-center text-zinc-500 text-sm">
+          Chưa có lịch sử công việc nào trước đây cho khách hàng này.
+        </div>
+      ) : (
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+          {historyList.map((item) => (
+            <div key={item.id} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-extrabold uppercase tracking-wider text-blue-600">{item.code}</span>
+                  <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
+                    {WORK_ORDER_TYPE_LABELS[item.type]}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-zinc-500">
+                  <span>Ngày: {dateTime(item.appointment_at || item.created_at)}</span>
+                  <StageBadge status={item.status} />
+                </div>
+              </div>
+              <div className="mt-3 space-y-3 text-sm">
+                <div>
+                  <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
+                    Mô tả công việc
+                  </h4>
+                  <p className="mt-1 pl-3 text-zinc-600 whitespace-pre-wrap leading-relaxed">{item.description || "Không có mô tả"}</p>
+                </div>
+                {item.completion_note && (
+                  <div>
+                    <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                      Ghi chú hoàn thành
+                    </h4>
+                    <p className="mt-1 pl-3 text-zinc-600 whitespace-pre-wrap leading-relaxed">{item.completion_note}</p>
+                  </div>
+                )}
+                <div>
+                  <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-orange-400"></span>
+                    Vật tư kỹ thuật đã lắp
+                  </h4>
+                  <div className="pl-3 mt-1.5">
+                    {item.materials && item.materials.length > 0 ? (
+                      <div className="overflow-hidden rounded-md border border-zinc-200 bg-zinc-50">
+                        <table className="min-w-full divide-y divide-zinc-200 text-left text-xs">
+                          <thead className="bg-zinc-100 text-zinc-600 font-semibold">
+                            <tr>
+                              <th className="px-3 py-2">Tên vật tư</th>
+                              <th className="px-3 py-2 text-right">Số lượng</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-200 text-zinc-700 bg-white">
+                            {item.materials.map((mat, idx) => (
+                              <tr key={idx} className="hover:bg-zinc-50">
+                                <td className="px-3 py-1.5 font-medium">{mat.name}</td>
+                                <td className="px-3 py-1.5 text-right font-semibold text-zinc-900">{mat.quantity}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-400 italic">Không sử dụng vật tư chi tiết</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
   );
 }

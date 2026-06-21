@@ -12,9 +12,9 @@ import {
   PauseCircle,
   Phone,
   Play,
-  ReceiptText,
   Save,
   Upload,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -142,11 +142,13 @@ function FieldCostForm({
   locked,
   isSubmitting,
   onSubmit,
+  onOpenMaterials,
 }: {
   detail: WorkOrderDetail;
   locked: boolean;
   isSubmitting: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
+  onOpenMaterials: () => void;
 }) {
   const materialAmount = Number(detail.workOrder.material_amount);
   const vatAmount = Number(detail.workOrder.vat_amount);
@@ -173,9 +175,18 @@ function FieldCostForm({
           <input name="vatRate" className="input" type="number" step="0.1" defaultValue={Number(detail.workOrder.vat_rate)} placeholder="VD: 10" disabled={locked || isSubmitting} />
         </label>
       </div>
-      <PendingButton className="btn-secondary mt-3 h-10 w-full" type="submit" disabled={locked} pending={isSubmitting} pendingLabel="Đang lưu...">
-        <Save size={15} />Lưu chi phí
-      </PendingButton>
+      <div className="flex gap-2">
+        <PendingButton className="btn-primary mt-3 h-10 flex-1" type="submit" disabled={locked} pending={isSubmitting} pendingLabel="Đang lưu...">
+          <Save size={15} />Lưu chi phí
+        </PendingButton>
+        <button
+          className="btn-secondary mt-3 h-10 flex-1 flex items-center justify-center gap-1.5"
+          onClick={onOpenMaterials}
+          type="button"
+        >
+          <Wrench size={15} />Chi tiết vật tư
+        </button>
+      </div>
       <div className="mt-3 grid gap-2 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
         <div className="flex items-center justify-between gap-3">
           <span>Chi phí nhân công</span>
@@ -303,6 +314,7 @@ export function TechnicianJobModal({
   const [preparingStatus, setPreparingStatus] = useState(false);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TechnicianModalTab>("progress");
+  const [showMaterialsModal, setShowMaterialsModal] = useState(false);
   const status = detail.workOrder.status;
   const nextFieldTransition = useMemo(
     () => getAllowedWorkOrderTransitions(status, "technician").find((transition) => transition.intent === "field"),
@@ -552,15 +564,13 @@ export function TechnicianJobModal({
           ) : null}
 
           {activeTab === "costs" ? (
-            <section className="grid gap-4 lg:grid-cols-2">
-              <FieldCostForm detail={detail} locked={fieldLocked} isSubmitting={pendingAction === "update"} onSubmit={onUpdate} />
-              <MaterialsForm
+            <section className="max-w-xl mx-auto w-full">
+              <FieldCostForm
                 detail={detail}
-                locked={status === "cancelled"}
-                pendingAction={materialPendingAction}
-                onCreate={onMaterialCreate}
-                onUpdate={onMaterialUpdate}
-                onDelete={onMaterialDelete}
+                locked={fieldLocked}
+                isSubmitting={pendingAction === "update"}
+                onSubmit={onUpdate}
+                onOpenMaterials={() => setShowMaterialsModal(true)}
               />
             </section>
           ) : null}
@@ -592,6 +602,20 @@ export function TechnicianJobModal({
           ) : null}
         </div>
       </div>
+      {showMaterialsModal && (
+        <Modal title="Chi tiết vật tư sử dụng" size="lg" onClose={() => setShowMaterialsModal(false)}>
+          <div className="p-1">
+            <MaterialsForm
+              detail={detail}
+              locked={status === "cancelled"}
+              pendingAction={materialPendingAction}
+              onCreate={onMaterialCreate}
+              onUpdate={onMaterialUpdate}
+              onDelete={onMaterialDelete}
+            />
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 }
