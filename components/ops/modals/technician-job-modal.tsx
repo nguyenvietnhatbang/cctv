@@ -12,6 +12,7 @@ import {
   PauseCircle,
   Phone,
   Play,
+  ReceiptText,
   Save,
   Upload,
   Wrench,
