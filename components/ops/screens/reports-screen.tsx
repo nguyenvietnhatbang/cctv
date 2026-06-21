@@ -184,7 +184,7 @@ export function ReportsScreen({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 min-w-0">
       <div className="screen-header">
         <div>
           <h2>Báo cáo hệ thống</h2>

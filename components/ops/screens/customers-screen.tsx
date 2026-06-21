@@ -61,7 +61,7 @@ export function CustomersScreen({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 min-w-0">
       {/* Screen Title & Action Header */}
       <div className="screen-header">
         <div>

@@ -184,7 +184,7 @@ export function PaymentsScreen({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 min-w-0">
       {/* Screen Title & Description */}
       <div className="screen-header">
         <div>
