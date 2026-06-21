@@ -505,6 +505,7 @@ a {
 }
 
 .mobile-job {
+  container-type: inline-size;
   min-width: 0;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
@@ -526,12 +527,19 @@ a {
 
 .mobile-job-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.mobile-job-actions .mobile-job-primary-action {
+  grid-column: 1 / -1;
 }
 
 .mobile-job-actions .btn-primary,
 .mobile-job-actions .btn-secondary {
+  min-width: 0 !important;
   padding: 0 0.25rem !important;
   font-size: 11px !important;
   gap: 0.25rem !important;
@@ -539,10 +547,11 @@ a {
   width: 100% !important;
 }
 
-@media (min-width: 640px) {
+@container (min-width: 30rem) {
   .mobile-job-actions {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
   .mobile-job-actions .btn-primary,
   .mobile-job-actions .btn-secondary {
     padding: 0 0.75rem !important;

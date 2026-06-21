@@ -203,7 +203,7 @@ function TechnicianWorkCard({
 
       <div className="mobile-job-actions">
         <PendingButton
-          className={`btn-primary ${!canQuickCheckIn ? "col-span-2" : ""}`}
+          className="btn-primary mobile-job-primary-action"
           onClick={() => onNextAction(order)}
           type="button"
           pending={pending && action.type === "status"}
