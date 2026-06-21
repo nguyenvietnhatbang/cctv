@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { CheckCircle2, Eraser } from "lucide-react";
+import { CheckCircle2, CreditCard, Eraser } from "lucide-react";
 import { money } from "@/components/ops/format";
 import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
+import { ImageUploadField } from "@/components/ops/image-upload-field";
+import { MoneyInput } from "@/components/ops/money-input";
 
 export function SignatureAcceptanceForm({
   detail,
@@ -12,12 +14,40 @@ export function SignatureAcceptanceForm({
   isSubmitting = false,
 }: {
   detail: WorkOrderDetail;
-  onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
+  onAcceptance: (payload: {
+    acceptanceName: string;
+    acceptancePhone: string | null;
+    signatureDataUrl: string;
+    payment?: {
+      status: string;
+      method: string | null;
+      amount: string | null;
+      debtDueDate: string | null;
+      note: string | null;
+      billFile: File | null;
+    };
+  }) => void | Promise<void>;
   isSubmitting?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+
+  const workOrderStatus = detail.workOrder.status;
+  const canCollectPayment = ["working", "awaiting_acceptance", "completed", "awaiting_payment", "debt"].includes(workOrderStatus);
+  
+  const laborAmount = Number(detail.workOrder.labor_amount ?? detail.workOrder.labor_cost ?? 0);
+  const totalAmount = Number(detail.workOrder.total_amount);
+  const paidAmount = Number(detail.workOrder.paid_amount);
+  const storedDebtAmount = Number(detail.workOrder.debt_amount);
+  const debtAmount = Math.max(storedDebtAmount > 0 ? storedDebtAmount : totalAmount - paidAmount, 0);
+
+  const [status, setStatus] = useState<"paid" | "debt">("paid");
+  const [method, setMethod] = useState(detail.workOrder.payment_method && detail.workOrder.payment_method !== "debt" ? detail.workOrder.payment_method : "cash");
+  const [amount, setAmount] = useState(String(debtAmount || totalAmount));
+  const collectionAmount = Number(amount || 0);
+  const willKeepDebt = status === "debt" || collectionAmount < debtAmount;
+  const canChoosePaymentMethod = collectionAmount > 0;
 
   function point(event: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
@@ -61,42 +91,150 @@ export function SignatureAcceptanceForm({
     event.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas || !hasSignature) return;
+
     const formData = new FormData(event.currentTarget);
+    const canvasDataUrl = canvas.toDataURL("image/png");
+
+    let paymentPayload = undefined;
+    if (canCollectPayment) {
+      const billFile = formData.get("billFile") as File | null;
+      paymentPayload = {
+        status: String(formData.get("paymentStatus") || "paid"),
+        method: String(formData.get("paymentMethod") || "cash") || null,
+        amount: String(formData.get("paymentAmount") || "0") || null,
+        debtDueDate: String(formData.get("paymentDebtDueDate") || "") || null,
+        note: String(formData.get("paymentNote") || "") || null,
+        billFile: billFile && billFile.size > 0 ? billFile : null,
+      };
+    }
+
     await onAcceptance({
       acceptanceName: String(formData.get("acceptanceName") ?? ""),
       acceptancePhone: String(formData.get("acceptancePhone") || "") || null,
-      signatureDataUrl: canvas.toDataURL("image/png"),
+      signatureDataUrl: canvasDataUrl,
+      payment: paymentPayload,
     });
   }
 
   return (
     <ValidatedForm onSubmit={submit} aria-busy={isSubmitting} className="modal-section">
-      <h3 className="section-title">Nghiệm thu</h3>
-      <div className="mt-3 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
-        <p className="font-semibold">{detail.workOrder.customer_name}</p>
-        <p>{detail.workOrder.customer_address}</p>
-        <p className="mt-2">Tổng tiền: <strong>{money(detail.workOrder.total_amount)}</strong></p>
-      </div>
-      <div className="mt-3 grid gap-2">
-        <input name="acceptanceName" className="input" defaultValue={detail.workOrder.acceptance_name ?? detail.workOrder.customer_name} placeholder="Tên người nghiệm thu" required disabled={isSubmitting} />
-        <input name="acceptancePhone" className="input" defaultValue={detail.workOrder.acceptance_phone ?? ""} placeholder="SĐT người ký nếu khác" disabled={isSubmitting} />
-        <canvas
-          ref={canvasRef}
-          width={720}
-          height={260}
-          className="h-40 w-full touch-none rounded-md border border-zinc-300 bg-white"
-          onPointerDown={start}
-          onPointerMove={move}
-          onPointerUp={() => setDrawing(false)}
-          onPointerCancel={() => setDrawing(false)}
-        />
-        <label className="flex items-start gap-2 text-sm text-zinc-700">
-          <input type="checkbox" className="mt-1" required aria-label="đồng ý nghiệm thu" />
-          <span>Khách đã xem tóm tắt công việc, vật tư và tổng tiền, đồng ý nghiệm thu.</span>
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={clear} className="btn-secondary h-10" type="button" disabled={isSubmitting}><Eraser size={15} />Ký lại</button>
-          <PendingButton className="btn-primary h-10" type="submit" disabled={!hasSignature} pending={isSubmitting} pendingLabel="Đang lưu..."><CheckCircle2 size={15} />Lưu</PendingButton>
+      <h3 className="section-title">Nghiệm thu & Thanh toán</h3>
+      
+      <div className="mt-3 grid gap-4 lg:grid-cols-2">
+        {/* Cột trái: Chi tiết thanh toán */}
+        <div className="grid content-start gap-3">
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
+            <h4 className="font-semibold text-zinc-900 border-b border-zinc-200 pb-1.5 mb-2">Tóm tắt chi phí</h4>
+            <div className="grid gap-1.5">
+              <div className="flex justify-between">
+                <span>Tiền nhân công:</span>
+                <strong>{money(laborAmount)}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Tiền vật tư:</span>
+                <strong>{money(detail.workOrder.material_amount)}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Thuế VAT:</span>
+                <strong>{money(detail.workOrder.vat_amount)}</strong>
+              </div>
+              <div className="flex justify-between border-t border-dashed border-zinc-200 pt-1.5">
+                <span>Đã thu trước đó:</span>
+                <strong>{money(paidAmount)}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Còn lại phải thu:</span>
+                <strong className="text-blue-600">{money(debtAmount)}</strong>
+              </div>
+              <div className="flex justify-between border-t border-zinc-200 pt-2 text-base font-bold text-zinc-950">
+                <span>Tổng chi phí phiếu:</span>
+                <span>{money(totalAmount)}</span>
+              </div>
+            </div>
+          </div>
+
+          {canCollectPayment ? (
+            <div className="grid gap-2">
+              <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mt-1">Ghi nhận thanh toán tại hiện trường</h4>
+              <select
+                name="paymentStatus"
+                className="input"
+                value={status}
+                onChange={(event) => {
+                  const nextStatus = event.target.value as "paid" | "debt";
+                  setStatus(nextStatus);
+                  if (nextStatus === "paid") setAmount(String(debtAmount));
+                  if (nextStatus === "debt") setAmount("0");
+                }}
+                disabled={isSubmitting}
+              >
+                <option value="paid">Thu tiền</option>
+                <option value="debt">Công nợ / thu một phần</option>
+              </select>
+              <MoneyInput
+                name="paymentAmount"
+                className="input"
+                value={amount}
+                onValueChange={setAmount}
+                placeholder="Số tiền thực thu, VD: 200.000"
+                disabled={isSubmitting}
+              />
+              <select name="paymentMethod" className="input" value={canChoosePaymentMethod ? method : "debt"} onChange={(event) => setMethod(event.target.value)} disabled={isSubmitting || !canChoosePaymentMethod}>
+                <option value="cash">Tiền mặt</option>
+                <option value="bank_transfer">Chuyển khoản</option>
+                <option value="debt">Công nợ</option>
+              </select>
+              {!canChoosePaymentMethod ? <input type="hidden" name="paymentMethod" value="debt" /> : null}
+              <input name="paymentDebtDueDate" className="input" type="date" defaultValue={detail.workOrder.debt_due_date ?? ""} disabled={isSubmitting || !willKeepDebt} />
+              <input name="paymentNote" className="input" defaultValue={detail.workOrder.payment_note ?? ""} placeholder={willKeepDebt ? "Ghi chú công nợ hoặc ngày hẹn" : "Ghi chú thanh toán"} disabled={isSubmitting} />
+              <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+                Ảnh hóa đơn / Bill chuyển khoản (nếu có)
+                <ImageUploadField name="billFile" capture="environment" disabled={isSubmitting} previewLabel="Xem trước ảnh bill" />
+              </label>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Cột phải: Ký nghiệm thu */}
+        <div className="grid content-start gap-3">
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700">
+            <h4 className="font-semibold text-zinc-900 border-b border-zinc-200 pb-1.5 mb-2">Thông tin khách hàng</h4>
+            <p><strong>Khách hàng:</strong> {detail.workOrder.customer_name}</p>
+            <p><strong>Địa chỉ:</strong> {detail.workOrder.customer_address}</p>
+          </div>
+          
+          <div className="grid gap-2">
+            <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+              Tên người nghiệm thu
+              <input name="acceptanceName" className="input" defaultValue={detail.workOrder.acceptance_name ?? detail.workOrder.customer_name} placeholder="Họ tên người ký nhận" required disabled={isSubmitting} />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+              Số điện thoại người nghiệm thu
+              <input name="acceptancePhone" className="input" defaultValue={detail.workOrder.acceptance_phone ?? ""} placeholder="SĐT người nghiệm thu nếu khác" disabled={isSubmitting} />
+            </label>
+            <div className="grid gap-1">
+              <span className="text-xs font-semibold text-zinc-600">Khách ký chữ ký điện tử vào khung dưới đây</span>
+              <canvas
+                ref={canvasRef}
+                width={720}
+                height={260}
+                className="h-40 w-full touch-none rounded-md border border-zinc-300 bg-white"
+                onPointerDown={start}
+                onPointerMove={move}
+                onPointerUp={() => setDrawing(false)}
+                onPointerCancel={() => setDrawing(false)}
+              />
+            </div>
+            <label className="flex items-start gap-2 text-sm text-zinc-700 mt-1">
+              <input type="checkbox" className="mt-1" required aria-label="đồng ý nghiệm thu" />
+              <span>Khách đã xem tóm tắt chi phí, nội dung xử lý và đồng ý ký xác nhận nghiệm thu.</span>
+            </label>
+            
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button onClick={clear} className="btn-secondary h-10" type="button" disabled={isSubmitting}><Eraser size={15} />Ký lại</button>
+              <PendingButton className="btn-primary h-10" type="submit" disabled={!hasSignature} pending={isSubmitting} pendingLabel="Đang lưu..."><CheckCircle2 size={15} />Xác nhận</PendingButton>
+            </div>
+          </div>
         </div>
       </div>
     </ValidatedForm>

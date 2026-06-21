@@ -51,14 +51,13 @@ const CHECKOUT_REASONS = [
   "Tạm dừng để đi việc gấp khác",
 ] as const;
 
-type TechnicianModalTab = "progress" | "costs" | "files" | "payment" | "acceptance";
+type TechnicianModalTab = "progress" | "costs" | "files" | "acceptance";
 
 const TECHNICIAN_MODAL_TABS: ReadonlyArray<{ id: TechnicianModalTab; label: string; icon: LucideIcon }> = [
   { id: "progress", label: "Tiến độ", icon: ClipboardCheck },
   { id: "costs", label: "Chi phí", icon: ReceiptText },
   { id: "files", label: "Ảnh", icon: FileBox },
-  { id: "payment", label: "Thanh toán", icon: CreditCard },
-  { id: "acceptance", label: "Nghiệm thu", icon: CheckCircle2 },
+  { id: "acceptance", label: "Nghiệm thu & TT", icon: CheckCircle2 },
 ];
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -284,7 +283,19 @@ export function TechnicianJobModal({
   onMaterialUpdate: (material: Material, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onMaterialDelete: (material: Material) => void | Promise<void>;
   onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
-  onAcceptance: (payload: { acceptanceName: string; acceptancePhone: string | null; signatureDataUrl: string }) => void | Promise<void>;
+  onAcceptance: (payload: {
+    acceptanceName: string;
+    acceptancePhone: string | null;
+    signatureDataUrl: string;
+    payment?: {
+      status: string;
+      method: string | null;
+      amount: string | null;
+      debtDueDate: string | null;
+      note: string | null;
+      billFile: File | null;
+    };
+  }) => void | Promise<void>;
   pendingAction?: string | null;
   materialPendingAction?: { type: "create" } | { type: "update" | "delete"; id: string } | null;
   deletingFileId?: string | null;
@@ -563,14 +574,6 @@ export function TechnicianJobModal({
               onSubmit={onUpload}
               onDelete={onFileDelete}
             />
-          ) : null}
-
-          {activeTab === "payment" ? (
-            canCollectPayment ? (
-              <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} allowFieldPayment />
-            ) : (
-              <PaymentSummary detail={detail} />
-            )
           ) : null}
 
           {activeTab === "acceptance" ? (
