@@ -25,7 +25,7 @@ export function CostNoteForm({
       ) : null}
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
-          Chi phí vật tư
+          Chi phí vật tư đã chốt
           <MoneyInput name="materialCost" className="input" defaultValue={Number(detail.workOrder.material_amount)} placeholder="VD: 500.000" disabled={financialLocked || isSubmitting} />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">

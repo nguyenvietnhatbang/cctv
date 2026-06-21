@@ -9,11 +9,13 @@ import {
   isOpsManagerRole,
   ROLE_LABELS,
   WORK_ORDER_STATUS_LABELS,
+  type PaymentMethod,
+  type PaymentStatus,
   type SessionUser,
   type WorkOrderStatus,
 } from "@/lib/types";
 
-const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "debt", "cancelled"]);
+const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "awaiting_payment", "paid", "debt", "cancelled"]);
 const CHECK_IN_RADIUS_METERS = 300;
 const FIELD_PROGRESS_STATUSES: WorkOrderStatus[] = ["assigned", "accepted", "traveling", "working"];
 
@@ -327,44 +329,241 @@ export async function changeWorkOrderPaymentStatus(
 export async function syncWorkOrderPaymentAmounts(client: PoolClient, workOrderId: string) {
   await client.query(
     `update payments p
-         set material_amount = coalesce(m.total, 0),
+         set material_amount = wo.material_cost,
              labor_amount = wo.labor_cost,
-             vat_amount = round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
-             total_amount = wo.labor_cost + coalesce(m.total, 0)
-               + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
+             vat_amount = round((wo.labor_cost + wo.material_cost) * wo.vat_rate / 100, 2),
+             total_amount = wo.labor_cost + wo.material_cost
+               + round((wo.labor_cost + wo.material_cost) * wo.vat_rate / 100, 2),
              debt_amount = greatest(
-               wo.labor_cost + coalesce(m.total, 0)
-                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+               wo.labor_cost + wo.material_cost
+                 + round((wo.labor_cost + wo.material_cost) * wo.vat_rate / 100, 2)
                  - p.paid_amount,
                0
              ),
              status = case
                when p.paid_amount <= 0 and p.status = 'unpaid' then 'unpaid'
-               when p.paid_amount >= wo.labor_cost + coalesce(m.total, 0)
-                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+               when p.paid_amount >= wo.labor_cost + wo.material_cost
+                 + round((wo.labor_cost + wo.material_cost) * wo.vat_rate / 100, 2)
                  and p.method is not null then 'paid'
                when p.status in ('paid', 'debt') then 'debt'
                else p.status
              end,
              note = case
                when p.status in ('paid', 'debt')
-                 and p.paid_amount < wo.labor_cost + coalesce(m.total, 0)
-                   + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
+                 and p.paid_amount < wo.labor_cost + wo.material_cost
+                   + round((wo.labor_cost + wo.material_cost) * wo.vat_rate / 100, 2)
                  and p.note is null
                  and p.debt_due_date is null
                then 'Phát sinh công nợ do cập nhật chi phí'
                else p.note
              end
      from work_orders wo
-     left join (
-       select work_order_id, sum(line_total) as total
-       from work_order_materials
-       where work_order_id = $1
-       group by work_order_id
-     ) m on m.work_order_id = wo.id
      where p.work_order_id = wo.id and wo.id = $1`,
     [workOrderId],
   );
+}
+
+export async function assertWorkOrderTotalCoversPaidAmount(client: PoolClient, workOrderId: string) {
+  const result = await client.query<{
+    total_amount: string;
+    paid_amount: string;
+  }>(
+    `select wo.labor_cost + wo.material_cost
+              + round((wo.labor_cost + wo.material_cost) * wo.vat_rate / 100, 2) as total_amount,
+            p.paid_amount
+     from work_orders wo
+     join payments p on p.work_order_id = wo.id
+     where wo.id = $1
+     for update of wo, p`,
+    [workOrderId],
+  );
+  const amounts = result.rows[0];
+  if (!amounts) {
+    throw new HttpError(404, "Không tìm thấy phiếu hoặc thanh toán");
+  }
+  if (Number(amounts.total_amount) < Number(amounts.paid_amount)) {
+    throw new HttpError(422, "Không thể giảm tổng chi phí thấp hơn số tiền đã thu");
+  }
+}
+
+export async function syncClosedWorkOrderStatusFromPayment(
+  client: PoolClient,
+  workOrderId: string,
+  user: SessionUser,
+) {
+  const result = await client.query<{
+    work_order_status: WorkOrderStatus;
+    payment_status: PaymentStatus;
+  }>(
+    `select wo.status as work_order_status, p.status as payment_status
+     from work_orders wo
+     join payments p on p.work_order_id = wo.id
+     where wo.id = $1
+     for update of wo, p`,
+    [workOrderId],
+  );
+  const current = result.rows[0];
+  if (!current || !["paid", "debt"].includes(current.work_order_status)) {
+    return;
+  }
+
+  const nextStatus = current.payment_status === "paid" ? "paid" : "debt";
+  if (current.work_order_status === nextStatus) {
+    return;
+  }
+
+  await client.query(
+    `update work_orders
+     set status = $2,
+         updated_by = $3
+     where id = $1`,
+    [workOrderId, nextStatus, user.id],
+  );
+  await client.query(
+    `insert into work_order_status_history
+       (work_order_id, from_status, to_status, changed_by, note)
+     values ($1, $2, $3, $4, 'Tự đồng bộ sau khi admin điều chỉnh chi phí đã chốt')`,
+    [workOrderId, current.work_order_status, nextStatus, user.id],
+  );
+}
+
+export type WorkOrderPaymentInput = {
+  status: PaymentStatus;
+  method?: PaymentMethod | null;
+  amount?: number | null;
+  debtDueDate?: string | null;
+  note?: string | null;
+};
+
+const FIELD_PAYMENT_STATUSES = new Set<WorkOrderStatus>(["working", "awaiting_acceptance"]);
+const PAYMENT_SETTLEMENT_STATUSES = new Set<WorkOrderStatus>(["completed", "awaiting_payment", "debt"]);
+
+export async function recordWorkOrderPayment(
+  client: PoolClient,
+  workOrderId: string,
+  input: WorkOrderPaymentInput,
+  user: SessionUser,
+) {
+  await syncWorkOrderPaymentAmounts(client, workOrderId);
+
+  const paymentResult = await client.query<{
+    id: string;
+    code: string;
+    current_status: WorkOrderStatus;
+    total_amount: string;
+    paid_amount: string;
+  }>(
+    `select p.id, wo.code, wo.status as current_status, p.total_amount, p.paid_amount
+     from payments p
+     join work_orders wo on wo.id = p.work_order_id
+     where p.work_order_id = $1
+     for update of p, wo`,
+    [workOrderId],
+  );
+
+  const payment = paymentResult.rows[0];
+  if (!payment) {
+    throw new HttpError(404, "Không tìm thấy thanh toán");
+  }
+
+  const isFieldPayment = FIELD_PAYMENT_STATUSES.has(payment.current_status);
+  const isSettlementPayment = PAYMENT_SETTLEMENT_STATUSES.has(payment.current_status);
+  if (!isFieldPayment && !isSettlementPayment) {
+    throw new HttpError(
+      422,
+      "Chỉ ghi nhận thanh toán khi phiếu đang xử lý hiện trường, chờ nghiệm thu, đã nghiệm thu, chờ thu tiền hoặc đang công nợ",
+    );
+  }
+
+  const totalAmount = Number(payment.total_amount);
+  const paidBefore = Number(payment.paid_amount);
+  const remainingBefore = Math.max(totalAmount - paidBefore, 0);
+  const collectionAmount = input.amount ?? (input.status === "paid" ? remainingBefore : 0);
+
+  if (collectionAmount < 0) {
+    throw new HttpError(422, "Số tiền thu không hợp lệ");
+  }
+  if (input.status === "paid" && collectionAmount <= 0 && remainingBefore > 0) {
+    throw new HttpError(422, "Cần nhập số tiền đã thu");
+  }
+  if (collectionAmount > 0 && (!input.method || input.method === "debt")) {
+    throw new HttpError(422, "Cần nhập hình thức thanh toán tiền đã thu");
+  }
+  if (collectionAmount > remainingBefore) {
+    throw new HttpError(422, "Số tiền thu vượt quá số còn lại");
+  }
+
+  const paidAfter = paidBefore + collectionAmount;
+  const debtAfter = Math.max(totalAmount - paidAfter, 0);
+  const nextPaymentStatus = debtAfter > 0 ? "debt" : "paid";
+  const transactionRef = collectionAmount > 0 ? makePaymentTransactionRef(payment.code) : null;
+
+  if (debtAfter > 0 && !input.note && !input.debtDueDate) {
+    throw new HttpError(422, "Cần ghi chú hoặc ngày hẹn cho số tiền còn công nợ");
+  }
+
+  if (collectionAmount > 0 && transactionRef && input.method && input.method !== "debt") {
+    await client.query(
+      `insert into payment_transactions
+         (payment_id, work_order_id, amount, method, transaction_ref, note, collected_by)
+       values ($1, $2, $3, $4, $5, $6, $7)`,
+      [payment.id, workOrderId, collectionAmount, input.method, transactionRef, input.note, user.id],
+    );
+  }
+
+  await client.query(
+    `update payments
+     set paid_amount = $2,
+         debt_amount = $3,
+         status = $4,
+         method = $5,
+         transaction_ref = coalesce($6, transaction_ref),
+         debt_due_date = $7,
+         note = $8,
+         confirmed_by = $9,
+         confirmed_at = now()
+     where work_order_id = $1`,
+    [
+      workOrderId,
+      paidAfter,
+      debtAfter,
+      nextPaymentStatus,
+      debtAfter > 0 && collectionAmount === 0 ? "debt" : collectionAmount > 0 ? input.method : "cash",
+      transactionRef,
+      input.debtDueDate,
+      input.note,
+      user.id,
+    ],
+  );
+
+  if (isFieldPayment) {
+    const historyNote = collectionAmount > 0
+      ? `Ghi nhận thanh toán hiện trường ${collectionAmount.toLocaleString("vi-VN")}đ, còn công nợ ${debtAfter.toLocaleString("vi-VN")}đ`
+      : `Ghi nhận công nợ hiện trường ${debtAfter.toLocaleString("vi-VN")}đ`;
+    await client.query(
+      `insert into work_order_status_history
+         (work_order_id, from_status, to_status, changed_by, note)
+       values ($1, $2, $2, $3, $4)`,
+      [workOrderId, payment.current_status, user.id, input.note ? `${historyNote}. ${input.note}` : historyNote],
+    );
+  } else if (nextPaymentStatus === "paid") {
+    await changeWorkOrderPaymentStatus(client, workOrderId, "paid", user, `Xác nhận đã thu đủ ${totalAmount.toLocaleString("vi-VN")}đ`);
+  } else {
+    const note = collectionAmount > 0
+      ? `Thu ${collectionAmount.toLocaleString("vi-VN")}đ, còn công nợ ${debtAfter.toLocaleString("vi-VN")}đ`
+      : `Chuyển công nợ ${debtAfter.toLocaleString("vi-VN")}đ`;
+    await changeWorkOrderPaymentStatus(client, workOrderId, "debt", user, note);
+  }
+
+  await client.query(
+    `insert into notifications (user_id, work_order_id, title, body)
+     select u.id, $1, 'Thanh toán đã cập nhật', $2
+     from users u
+     where u.role in ('admin', 'dispatcher', 'accountant') and u.status = 'active'`,
+    [workOrderId, nextPaymentStatus === "paid" ? "Phiếu đã thu đủ tiền." : "Phiếu còn công nợ."],
+  );
+
+  return { nextPaymentStatus, paidAfter, debtAfter };
 }
 
 export function makePaymentTransactionRef(workOrderCode: string) {

@@ -96,6 +96,7 @@ create table work_orders (
   appointment_at timestamptz,
   internal_note text,
   labor_cost numeric(12, 2) not null default 0,
+  material_cost numeric(12, 2) not null default 0 check (material_cost >= 0),
   vat_rate numeric(5, 2) not null default 0,
   cancellation_reason text,
   check_in_at timestamptz,

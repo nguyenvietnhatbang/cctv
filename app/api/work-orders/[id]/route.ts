@@ -4,7 +4,7 @@ import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
 import { createSignedFileUrl, deleteWorkOrderFile } from "@/lib/storage";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateWorkOrderSchema } from "@/lib/validators";
-import { assertCanEditFinancials, assertCanReadWorkOrder } from "@/lib/work-orders";
+import { assertCanEditFinancials, assertCanReadWorkOrder, assertWorkOrderTotalCoversPaidAmount, syncClosedWorkOrderStatusFromPayment, syncWorkOrderPaymentAmounts } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -147,45 +147,6 @@ export async function PATCH(request: Request, context: Context) {
     }
 
     const result = await withTransaction(async (client) => {
-      if (body.materialCost !== undefined) {
-        const otherMaterialsResult = await client.query<{ total: string }>(
-          `select coalesce(sum(line_total), 0) as total
-           from work_order_materials
-           where work_order_id = $1 and name != 'Vật tư (nhập nhanh)'`,
-          [id],
-        );
-        const otherMaterialsTotal = Number(otherMaterialsResult.rows[0].total);
-        const diff = body.materialCost - otherMaterialsTotal;
-
-        if (diff > 0) {
-          const dummyResult = await client.query<{ id: string }>(
-            `select id from work_order_materials
-             where work_order_id = $1 and name = 'Vật tư (nhập nhanh)'`,
-            [id],
-          );
-          if (dummyResult.rows[0]) {
-            await client.query(
-              `update work_order_materials
-               set unit_price = $2, quantity = 1
-               where id = $1`,
-              [dummyResult.rows[0].id, diff],
-            );
-          } else {
-            await client.query(
-              `insert into work_order_materials (work_order_id, name, quantity, unit_price, created_by)
-               values ($1, 'Vật tư (nhập nhanh)', 1, $2, $3)`,
-              [id, diff, user.id],
-            );
-          }
-        } else {
-          await client.query(
-            `delete from work_order_materials
-             where work_order_id = $1 and name = 'Vật tư (nhập nhanh)'`,
-            [id],
-          );
-        }
-      }
-
       const updated = await client.query(
         `update work_orders
          set type = coalesce($2, type),
@@ -194,12 +155,13 @@ export async function PATCH(request: Request, context: Context) {
              appointment_at = case when $5::boolean then $6::timestamptz else appointment_at end,
              internal_note = coalesce($7, internal_note),
              labor_cost = coalesce($8, labor_cost),
-             vat_rate = coalesce($9, vat_rate),
-             completion_note = coalesce($10, completion_note),
-             acceptance_name = coalesce($11, acceptance_name),
-             acceptance_phone = coalesce($12, acceptance_phone),
-             cancellation_reason = coalesce($13, cancellation_reason),
-             updated_by = $14
+             material_cost = coalesce($9, material_cost),
+             vat_rate = coalesce($10, vat_rate),
+             completion_note = coalesce($11, completion_note),
+             acceptance_name = coalesce($12, acceptance_name),
+             acceptance_phone = coalesce($13, acceptance_phone),
+             cancellation_reason = coalesce($14, cancellation_reason),
+             updated_by = $15
          where id = $1
          returning id, code, status`,
         [
@@ -211,6 +173,7 @@ export async function PATCH(request: Request, context: Context) {
           body.appointmentAt ? new Date(body.appointmentAt) : null,
           body.internalNote ?? null,
           body.laborCost ?? null,
+          body.materialCost ?? null,
           body.vatRate ?? null,
           body.completionNote ?? null,
           body.acceptanceName ?? null,
@@ -220,46 +183,13 @@ export async function PATCH(request: Request, context: Context) {
         ],
       );
 
-      await client.query(
-        `update payments p
-         set material_amount = coalesce(m.total, 0),
-             labor_amount = wo.labor_cost,
-             vat_amount = round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
-             total_amount = wo.labor_cost + coalesce(m.total, 0)
-               + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2),
-             debt_amount = greatest(
-               wo.labor_cost + coalesce(m.total, 0)
-                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
-                 - p.paid_amount,
-               0
-             ),
-             status = case
-               when p.paid_amount <= 0 and p.status = 'unpaid' then 'unpaid'
-               when p.paid_amount >= wo.labor_cost + coalesce(m.total, 0)
-                 + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
-                 and p.method is not null then 'paid'
-               when p.status in ('paid', 'debt') then 'debt'
-               else p.status
-             end,
-             note = case
-               when p.status in ('paid', 'debt')
-                 and p.paid_amount < wo.labor_cost + coalesce(m.total, 0)
-                   + round((wo.labor_cost + coalesce(m.total, 0)) * wo.vat_rate / 100, 2)
-                 and p.note is null
-                 and p.debt_due_date is null
-               then 'Phát sinh công nợ do cập nhật chi phí'
-               else p.note
-             end
-         from work_orders wo
-         left join (
-           select work_order_id, sum(line_total) as total
-           from work_order_materials
-           where work_order_id = $1
-           group by work_order_id
-         ) m on m.work_order_id = wo.id
-         where p.work_order_id = wo.id and wo.id = $1`,
-        [id],
-      );
+      if (body.laborCost !== undefined || body.vatRate !== undefined || body.materialCost !== undefined) {
+        await assertWorkOrderTotalCoversPaidAmount(client, id);
+      }
+      await syncWorkOrderPaymentAmounts(client, id);
+      if (body.laborCost !== undefined || body.vatRate !== undefined || body.materialCost !== undefined) {
+        await syncClosedWorkOrderStatusFromPayment(client, id, user);
+      }
 
       return updated;
     });
@@ -276,10 +206,41 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    await requireUser(OPS_MANAGER_ROLES);
+    await requireUser(["admin"]);
     const { id } = await context.params;
 
     const filePaths = await withTransaction(async (client) => {
+      const deletableResult = await client.query<{
+        status: string;
+        accepted_at: string | null;
+        paid_amount: string;
+        has_transaction: boolean;
+      }>(
+        `select wo.status, wo.accepted_at, coalesce(p.paid_amount, 0) as paid_amount,
+                exists (
+                  select 1
+                  from payment_transactions pt
+                  where pt.work_order_id = wo.id
+                ) as has_transaction
+         from work_orders wo
+         left join payments p on p.work_order_id = wo.id
+         where wo.id = $1
+         for update of wo`,
+        [id],
+      );
+      const deletable = deletableResult.rows[0];
+      if (!deletable) {
+        throw new HttpError(404, "Không tìm thấy phiếu");
+      }
+      if (
+        !["pending_assignment", "cancelled"].includes(deletable.status)
+        || deletable.accepted_at
+        || Number(deletable.paid_amount) > 0
+        || deletable.has_transaction
+      ) {
+        throw new HttpError(422, "Không thể xóa phiếu đã phát sinh xử lý, nghiệm thu hoặc giao dịch tài chính");
+      }
+
       const filesResult = await client.query<{ path: string }>(
         "select path from work_order_files where work_order_id = $1",
         [id],

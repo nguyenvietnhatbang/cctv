@@ -5,7 +5,7 @@ import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { uploadWorkOrderBytes } from "@/lib/storage";
 import { acceptanceSchema } from "@/lib/validators";
-import { assertCanMutateFieldWork, changeWorkOrderPaymentStatus, changeWorkOrderStatus } from "@/lib/work-orders";
+import { assertCanMutateFieldWork, changeWorkOrderPaymentStatus, changeWorkOrderStatus, recordWorkOrderPayment } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -35,6 +35,13 @@ export async function POST(request: Request, context: Context) {
       }
       if (current.status !== "awaiting_acceptance") {
         throw new HttpError(422, "Chỉ ký nghiệm thu khi phiếu đang chờ nghiệm thu");
+      }
+
+      if (body.payment) {
+        if (!["admin", "dispatcher", "accountant", "technician"].includes(user.role)) {
+          throw new HttpError(403, "Tài khoản hiện tại không có quyền ghi nhận thanh toán");
+        }
+        await recordWorkOrderPayment(client, id, body.payment, user);
       }
 
       const uploaded = await uploadWorkOrderBytes(path, bytes, "image/png");

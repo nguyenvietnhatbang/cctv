@@ -5,7 +5,6 @@ import {
   CalendarClock,
   CheckCircle2,
   ClipboardCheck,
-  CreditCard,
   FileBox,
   MapPinned,
   Navigation,
@@ -32,7 +31,6 @@ import { DeadlineBadge, Modal, PendingButton, StageBadge, StatusBadge, Validated
 import type { Material, WorkFile, WorkOrderDetail } from "@/components/ops/types";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
 import { MaterialsForm } from "@/components/ops/modals/materials-form";
-import { PaymentForm } from "@/components/ops/modals/payment-form";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 
@@ -61,12 +59,6 @@ const TECHNICIAN_MODAL_TABS: ReadonlyArray<{ id: TechnicianModalTab; label: stri
   { id: "acceptance", label: "Nghiệm thu & TT", icon: CheckCircle2 },
 ];
 
-const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  unpaid: "Chưa thanh toán",
-  paid: "Đã thanh toán",
-  debt: "Công nợ",
-};
-
 function getCurrentPosition() {
   return new Promise<{ checkInLat: number; checkInLng: number } | null>((resolve) => {
     if (!("geolocation" in navigator)) {
@@ -91,51 +83,6 @@ function stepIndex(status: WorkOrderStatus) {
   if (index >= 0) return index;
   if (["awaiting_payment", "paid", "debt"].includes(status)) return STEP_ORDER.length;
   return -1;
-}
-
-function PaymentSummary({ detail }: { detail: WorkOrderDetail }) {
-  const paymentStatus = detail.workOrder.payment_status ?? "unpaid";
-  const paidAmount = detail.workOrder.paid_amount;
-  const debtAmount = detail.workOrder.debt_amount;
-  const latestTransaction = detail.paymentTransactions[0];
-
-  return (
-    <section className="modal-section">
-      <h3 className="section-title">Thanh toán</h3>
-      <div className="mt-3 grid gap-2 text-sm text-zinc-700">
-        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
-          <span>Tổng chi phí</span>
-          <strong className="text-zinc-950">{money(detail.workOrder.total_amount)}</strong>
-        </div>
-        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
-          <span>Đã thanh toán</span>
-          <strong className="text-zinc-950">{money(paidAmount)}</strong>
-        </div>
-        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
-          <span>Công nợ còn lại</span>
-          <strong className="text-zinc-950">{money(debtAmount)}</strong>
-        </div>
-        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
-          <span>Hiện trạng</span>
-          <strong className="text-zinc-950">{PAYMENT_STATUS_LABELS[paymentStatus] ?? paymentStatus}</strong>
-        </div>
-        <div className="flex items-center justify-between rounded-md bg-zinc-50 px-3 py-2">
-          <span>Hẹn ngày thanh toán</span>
-          <strong className="text-zinc-950">{detail.workOrder.debt_due_date ? dateTime(detail.workOrder.debt_due_date) : "Chưa có"}</strong>
-        </div>
-        <div className="rounded-md bg-zinc-50 px-3 py-2">
-          <p className="text-zinc-600">Giao dịch gần nhất</p>
-          <p className="mt-1 font-semibold text-zinc-950">
-            {latestTransaction ? `${latestTransaction.transaction_ref} · ${money(latestTransaction.amount)}` : "Chưa có"}
-          </p>
-        </div>
-        <div className="rounded-md bg-zinc-50 px-3 py-2">
-          <p className="text-zinc-600">Ghi chú khác</p>
-          <p className="mt-1 font-semibold text-zinc-950 whitespace-pre-wrap">{detail.workOrder.payment_note ?? "Chưa có"}</p>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function FieldCostForm({
@@ -164,7 +111,7 @@ function FieldCostForm({
       ) : null}
       <div className="mt-3 grid gap-3">
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
-          Chi phí vật tư
+          Chi phí vật tư đã chốt
           <MoneyInput name="materialCost" className="input" defaultValue={Number(detail.workOrder.material_amount)} placeholder="VD: 500.000" disabled={locked || isSubmitting} />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
@@ -279,7 +226,6 @@ export function TechnicianJobModal({
   onMaterialCreate,
   onMaterialUpdate,
   onMaterialDelete,
-  onPayment,
   onAcceptance,
   pendingAction = null,
   materialPendingAction = null,
@@ -294,7 +240,6 @@ export function TechnicianJobModal({
   onMaterialCreate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onMaterialUpdate: (material: Material, event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onMaterialDelete: (material: Material) => void | Promise<void>;
-  onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAcceptance: (payload: {
     acceptanceName: string;
     acceptancePhone: string | null;
@@ -338,7 +283,6 @@ export function TechnicianJobModal({
   const canCheckout = Boolean(checkoutTransition);
   const canResume = Boolean(resumeTransition);
   const canQuickCheckIn = status === "assigned" || status === "accepted";
-  const canCollectPayment = ["working", "awaiting_acceptance", "completed", "awaiting_payment", "debt"].includes(status);
   const nextStatus = nextFieldTransition?.status ?? null;
   const NextIcon = nextStatus ? ACTION_ICONS[nextStatus] ?? Play : ClipboardCheck;
 
@@ -589,7 +533,7 @@ export function TechnicianJobModal({
 
           {activeTab === "acceptance" ? (
             canSignAcceptance ? (
-              <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
+              <SignatureAcceptanceForm detail={detail} allowPayment onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
             ) : (
               <div className="modal-section">
                 <h3 className="section-title">Nghiệm thu</h3>
@@ -608,7 +552,7 @@ export function TechnicianJobModal({
           <div className="p-1">
             <MaterialsForm
               detail={detail}
-              locked={status === "cancelled"}
+              locked={fieldLocked}
               pendingAction={materialPendingAction}
               onCreate={onMaterialCreate}
               onUpdate={onMaterialUpdate}

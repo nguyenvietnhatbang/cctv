@@ -153,6 +153,7 @@ export const acceptanceSchema = z.object({
   acceptancePhone: z.string().trim().optional().nullable(),
   signatureDataUrl: z.string().startsWith("data:image/png;base64,"),
   agreed: z.literal(true),
+  payment: updatePaymentSchema.optional(),
 });
 
 export const notificationReadSchema = z.object({

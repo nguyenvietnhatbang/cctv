@@ -33,7 +33,7 @@ const technicianTabs: ReadonlyArray<{ id: EditTab; label: string; icon: LucideIc
   { id: "acceptance", label: "Nghiệm thu", icon: CheckCircle2 },
 ];
 
-const FINANCIAL_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "paid", "debt", "cancelled"];
+const FINANCIAL_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "awaiting_payment", "paid", "debt", "cancelled"];
 
 function getCurrentPosition() {
   return new Promise<{ checkInLat: number; checkInLng: number } | null>((resolve) => {
@@ -421,7 +421,7 @@ export function WorkOrderEditModal({
               <FileUploadForm detail={detail} locked={financialLocked} onSubmit={onUpload} onDelete={onFileDelete} isUploading={pendingAction === "upload"} deletingFileId={deletingFileId} />
               <MaterialsForm
                 detail={detail}
-                locked={detail.workOrder.status === "cancelled"}
+                locked={financialLocked}
                 onCreate={onMaterialCreate}
                 onUpdate={onMaterialUpdate}
                 onDelete={onMaterialDelete}
@@ -433,7 +433,7 @@ export function WorkOrderEditModal({
           {activeTab === "acceptance" ? (
             <section className="grid gap-4">
               {detail.workOrder.status === "awaiting_acceptance" ? (
-                <SignatureAcceptanceForm detail={detail} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
+                <SignatureAcceptanceForm detail={detail} allowPayment={canPay} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
               ) : detail.workOrder.accepted_at ? (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                   <p className="font-semibold">Đã nghiệm thu: {dateTime(detail.workOrder.accepted_at)}</p>

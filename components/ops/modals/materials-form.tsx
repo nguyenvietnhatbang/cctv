@@ -26,18 +26,26 @@ export function MaterialsForm({
     return pendingAction?.type !== "create" && pendingAction?.id === materialId;
   }
 
-  const hasDummyRow = detail.materials.some((m) => m.name === "Vật tư (nhập nhanh)");
+  const actualMaterialTotal = detail.materials.reduce((total, material) => total + Number(material.line_total), 0);
 
   return (
     <div className="modal-section">
       <h3 className="section-title">Vật tư</h3>
-      {hasDummyRow && !locked ? (
-        <p className="mt-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-          <strong>Lưu ý:</strong> Bạn đã nhập nhanh tổng chi phí vật tư trước đó. Hãy xóa hoặc cập nhật dòng &quot;Vật tư (nhập nhanh)&quot; khi nhập chi tiết vật tư để tránh tính trùng chi phí.
-        </p>
-      ) : null}
+      <p className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-800">
+        Danh sách này dùng để ghi nhận vật liệu thực tế đã sử dụng. Bổ sung hoặc chỉnh sửa vật liệu không làm thay đổi chi phí vật liệu đã chốt của phiếu.
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-md bg-zinc-50 px-3 py-2">
+          <p className="text-xs text-zinc-500">Chi phí đã chốt</p>
+          <strong>{money(detail.workOrder.material_amount)}</strong>
+        </div>
+        <div className="rounded-md bg-zinc-50 px-3 py-2">
+          <p className="text-xs text-zinc-500">Tổng vật liệu kê khai</p>
+          <strong>{money(actualMaterialTotal)}</strong>
+        </div>
+      </div>
       {locked ? (
-        <p className="mt-2 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">Không thể điều chỉnh vật tư của phiếu đã hủy.</p>
+        <p className="mt-2 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">Vật liệu đã khóa sau nghiệm thu/thanh toán.</p>
       ) : (
         <ValidatedForm onSubmit={onCreate} aria-busy={pendingAction?.type === "create"}>
           <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_5rem_7rem]">

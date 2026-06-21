@@ -9,12 +9,20 @@ type Context = {
   params: Promise<{ id: string }>;
 };
 
+type HistoryFile = {
+  id: string;
+  path: string;
+  original_name: string;
+  mime_type: string;
+  purpose: string;
+};
+
 export async function GET(_request: Request, context: Context) {
   try {
     await requireUser();
     const { id } = await context.params;
 
-    const result = await query(
+    const result = await query<{ files: HistoryFile[] }>(
       `select wo.id, wo.code, wo.type, wo.status, wo.description, 
               wo.appointment_at, wo.created_at, wo.completion_note,
               wo.internal_note, wo.cancellation_reason,
@@ -63,7 +71,7 @@ export async function GET(_request: Request, context: Context) {
     const history = await Promise.all(
       result.rows.map(async (row) => {
         const signedFiles = await Promise.all(
-          (row.files || []).map(async (file: any) => {
+          (row.files || []).map(async (file) => {
             try {
               return {
                 id: file.id,
@@ -95,4 +103,3 @@ export async function GET(_request: Request, context: Context) {
     return handleRouteError(error);
   }
 }
-

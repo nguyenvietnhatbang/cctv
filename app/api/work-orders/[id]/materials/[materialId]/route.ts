@@ -3,7 +3,7 @@ import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateMaterialSchema } from "@/lib/validators";
-import { assertCanEditFinancials, assertCanMutateFieldWork, syncWorkOrderPaymentAmounts } from "@/lib/work-orders";
+import { assertCanEditFinancials, assertCanMutateFieldWork } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -18,6 +18,7 @@ export async function PATCH(request: Request, context: Context) {
     const body = updateMaterialSchema.parse(await request.json());
 
     await assertCanMutateFieldWork(user, id);
+    await assertCanEditFinancials(user, id);
 
     const updated = await withTransaction(async (client) => {
       const result = await client.query(
@@ -34,7 +35,6 @@ export async function PATCH(request: Request, context: Context) {
         throw new HttpError(404, "Không tìm thấy vật tư");
       }
 
-      await syncWorkOrderPaymentAmounts(client, id);
       return result.rows[0];
     });
 
@@ -50,6 +50,7 @@ export async function DELETE(_request: Request, context: Context) {
     const { id, materialId } = await context.params;
 
     await assertCanMutateFieldWork(user, id);
+    await assertCanEditFinancials(user, id);
 
     await withTransaction(async (client) => {
       const result = await client.query(
@@ -60,8 +61,6 @@ export async function DELETE(_request: Request, context: Context) {
       if (!result.rows[0]) {
         throw new HttpError(404, "Không tìm thấy vật tư");
       }
-
-      await syncWorkOrderPaymentAmounts(client, id);
     });
 
     return jsonNoContent();

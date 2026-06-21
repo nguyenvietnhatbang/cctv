@@ -74,7 +74,6 @@ type TechnicianJobModalProps = {
   onMaterialDelete: (material: MaterialItem) => void | Promise<void>;
   onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onFileDelete: (file: FileItem) => void | Promise<void>;
-  onPayment: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAcceptance: (payload: AcceptancePayload) => void | Promise<void>;
 };
 
@@ -293,27 +292,6 @@ export function OpsModalLayer({
 
   async function handleAcceptance(payload: AcceptancePayload) {
     if (!detail) return;
-    if (payload.payment) {
-      await apiFetch(`/api/work-orders/${detail.workOrder.id}/payment`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          status: payload.payment.status,
-          method: payload.payment.method,
-          amount: payload.payment.amount,
-          debtDueDate: payload.payment.debtDueDate,
-          note: payload.payment.note,
-        }),
-      });
-      if (payload.payment.billFile && payload.payment.billFile.size > 0) {
-        const uploadData = new FormData();
-        uploadData.set("purpose", "bill");
-        uploadData.set("file", payload.payment.billFile);
-        await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, {
-          method: "POST",
-          body: uploadData,
-        });
-      }
-    }
     await apiFetch(`/api/work-orders/${detail.workOrder.id}/acceptance`, {
       method: "POST",
       body: JSON.stringify({
@@ -321,8 +299,24 @@ export function OpsModalLayer({
         acceptancePhone: payload.acceptancePhone,
         signatureDataUrl: payload.signatureDataUrl,
         agreed: true,
+        payment: payload.payment ? {
+          status: payload.payment.status,
+          method: payload.payment.method,
+          amount: payload.payment.amount,
+          debtDueDate: payload.payment.debtDueDate,
+          note: payload.payment.note,
+        } : undefined,
       }),
     });
+    if (payload.payment?.billFile && payload.payment.billFile.size > 0) {
+      const uploadData = new FormData();
+      uploadData.set("purpose", "bill");
+      uploadData.set("file", payload.payment.billFile);
+      await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, {
+        method: "POST",
+        body: uploadData,
+      });
+    }
     await afterMutation();
   }
 
@@ -379,7 +373,6 @@ export function OpsModalLayer({
             setDeletingFileId(file.id);
             return runMutation("file-delete", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/files/${file.id}`, { method: "DELETE" }); await afterMutation(); }).finally(() => setDeletingFileId(null));
           }}
-          onPayment={(event) => runMutation("payment", () => submitPayment(event))}
           onAcceptance={(payload) => runMutation("acceptance", () => handleAcceptance(payload))}
         />
       ) : null}

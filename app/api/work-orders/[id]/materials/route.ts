@@ -3,7 +3,7 @@ import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createMaterialSchema } from "@/lib/validators";
-import { assertCanEditFinancials, assertCanMutateFieldWork, syncWorkOrderPaymentAmounts } from "@/lib/work-orders";
+import { assertCanEditFinancials, assertCanMutateFieldWork, assertCanReadWorkOrder } from "@/lib/work-orders";
 
 export const runtime = "nodejs";
 
@@ -13,8 +13,9 @@ type Context = {
 
 export async function GET(_request: Request, context: Context) {
   try {
-    await requireUser();
+    const user = await requireUser();
     const { id } = await context.params;
+    await assertCanReadWorkOrder(user, id);
 
     const result = await query(
       `select id, name, quantity, unit_price, line_total, created_at
@@ -37,6 +38,7 @@ export async function POST(request: Request, context: Context) {
     const body = createMaterialSchema.parse(await request.json());
 
     await assertCanMutateFieldWork(user, id);
+    await assertCanEditFinancials(user, id);
 
     const created = await withTransaction(async (client) => {
       const materialResult = await client.query(
@@ -45,8 +47,6 @@ export async function POST(request: Request, context: Context) {
          returning id, name, quantity, unit_price, line_total`,
         [id, body.name, body.quantity, body.unitPrice, user.id],
       );
-
-      await syncWorkOrderPaymentAmounts(client, id);
 
       return materialResult.rows[0];
     });

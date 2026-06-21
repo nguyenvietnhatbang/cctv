@@ -122,7 +122,7 @@ export function ReportsScreen({
             { header: "Tiền thu trong kỳ", value: (row) => money(row.collected_amount), align: "right" },
             { header: "Công nợ", value: (row) => money(row.open_debt), align: "right" },
             { header: "Nhân công", value: (row) => money(row.labor_amount), align: "right" },
-            { header: "Vật tư", value: (row) => money(row.material_amount), align: "right" },
+            { header: "Chi phí vật tư đã chốt", value: (row) => money(row.material_amount), align: "right" },
             { header: "VAT", value: (row) => money(row.vat_amount), align: "right" },
             { header: "Tổng phát sinh", value: (row) => money(row.gross_amount), align: "right" },
           ],
@@ -170,7 +170,7 @@ export function ReportsScreen({
           ],
         }),
         createExcelSection({
-          title: "Vật tư đã dùng",
+          title: "Vật tư đã kê khai sử dụng",
           rows: report.materials,
           emptyText: "Không có dữ liệu vật tư.",
           columns: [
@@ -267,7 +267,7 @@ export function ReportsScreen({
               <strong>{money(report.summary.labor_amount)}</strong>
             </div>
             <div className="metric-card">
-              <span>Vật tư</span>
+              <span>Vật tư đã chốt</span>
               <strong>{money(report.summary.material_amount)}</strong>
             </div>
             <div className="metric-card">

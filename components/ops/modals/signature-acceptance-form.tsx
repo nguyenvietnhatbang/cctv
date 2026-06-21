@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { CheckCircle2, CreditCard, Eraser } from "lucide-react";
+import { CheckCircle2, Eraser } from "lucide-react";
 import { money } from "@/components/ops/format";
 import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
@@ -11,6 +11,7 @@ import { MoneyInput } from "@/components/ops/money-input";
 export function SignatureAcceptanceForm({
   detail,
   onAcceptance,
+  allowPayment = false,
   isSubmitting = false,
 }: {
   detail: WorkOrderDetail;
@@ -27,14 +28,18 @@ export function SignatureAcceptanceForm({
       billFile: File | null;
     };
   }) => void | Promise<void>;
+  allowPayment?: boolean;
   isSubmitting?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [drawing, setDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [includePayment, setIncludePayment] = useState(false);
 
   const workOrderStatus = detail.workOrder.status;
-  const canCollectPayment = ["working", "awaiting_acceptance", "completed", "awaiting_payment", "debt"].includes(workOrderStatus);
+  const canOfferPayment = allowPayment
+    && ["working", "awaiting_acceptance", "completed", "awaiting_payment", "debt"].includes(workOrderStatus);
+  const canCollectPayment = canOfferPayment && includePayment;
   
   const laborAmount = Number(detail.workOrder.labor_amount ?? detail.workOrder.labor_cost ?? 0);
   const totalAmount = Number(detail.workOrder.total_amount);
@@ -118,7 +123,7 @@ export function SignatureAcceptanceForm({
 
   return (
     <ValidatedForm onSubmit={submit} aria-busy={isSubmitting} className="modal-section">
-      <h3 className="section-title">Nghiệm thu & Thanh toán</h3>
+      <h3 className="section-title">{canCollectPayment ? "Nghiệm thu & Thanh toán" : "Nghiệm thu"}</h3>
       
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
         {/* Cột trái: Chi tiết thanh toán */}
@@ -131,7 +136,7 @@ export function SignatureAcceptanceForm({
                 <strong>{money(laborAmount)}</strong>
               </div>
               <div className="flex justify-between">
-                <span>Tiền vật tư:</span>
+                <span>Chi phí vật tư đã chốt:</span>
                 <strong>{money(detail.workOrder.material_amount)}</strong>
               </div>
               <div className="flex justify-between">
@@ -152,6 +157,22 @@ export function SignatureAcceptanceForm({
               </div>
             </div>
           </div>
+
+          {canOfferPayment ? (
+            <label className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={includePayment}
+                onChange={(event) => setIncludePayment(event.target.checked)}
+                disabled={isSubmitting}
+              />
+              <span>
+                <strong>Ghi nhận thanh toán cùng lúc nghiệm thu</strong>
+                <span className="mt-0.5 block text-xs leading-5 text-blue-700">Bỏ chọn nếu chỉ ký nghiệm thu và chuyển cho điều phối/kế toán thu tiền sau.</span>
+              </span>
+            </label>
+          ) : null}
 
           {canCollectPayment ? (
             <div className="grid gap-2">

@@ -97,7 +97,7 @@ export async function GET(_request: Request, context: Context) {
             </div>
             <table class="totals">
               <tbody>
-                <tr><td>Tiền vật tư</td><td class="right">${money(order.material_amount)}</td></tr>
+                <tr><td>Chi phí vật tư đã chốt</td><td class="right">${money(order.material_amount)}</td></tr>
                 <tr><td>Nhân công / dịch vụ</td><td class="right">${money(order.labor_amount)}</td></tr>
                 <tr><td>VAT</td><td class="right">${money(order.vat_amount)}</td></tr>
                 <tr class="grand"><td>Tổng báo giá</td><td class="right">${money(order.total_amount)}</td></tr>
