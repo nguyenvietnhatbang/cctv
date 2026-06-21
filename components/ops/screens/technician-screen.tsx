@@ -19,7 +19,8 @@ import {
 import { dateTime } from "@/components/ops/format";
 import { mapSearchUrl } from "@/components/ops/app-utils";
 import { DeadlineBadge, PendingButton, StageBadge, StatusBadge, Modal } from "@/components/ops/ui";
-import type { WorkOrderListItem } from "@/components/ops/types";
+import type { WorkFile, WorkOrderListItem } from "@/components/ops/types";
+import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 import {
   getAllowedWorkOrderTransitions,
   WORK_ORDER_STATUS_DESCRIPTIONS,
@@ -200,9 +201,9 @@ function TechnicianWorkCard({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="mobile-job-actions">
         <PendingButton
-          className={`btn-primary h-12 text-xs px-1 sm:text-sm sm:px-3 ${!canQuickCheckIn ? "col-span-2" : ""}`}
+          className={`btn-primary ${!canQuickCheckIn ? "col-span-2" : ""}`}
           onClick={() => onNextAction(order)}
           type="button"
           pending={pending && action.type === "status"}
@@ -214,7 +215,7 @@ function TechnicianWorkCard({
 
         {canQuickCheckIn ? (
           <PendingButton
-            className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
+            className="btn-secondary"
             onClick={() => onCheckIn(order)}
             type="button"
             pending={pending}
@@ -226,7 +227,7 @@ function TechnicianWorkCard({
         ) : null}
 
         <button
-          className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
+          className="btn-secondary"
           onClick={() => onEdit(order.id)}
           type="button"
         >
@@ -235,7 +236,7 @@ function TechnicianWorkCard({
         </button>
 
         <a
-          className="btn-primary h-12 text-xs px-1 sm:text-sm sm:px-3"
+          className="btn-primary"
           href={`tel:${order.customer_phone}`}
         >
           <Phone size={14} className="shrink-0" />
@@ -243,7 +244,7 @@ function TechnicianWorkCard({
         </a>
 
         <a
-          className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
+          className="btn-secondary"
           href={mapSearchUrl({ address: order.customer_address, lat: order.customer_lat, lng: order.customer_lng })}
           target="_blank"
           rel="noreferrer"
@@ -253,7 +254,7 @@ function TechnicianWorkCard({
         </a>
 
         <button
-          className="btn-secondary h-12 text-xs px-1 sm:text-sm sm:px-3"
+          className="btn-secondary"
           onClick={() => onHistory(order.customer_id, order.customer_name)}
           type="button"
         >
@@ -517,7 +518,14 @@ type HistoryWorkOrder = {
   appointment_at: string | null;
   created_at: string;
   completion_note: string | null;
+  internal_note: string | null;
+  cancellation_reason: string | null;
+  acceptance_name: string | null;
+  acceptance_phone: string | null;
+  accepted_at: string | null;
+  technician_name: string;
   materials: Array<{ name: string; quantity: number | string }>;
+  files: WorkFile[];
 };
 
 function CustomerHistoryModal({
@@ -590,6 +598,25 @@ function CustomerHistoryModal({
                 </div>
               </div>
               <div className="mt-3 space-y-3 text-sm">
+                {(item.technician_name || item.acceptance_name) && (
+                  <div className="grid gap-2 border-b border-zinc-100 pb-2.5 text-xs text-zinc-500 sm:grid-cols-2">
+                    {item.technician_name && (
+                      <div>
+                        <span className="font-semibold text-zinc-700">Kỹ thuật thực hiện: </span>
+                        <span className="text-zinc-900">{item.technician_name}</span>
+                      </div>
+                    )}
+                    {item.acceptance_name && (
+                      <div>
+                        <span className="font-semibold text-zinc-700">Khách ký nghiệm thu: </span>
+                        <span className="text-zinc-900">
+                          {item.acceptance_name} {item.acceptance_phone ? `(${item.acceptance_phone})` : ""}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-zinc-400"></span>
@@ -597,6 +624,17 @@ function CustomerHistoryModal({
                   </h4>
                   <p className="mt-1 pl-3 text-zinc-600 whitespace-pre-wrap leading-relaxed">{item.description || "Không có mô tả"}</p>
                 </div>
+
+                {item.internal_note && (
+                  <div>
+                    <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-blue-400"></span>
+                      Ghi chú nội bộ
+                    </h4>
+                    <p className="mt-1 pl-3 text-zinc-600 whitespace-pre-wrap leading-relaxed">{item.internal_note}</p>
+                  </div>
+                )}
+
                 {item.completion_note && (
                   <div>
                     <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5">
@@ -606,6 +644,17 @@ function CustomerHistoryModal({
                     <p className="mt-1 pl-3 text-zinc-600 whitespace-pre-wrap leading-relaxed">{item.completion_note}</p>
                   </div>
                 )}
+
+                {item.cancellation_reason && (
+                  <div>
+                    <h4 className="font-semibold text-red-800 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-600"></span>
+                      Lý do hủy
+                    </h4>
+                    <p className="mt-1 pl-3 text-red-600 whitespace-pre-wrap leading-relaxed">{item.cancellation_reason}</p>
+                  </div>
+                )}
+
                 <div>
                   <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-orange-400"></span>
@@ -636,6 +685,18 @@ function CustomerHistoryModal({
                     )}
                   </div>
                 </div>
+
+                {item.files && item.files.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-zinc-800 flex items-center gap-1.5 mb-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
+                      Ảnh & Tài liệu hiện trường
+                    </h4>
+                    <div className="pl-3">
+                      <WorkFileGallery files={item.files} />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
