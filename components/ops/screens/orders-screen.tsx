@@ -208,7 +208,7 @@ export function OrdersScreen({
       </div>
 
       {/* Orders Table Shell with Compact Filter Header */}
-      <TableShell>
+      <TableShell className="orders-table-shell">
         <div className="table-toolbar">
           <div className="table-filter-row">
             {SCOPE_FILTERS.map((item) => (

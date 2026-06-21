@@ -284,10 +284,12 @@ export function EmptyState({ children }: { children: ReactNode }) {
 
 export function TableShell({
   children,
+  className = "",
 }: {
   children: ReactNode;
+  className?: string;
 }) {
-  return <div className="table-shell">{children}</div>;
+  return <div className={`table-shell ${className}`.trim()}>{children}</div>;
 }
 
 export const TABLE_PAGE_SIZE = 10;
