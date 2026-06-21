@@ -101,6 +101,7 @@ export const updateWorkOrderSchema = z.object({
   appointmentAt: z.string().datetime().optional().nullable(),
   internalNote: optionalText,
   laborCost: optionalMoneyInput,
+  materialCost: optionalMoneyInput,
   vatRate: percentInput.optional(),
   completionNote: optionalText,
   acceptanceName: optionalText,

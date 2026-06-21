@@ -762,6 +762,7 @@ export function OpsApp() {
     if (formData.has("completionNote")) payload.completionNote = formData.get("completionNote") || null;
     if (formData.has("internalNote")) payload.internalNote = formData.get("internalNote") || null;
     if (formData.has("laborCost")) payload.laborCost = formData.get("laborCost");
+    if (formData.has("materialCost")) payload.materialCost = formData.get("materialCost");
     if (formData.has("vatRate")) payload.vatRate = formData.get("vatRate");
     await apiFetch(`/api/work-orders/${detail.workOrder.id}`, {
       method: "PATCH",

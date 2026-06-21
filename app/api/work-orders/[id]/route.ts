@@ -142,11 +142,50 @@ export async function PATCH(request: Request, context: Context) {
 
     await assertCanReadWorkOrder(user, id);
     const body = updateWorkOrderSchema.parse(await request.json());
-    if (body.laborCost !== undefined || body.vatRate !== undefined) {
+    if (body.laborCost !== undefined || body.vatRate !== undefined || body.materialCost !== undefined) {
       await assertCanEditFinancials(user, id);
     }
 
     const result = await withTransaction(async (client) => {
+      if (body.materialCost !== undefined) {
+        const otherMaterialsResult = await client.query<{ total: string }>(
+          `select coalesce(sum(line_total), 0) as total
+           from work_order_materials
+           where work_order_id = $1 and name != 'Vật tư (nhập nhanh)'`,
+          [id],
+        );
+        const otherMaterialsTotal = Number(otherMaterialsResult.rows[0].total);
+        const diff = body.materialCost - otherMaterialsTotal;
+
+        if (diff > 0) {
+          const dummyResult = await client.query<{ id: string }>(
+            `select id from work_order_materials
+             where work_order_id = $1 and name = 'Vật tư (nhập nhanh)'`,
+            [id],
+          );
+          if (dummyResult.rows[0]) {
+            await client.query(
+              `update work_order_materials
+               set unit_price = $2, quantity = 1
+               where id = $1`,
+              [dummyResult.rows[0].id, diff],
+            );
+          } else {
+            await client.query(
+              `insert into work_order_materials (work_order_id, name, quantity, unit_price, created_by)
+               values ($1, 'Vật tư (nhập nhanh)', 1, $2, $3)`,
+              [id, diff, user.id],
+            );
+          }
+        } else {
+          await client.query(
+            `delete from work_order_materials
+             where work_order_id = $1 and name = 'Vật tư (nhập nhanh)'`,
+            [id],
+          );
+        }
+      }
+
       const updated = await client.query(
         `update work_orders
          set type = coalesce($2, type),
