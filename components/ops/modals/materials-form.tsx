@@ -26,11 +26,18 @@ export function MaterialsForm({
     return pendingAction?.type !== "create" && pendingAction?.id === materialId;
   }
 
+  const hasDummyRow = detail.materials.some((m) => m.name === "Vật tư (nhập nhanh)");
+
   return (
     <div className="modal-section">
       <h3 className="section-title">Vật tư</h3>
+      {hasDummyRow && !locked ? (
+        <p className="mt-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+          <strong>Lưu ý:</strong> Bạn đã nhập nhanh tổng chi phí vật tư trước đó. Hãy xóa hoặc cập nhật dòng &quot;Vật tư (nhập nhanh)&quot; khi nhập chi tiết vật tư để tránh tính trùng chi phí.
+        </p>
+      ) : null}
       {locked ? (
-        <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">Vật tư đã khóa sau nghiệm thu/thanh toán.</p>
+        <p className="mt-2 rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600">Không thể điều chỉnh vật tư của phiếu đã hủy.</p>
       ) : (
         <ValidatedForm onSubmit={onCreate} aria-busy={pendingAction?.type === "create"}>
           <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_5rem_7rem]">

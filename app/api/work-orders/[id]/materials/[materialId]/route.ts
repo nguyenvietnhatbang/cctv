@@ -18,7 +18,6 @@ export async function PATCH(request: Request, context: Context) {
     const body = updateMaterialSchema.parse(await request.json());
 
     await assertCanMutateFieldWork(user, id);
-    await assertCanEditFinancials(user, id);
 
     const updated = await withTransaction(async (client) => {
       const result = await client.query(
@@ -51,7 +50,6 @@ export async function DELETE(_request: Request, context: Context) {
     const { id, materialId } = await context.params;
 
     await assertCanMutateFieldWork(user, id);
-    await assertCanEditFinancials(user, id);
 
     await withTransaction(async (client) => {
       const result = await client.query(

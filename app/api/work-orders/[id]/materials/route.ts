@@ -37,7 +37,6 @@ export async function POST(request: Request, context: Context) {
     const body = createMaterialSchema.parse(await request.json());
 
     await assertCanMutateFieldWork(user, id);
-    await assertCanEditFinancials(user, id);
 
     const created = await withTransaction(async (client) => {
       const materialResult = await client.query(

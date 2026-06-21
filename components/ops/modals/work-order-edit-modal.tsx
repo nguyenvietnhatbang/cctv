@@ -421,7 +421,7 @@ export function WorkOrderEditModal({
               <FileUploadForm detail={detail} locked={financialLocked} onSubmit={onUpload} onDelete={onFileDelete} isUploading={pendingAction === "upload"} deletingFileId={deletingFileId} />
               <MaterialsForm
                 detail={detail}
-                locked={financialLocked}
+                locked={detail.workOrder.status === "cancelled"}
                 onCreate={onMaterialCreate}
                 onUpdate={onMaterialUpdate}
                 onDelete={onMaterialDelete}

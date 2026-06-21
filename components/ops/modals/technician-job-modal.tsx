@@ -556,7 +556,7 @@ export function TechnicianJobModal({
               <FieldCostForm detail={detail} locked={fieldLocked} isSubmitting={pendingAction === "update"} onSubmit={onUpdate} />
               <MaterialsForm
                 detail={detail}
-                locked={fieldLocked}
+                locked={status === "cancelled"}
                 pendingAction={materialPendingAction}
                 onCreate={onMaterialCreate}
                 onUpdate={onMaterialUpdate}
