@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { createNotifications, schedulePushProcessing } from "@/lib/notifications";
 import { createSignedFileUrl, deleteWorkOrderFile } from "@/lib/storage";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateWorkOrderSchema } from "@/lib/validators";
@@ -147,6 +148,25 @@ export async function PATCH(request: Request, context: Context) {
     }
 
     const result = await withTransaction(async (client) => {
+      const currentResult = await client.query<{
+        code: string;
+        type: string;
+        priority: "normal" | "urgent";
+        description: string;
+        appointment_at: string | null;
+        internal_note: string | null;
+      }>(
+        `select code, type, priority, description, appointment_at, internal_note
+         from work_orders
+         where id = $1
+         for update`,
+        [id],
+      );
+      const current = currentResult.rows[0];
+      if (!current) {
+        throw new HttpError(404, "Không tìm thấy phiếu");
+      }
+
       const updated = await client.query(
         `update work_orders
          set type = coalesce($2, type),
@@ -191,6 +211,40 @@ export async function PATCH(request: Request, context: Context) {
         await syncClosedWorkOrderStatusFromPayment(client, id, user);
       }
 
+      const appointmentWasProvided = Object.prototype.hasOwnProperty.call(body, "appointmentAt");
+      const currentAppointment = current.appointment_at ? new Date(current.appointment_at).getTime() : null;
+      const nextAppointment = body.appointmentAt ? new Date(body.appointmentAt).getTime() : null;
+      const importantChanged =
+        (body.type !== undefined && body.type !== current.type)
+        || (body.priority !== undefined && body.priority !== current.priority)
+        || (body.description !== undefined && body.description !== current.description)
+        || (appointmentWasProvided && nextAppointment !== currentAppointment)
+        || (body.internalNote !== undefined && body.internalNote !== current.internal_note);
+
+      if (importantChanged) {
+        const recipients = await client.query<{ user_id: string }>(
+          `select technician.user_id
+           from work_order_assignments assignment
+           join technicians technician on technician.id = assignment.technician_id
+           join users technician_user on technician_user.id = technician.user_id
+           where assignment.work_order_id = $1
+             and assignment.unassigned_at is null
+             and technician_user.status = 'active'`,
+          [id],
+        );
+        await createNotifications(
+          client,
+          recipients.rows.map((recipient) => ({
+            userId: recipient.user_id,
+            workOrderId: id,
+            type: "work_order_updated",
+            priority: (body.priority ?? current.priority) === "urgent" ? "urgent" : "high",
+            title: `Phiếu ${current.code} đã cập nhật`,
+            body: "Lịch hẹn hoặc nội dung công việc đã thay đổi. Mở phiếu để kiểm tra.",
+          })),
+        );
+      }
+
       return updated;
     });
 
@@ -198,6 +252,7 @@ export async function PATCH(request: Request, context: Context) {
       return Response.json({ error: "Không tìm thấy phiếu" }, { status: 404 });
     }
 
+    schedulePushProcessing();
     return jsonOk({ workOrder: result.rows[0] });
   } catch (error) {
     return handleRouteError(error);

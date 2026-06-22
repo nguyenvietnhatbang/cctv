@@ -31,6 +31,7 @@ import { OpsModalLayer } from "@/components/ops/ops-modal-layer";
 import { OpsScreenSwitcher, preloadOpsScreen } from "@/components/ops/ops-screen-switcher";
 import { OpsShell } from "@/components/ops/ops-shell";
 import { LoadingScreen } from "@/components/ops/ui";
+import { usePwaPush } from "@/components/ops/use-pwa-push";
 import { BACK_OFFICE_ROLES, isOpsManagerRole } from "@/lib/types";
 
 const ORDER_BACKED_SECTIONS = new Set<TabId>(["dashboard", "orders", "customers", "dispatch", "technician", "payments"]);
@@ -65,12 +66,12 @@ export function OpsApp() {
   const [reportLoading, setReportLoading] = useState(false);
   const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
   const ordersCacheRef = useRef<Record<string, WorkOrderListItem[]>>({});
-  const notificationIdsRef = useRef<Set<string> | null>(null);
+  const notificationSnapshotRef = useRef<string | null>(null);
+  const lastReadSnapshotRef = useRef<string | null>(null);
   const resourcesLoadedRef = useRef({ customers: false, technicians: false, users: false });
   const initialLoadedRef = useRef<boolean>(false);
   const prefetchedSectionsRef = useRef<Set<TabId>>(new Set());
   const prefetchingDataRef = useRef<Set<string>>(new Set());
-  const [browserNotificationPermission, setBrowserNotificationPermission] = useState<NotificationPermission | "unsupported">("unsupported");
 
   const section = useMemo<TabId>(() => {
     const segment = pathname.split("/").filter(Boolean)[0] as TabId | undefined;
@@ -80,8 +81,10 @@ export function OpsApp() {
 
   const routedOrderId = useMemo(() => {
     const parts = pathname.split("/").filter(Boolean);
-    return parts[0] === "orders" && parts[1] ? parts[1] : null;
-  }, [pathname]);
+    if (parts[0] === "orders" && parts[1]) return parts[1];
+    if (parts[0] === "notifications") return searchParams.get("order");
+    return null;
+  }, [pathname, searchParams]);
 
   const visibleTabs = useMemo(() => tabs.filter((item) => user && item.roles.includes(user.role)), [user]);
   const currentTab = useMemo(() => tabs.find((item) => item.id === section) ?? tabs[0], [section]);
@@ -143,37 +146,52 @@ export function OpsApp() {
   }, [workOrderListRequest]);
 
   const refreshNotifications = useCallback(async () => {
-    const payload = await apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications");
-    const previousIds = notificationIdsRef.current;
-    const nextIds = new Set(payload.notifications.map((item) => item.id));
-    const newNotifications = previousIds
-      ? payload.notifications.filter((item) => !item.read_at && !previousIds.has(item.id))
-      : [];
+    const latestCreatedAt = data.notifications[0]?.created_at;
+    const overlapCursor = latestCreatedAt
+      ? new Date(new Date(latestCreatedAt).getTime() - 5_000).toISOString()
+      : null;
+    const payload = await apiFetch<{
+      notifications: AppData["notifications"];
+      snapshotAt: string;
+    }>(overlapCursor ? `/api/notifications?after=${encodeURIComponent(overlapCursor)}` : "/api/notifications");
 
-    if (typeof window !== "undefined" && "Notification" in window && window.Notification.permission === "granted") {
-      newNotifications.slice(0, 3).forEach((item) => {
-        new window.Notification(item.title, {
-          body: item.body,
-          tag: item.id,
-        });
-      });
-    }
-
-    notificationIdsRef.current = nextIds;
-    setData((current) => ({ ...current, notifications: payload.notifications }));
+    notificationSnapshotRef.current = payload.snapshotAt;
+    setData((current) => {
+      const merged = new Map(current.notifications.map((item) => [item.id, item]));
+      payload.notifications.forEach((item) => merged.set(item.id, item));
+      return {
+        ...current,
+        notifications: [...merged.values()]
+          .sort((left, right) => right.created_at.localeCompare(left.created_at))
+          .slice(0, 60),
+      };
+    });
     return payload.notifications;
+  }, [data.notifications]);
+
+  const markNotificationsRead = useCallback(async (readBefore: string) => {
+    await apiFetch("/api/notifications", {
+      method: "PATCH",
+      body: JSON.stringify({ readBefore }),
+    });
+    setData((current) => ({
+      ...current,
+      notifications: current.notifications.map((item) => (
+        !item.read_at && item.created_at <= readBefore
+          ? { ...item, read_at: readBefore }
+          : item
+      )),
+    }));
   }, []);
 
-  const requestBrowserNotifications = useCallback(async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setBrowserNotificationPermission("unsupported");
-      return "unsupported" as const;
-    }
-
-    const permission = await window.Notification.requestPermission();
-    setBrowserNotificationPermission(permission);
-    return permission;
-  }, []);
+  const pwaPush = usePwaPush({
+    enabled: Boolean(user),
+    onPushReceived: () => {
+      refreshNotifications().catch((reason) => {
+        setError(reason instanceof Error ? reason.message : "Không tải được thông báo mới");
+      });
+    },
+  });
 
   const refreshTechnicians = useCallback(async () => {
     const payload = await apiFetch<{ technicians: Technician[] }>("/api/technicians");
@@ -231,7 +249,7 @@ export function OpsApp() {
     const [dashboard, orders, notifications, technicians, customers, users] = await Promise.all([
       shouldLoadDashboard ? apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard") : Promise.resolve(null),
       shouldLoadOrders ? apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url) : Promise.resolve(null),
-      apiFetch<{ notifications: AppData["notifications"] }>("/api/notifications"),
+      apiFetch<{ notifications: AppData["notifications"]; snapshotAt: string }>("/api/notifications"),
       shouldLoadTechnicians ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
       shouldLoadCustomers ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
       shouldLoadUsers ? apiFetch<{ users: AppUser[] }>("/api/users") : Promise.resolve(null),
@@ -248,7 +266,8 @@ export function OpsApp() {
     });
 
     if (orders) ordersCacheRef.current[ordersRequest.key] = orders.workOrders;
-    notificationIdsRef.current = new Set(notifications.notifications.map((item) => item.id));
+    notificationSnapshotRef.current = notifications.snapshotAt;
+    lastReadSnapshotRef.current = null;
     resourcesLoadedRef.current = {
       customers: Boolean(customers),
       technicians: Boolean(technicians),
@@ -384,13 +403,45 @@ export function OpsApp() {
   }, [loading, router, user, visibleTabs]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      setBrowserNotificationPermission("unsupported");
-      return;
-    }
+    if (loading || !user || !initialLoadedRef.current) return;
 
-    setBrowserNotificationPermission(window.Notification.permission);
-  }, []);
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      refreshNotifications().catch((reason) => {
+        setError(reason instanceof Error ? reason.message : "Không tải được thông báo mới");
+      });
+    };
+    const intervalId = window.setInterval(refreshIfVisible, 60_000);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("online", refreshIfVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("online", refreshIfVisible);
+    };
+  }, [loading, refreshNotifications, user]);
+
+  useEffect(() => {
+    if (section !== "notifications" || !user) return;
+    const snapshotAt = notificationSnapshotRef.current;
+    if (!snapshotAt || lastReadSnapshotRef.current === snapshotAt) return;
+    lastReadSnapshotRef.current = snapshotAt;
+
+    markNotificationsRead(snapshotAt).catch((reason) => {
+      lastReadSnapshotRef.current = null;
+      setError(reason instanceof Error ? reason.message : "Không thể đánh dấu thông báo đã đọc");
+    });
+  }, [data.notifications, markNotificationsRead, section, user]);
+
+  useEffect(() => {
+    if (section !== "notifications" || loading || !user || !initialLoadedRef.current) return;
+    refreshNotifications().catch((reason) => {
+      setError(reason instanceof Error ? reason.message : "Không tải được thông báo mới");
+    });
+    // Chỉ tải ngay khi người dùng chuyển vào màn hình Thông báo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section]);
 
   useEffect(() => {
     if (loading || !user || !initialLoadedRef.current) return;
@@ -447,7 +498,11 @@ export function OpsApp() {
 
   useEffect(() => {
     if (!routedOrderId || !user) return;
-    const type = searchParams.get("mode") === "edit" ? "order-edit" : "order-detail";
+    const type = user.role === "technician"
+      ? "technician-job"
+      : searchParams.get("mode") === "edit"
+        ? "order-edit"
+        : "order-detail";
     setModal({ type, id: routedOrderId });
 
     const cached = detailsCacheRef.current[routedOrderId];
@@ -492,7 +547,7 @@ export function OpsApp() {
 
   const modalType = modal?.type;
   useEffect(() => {
-    if (!routedOrderId && (modalType === "order-detail" || modalType === "order-edit")) {
+    if (!routedOrderId && (modalType === "order-detail" || modalType === "order-edit" || modalType === "technician-job")) {
       setModal(null);
       setDetail(null);
     }
@@ -620,6 +675,9 @@ export function OpsApp() {
   async function handleLogout() {
     setError(null);
     try {
+      if (pwaPush.subscribed) {
+        await pwaPush.unsubscribe();
+      }
       await apiFetch("/api/auth/logout", { method: "POST" });
     } finally {
       setUser(null);
@@ -792,7 +850,9 @@ export function OpsApp() {
   function closeOrderModal() {
     setModal(null);
     setDetail(null);
-    if (routedOrderId) router.push("/orders");
+    if (routedOrderId) {
+      router.push(section === "notifications" ? "/notifications" : "/orders");
+    }
   }
 
   function closeInlineModal() {
@@ -934,23 +994,8 @@ export function OpsApp() {
             setReportLoading(false);
           }
         }}
-        onOpenNotification={(id) => openOrder(id)}
-        browserNotificationPermission={browserNotificationPermission}
-        onRequestBrowserNotifications={requestBrowserNotifications}
-        onReadNotification={async (id) => {
-          await apiFetch(`/api/notifications/${id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ read: true }),
-          });
-          await refreshNotifications();
-        }}
-        onReadAllNotifications={async () => {
-          await apiFetch("/api/notifications", {
-            method: "PATCH",
-            body: JSON.stringify({ read: true }),
-          });
-          await refreshNotifications();
-        }}
+        onOpenNotification={(id) => router.push(`/notifications?order=${encodeURIComponent(id)}`)}
+        pwaPush={pwaPush}
         onEditUser={(item) => setModal({ type: "user-edit", item })}
         onDeleteUser={(item) => setModal({ type: "user-delete", item })}
         onViewUserAssignmentHistory={(item) => setModal({ type: "user-assignment-history", item })}

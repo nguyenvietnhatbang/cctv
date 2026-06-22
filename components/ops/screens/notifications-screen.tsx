@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, CheckCircle2, Eye, Search, MailOpen, Mail, Filter } from "lucide-react";
+import { Bell, Eye, Search, MailOpen, Mail } from "lucide-react";
 import { dateTime } from "@/components/ops/format";
+import { PwaPushSettings } from "@/components/ops/pwa-push-settings";
 import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { NotificationItem } from "@/components/ops/types";
+import type { PwaPushController } from "@/components/ops/use-pwa-push";
 
 function timeAgo(dateString: string) {
   try {
@@ -25,71 +27,44 @@ function timeAgo(dateString: string) {
 
 export function NotificationsScreen({
   notifications,
-  browserNotificationPermission,
   onOpen,
-  onRequestBrowserNotifications,
-  onRead,
-  onReadAll,
+  pwaPush,
 }: {
   notifications: NotificationItem[];
-  browserNotificationPermission: NotificationPermission | "unsupported";
   onOpen: (id: string) => void;
-  onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
-  onRead: (id: string) => void;
-  onReadAll: () => void;
+  pwaPush: PwaPushController;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [readFilter, setReadFilter] = useState<"all" | "unread" | "read">("all");
   const [page, setPage] = useState(1);
 
   const filteredNotifications = notifications.filter((item) => {
-    const matchesRead =
-      readFilter === "all" ||
-      (readFilter === "unread" && !item.read_at) ||
-      (readFilter === "read" && item.read_at);
-    const matchesSearch =
+    return (
       !searchQuery ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.body.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesRead && matchesSearch;
+      item.body.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   });
   const safePage = clampTablePage(page, filteredNotifications.length);
   const visibleNotifications = getPageItems(filteredNotifications, safePage);
 
   const unreadCount = notifications.filter((item) => !item.read_at).length;
-  const permissionLabel = browserNotificationPermission === "granted"
-    ? "Đã bật thông báo trình duyệt"
-    : browserNotificationPermission === "denied"
-      ? "Trình duyệt đang chặn thông báo"
-      : browserNotificationPermission === "unsupported"
-        ? "Trình duyệt không hỗ trợ"
-        : "Bật thông báo trình duyệt";
 
   return (
     <div className="flex flex-col gap-6 min-w-0">
-      {/* Screen Title & Statistics Header */}
       <div className="screen-header">
         <div>
           <h2>Thông báo</h2>
-          <p>Các cập nhật trạng thái công việc và ghi chú quan trọng từ kỹ thuật</p>
+          <p>Mở trang này sẽ tự đánh dấu các thông báo hiện có của bạn là đã đọc</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {browserNotificationPermission === "default" ? (
-            <button className="btn-secondary h-9 text-xs" type="button" onClick={onRequestBrowserNotifications}>
-              <Bell size={13} />{permissionLabel}
-            </button>
-          ) : (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-zinc-50 text-zinc-600 border border-zinc-200">
-              {permissionLabel}
-            </span>
-          )}
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
             {unreadCount} chưa đọc
           </span>
         </div>
       </div>
 
-      {/* Notifications Table Shell with Compact Filter Header */}
+      <PwaPushSettings push={pwaPush} />
+
       <TableShell>
         <div className="table-toolbar">
           <div className="flex items-center gap-2">
@@ -98,18 +73,6 @@ export function NotificationsScreen({
             </span>
           </div>
           <div className="table-filter-row">
-            <select
-              value={readFilter}
-              onChange={(event) => {
-                setReadFilter(event.target.value as typeof readFilter);
-                setPage(1);
-              }}
-              className="input h-9 bg-white py-1 text-xs"
-            >
-              <option value="all">Tất cả</option>
-              <option value="unread">Chưa đọc</option>
-              <option value="read">Đã đọc</option>
-            </select>
             <div className="table-search">
               <Search size={13} className="search-field-icon" />
               <input
@@ -123,19 +86,6 @@ export function NotificationsScreen({
                 placeholder="Tìm kiếm thông báo..."
               />
             </div>
-            <button className="btn-secondary h-9 text-xs px-2.5 flex items-center gap-1.5" type="button">
-              <Filter size={13} />
-              Lọc
-            </button>
-            <button
-              className="btn-secondary h-9 text-xs px-2.5 flex items-center gap-1.5"
-              type="button"
-              onClick={onReadAll}
-              disabled={unreadCount === 0}
-            >
-              <CheckCircle2 size={13} />
-              Đánh dấu đã đọc tất cả
-            </button>
           </div>
         </div>
 
@@ -145,9 +95,6 @@ export function NotificationsScreen({
           <table className="data-table">
             <thead>
               <tr>
-                <th className="w-[40px] text-center">
-                  <input type="checkbox" className="rounded border-zinc-300" disabled />
-                </th>
                 <th className="w-[380px]">Nội dung</th>
                 <th>Công việc liên kết</th>
                 <th>Thời gian</th>
@@ -164,9 +111,6 @@ export function NotificationsScreen({
                     key={item.id}
                     className={isUnread ? "bg-zinc-50/50 hover:bg-zinc-50/70" : "hover:bg-zinc-50/30"}
                   >
-                    <td data-label="" className="mobile-hidden text-center">
-                      <input type="checkbox" className="rounded border-zinc-300" disabled />
-                    </td>
                     <td data-label="Nội dung">
                       <div className="flex items-start gap-2.5">
                         <div
@@ -223,16 +167,6 @@ export function NotificationsScreen({
                             title="Mở công việc"
                           >
                             <Eye size={15} />
-                          </button>
-                        ) : null}
-                        {isUnread ? (
-                          <button
-                            onClick={() => onRead(item.id)}
-                            className="icon-button text-green-600 hover:border-green-200 hover:bg-green-50"
-                            type="button"
-                            title="Đánh dấu đã đọc"
-                          >
-                            <CheckCircle2 size={15} />
                           </button>
                         ) : null}
                       </div>

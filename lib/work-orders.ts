@@ -3,6 +3,7 @@ import "server-only";
 import type { PoolClient } from "pg";
 import { query } from "@/lib/db";
 import { HttpError } from "@/lib/http";
+import { createNotifications } from "@/lib/notifications";
 import {
   canTransitionWorkOrderStatus,
   isFieldRole,
@@ -567,12 +568,21 @@ export async function recordWorkOrderPayment(
     await changeWorkOrderPaymentStatus(client, workOrderId, "debt", user, note);
   }
 
-  await client.query(
-    `insert into notifications (user_id, work_order_id, title, body)
-     select u.id, $1, 'Thanh toán đã cập nhật', $2
-     from users u
-     where u.role in ('admin', 'dispatcher', 'accountant') and u.status = 'active'`,
-    [workOrderId, nextPaymentStatus === "paid" ? "Phiếu đã thu đủ tiền." : "Phiếu còn công nợ."],
+  const recipients = await client.query<{ id: string }>(
+    `select id
+     from users
+     where role in ('admin', 'dispatcher', 'accountant') and status = 'active'`,
+  );
+  await createNotifications(
+    client,
+    recipients.rows.map((recipient) => ({
+      userId: recipient.id,
+      workOrderId,
+      type: "payment_updated",
+      priority: "normal",
+      title: "Thanh toán đã cập nhật",
+      body: nextPaymentStatus === "paid" ? "Phiếu đã thu đủ tiền." : "Phiếu còn công nợ.",
+    })),
   );
 
   return { nextPaymentStatus, paidAfter, debtAfter };

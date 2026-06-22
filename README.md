@@ -25,6 +25,10 @@ cp .env.example .env
 - `database/schema.sql`
 - `database/seed-admin.sql`
 
+Với database đã tồn tại, chạy thêm migration:
+
+- `database/add-web-push-notifications.sql`
+
 4. Chạy dev server:
 
 ```bash
@@ -32,6 +36,26 @@ npm run dev
 ```
 
 Mở `http://localhost:3000`.
+
+## PWA và Web Push
+
+Tạo một cặp VAPID key:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Khai báo các biến môi trường:
+
+```env
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="..."
+VAPID_PRIVATE_KEY="..."
+VAPID_SUBJECT="mailto:admin@example.com"
+CRON_SECRET="..."
+```
+
+Production phải chạy HTTPS. `vercel.json` cấu hình worker retry mỗi phút tại
+`/api/cron/push`; Vercel tự gửi `CRON_SECRET` trong header Authorization.
 
 ## Chạy không cần DB
 

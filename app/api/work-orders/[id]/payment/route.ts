@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
+import { schedulePushProcessing } from "@/lib/notifications";
 import { updatePaymentSchema } from "@/lib/validators";
 import { assertCanReadWorkOrder, recordWorkOrderPayment } from "@/lib/work-orders";
 
@@ -20,6 +21,7 @@ export async function PATCH(request: Request, context: Context) {
 
     await withTransaction((client) => recordWorkOrderPayment(client, id, body, user));
 
+    schedulePushProcessing();
     return jsonOk({ ok: true });
   } catch (error) {
     return handleRouteError(error);

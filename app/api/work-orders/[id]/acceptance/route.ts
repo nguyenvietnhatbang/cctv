@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
+import { schedulePushProcessing } from "@/lib/notifications";
 import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { uploadWorkOrderBytes } from "@/lib/storage";
 import { acceptanceSchema } from "@/lib/validators";
@@ -79,6 +80,7 @@ export async function POST(request: Request, context: Context) {
       }
     });
 
+    schedulePushProcessing();
     return jsonOk({ ok: true });
   } catch (error) {
     return handleRouteError(error);

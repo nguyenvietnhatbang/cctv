@@ -8,6 +8,7 @@ import { DashboardScreen } from "@/components/ops/screens/dashboard-screen";
 import { OrdersScreen } from "@/components/ops/screens/orders-screen";
 import { TechnicianScreen } from "@/components/ops/screens/technician-screen";
 import { isOpsManagerRole } from "@/lib/types";
+import type { PwaPushController } from "@/components/ops/use-pwa-push";
 
 function ScreenLoading({ label = "Đang tải màn hình..." }: { label?: string }) {
   return (
@@ -49,11 +50,8 @@ type PaymentsScreenProps = {
 
 type NotificationsScreenProps = {
   notifications: AppData["notifications"];
-  browserNotificationPermission: NotificationPermission | "unsupported";
   onOpen: (id: string) => void;
-  onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
-  onRead: (id: string) => Promise<void>;
-  onReadAll: () => Promise<void>;
+  pwaPush: PwaPushController;
 };
 
 type UsersScreenProps = {
@@ -153,10 +151,7 @@ type OpsScreenSwitcherProps = {
   onPaymentAction: (id: string) => void;
   onReportSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onOpenNotification: (id: string) => void;
-  browserNotificationPermission: NotificationPermission | "unsupported";
-  onRequestBrowserNotifications: () => Promise<NotificationPermission | "unsupported">;
-  onReadNotification: (id: string) => Promise<void>;
-  onReadAllNotifications: () => Promise<void>;
+  pwaPush: PwaPushController;
   onEditUser: (item: AppData["users"][number]) => void;
   onDeleteUser: (item: AppData["users"][number]) => void;
   onViewUserAssignmentHistory: (item: AppData["users"][number]) => void;
@@ -190,10 +185,7 @@ export function OpsScreenSwitcher({
   onPaymentAction,
   onReportSubmit,
   onOpenNotification,
-  browserNotificationPermission,
-  onRequestBrowserNotifications,
-  onReadNotification,
-  onReadAllNotifications,
+  pwaPush,
   onEditUser,
   onDeleteUser,
   onViewUserAssignmentHistory,
@@ -267,11 +259,8 @@ export function OpsScreenSwitcher({
     return (
       <NotificationsScreen
         notifications={data.notifications}
-        browserNotificationPermission={browserNotificationPermission}
         onOpen={onOpenNotification}
-        onRequestBrowserNotifications={onRequestBrowserNotifications}
-        onRead={onReadNotification}
-        onReadAll={onReadAllNotifications}
+        pwaPush={pwaPush}
       />
     );
   }

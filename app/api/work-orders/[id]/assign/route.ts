@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
+import { createNotifications, schedulePushProcessing } from "@/lib/notifications";
 import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { assignWorkOrderSchema } from "@/lib/validators";
 import { changeWorkOrderStatus, syncTechnicianStatuses } from "@/lib/work-orders";
@@ -23,8 +24,8 @@ export async function POST(request: Request, context: Context) {
     const nextTechnicianIds = uniqueIds([...(body.technicianIds ?? []), body.technicianId]);
 
     await withTransaction(async (client) => {
-      const statusResult = await client.query<{ status: WorkOrderStatus }>(
-        "select status from work_orders where id = $1 for update",
+      const statusResult = await client.query<{ status: WorkOrderStatus; code: string }>(
+        "select status, code from work_orders where id = $1 for update",
         [id],
       );
       const current = statusResult.rows[0];
@@ -35,18 +36,19 @@ export async function POST(request: Request, context: Context) {
         throw new HttpError(422, "Không thể đổi phân công sau khi phiếu đã khóa");
       }
 
-      const activeAssignments = await client.query<{ technician_id: string }>(
-        `select technician_id
-         from work_order_assignments
-         where work_order_id = $1 and unassigned_at is null`,
+      const activeAssignments = await client.query<{ technician_id: string; user_id: string }>(
+        `select assignment.technician_id, technician.user_id
+         from work_order_assignments assignment
+         join technicians technician on technician.id = assignment.technician_id
+         where assignment.work_order_id = $1 and assignment.unassigned_at is null`,
         [id],
       );
       const oldTechnicianIds = activeAssignments.rows.map((assignment) => assignment.technician_id);
       const removedTechnicianIds = oldTechnicianIds.filter((technicianId) => !nextTechnicianIds.includes(technicianId));
       const addedTechnicianIds = nextTechnicianIds.filter((technicianId) => !oldTechnicianIds.includes(technicianId));
 
-      const technicianResult = await client.query<{ id: string }>(
-        `select t.id
+      const technicianResult = await client.query<{ id: string; user_id: string }>(
+        `select t.id, t.user_id
          from technicians t
          join users u on u.id = t.user_id
          where t.id = any($1::uuid[]) and u.status = 'active'`,
@@ -75,14 +77,33 @@ export async function POST(request: Request, context: Context) {
            where id = any($2::uuid[])`,
           [id, addedTechnicianIds, user.id, body.note],
         );
-        await client.query(
-          `insert into notifications (user_id, work_order_id, title, body)
-           select t.user_id, $1, 'Bạn được giao phiếu mới', 'Mở phiếu để xem địa chỉ, liên hệ khách và nhận việc.'
-           from technicians t
-           where t.id = any($2::uuid[])`,
-          [id, addedTechnicianIds],
-        );
       }
+
+      const addedUsers = technicianResult.rows
+        .filter((technician) => addedTechnicianIds.includes(technician.id))
+        .map((technician) => technician.user_id);
+      const removedUsers = activeAssignments.rows
+        .filter((assignment) => removedTechnicianIds.includes(assignment.technician_id))
+        .map((assignment) => assignment.user_id);
+
+      await createNotifications(client, [
+        ...addedUsers.map((userId) => ({
+          userId,
+          workOrderId: id,
+          type: "work_order_assigned",
+          priority: "high" as const,
+          title: "Bạn được giao phiếu mới",
+          body: "Mở phiếu để xem lịch hẹn và nhận việc.",
+        })),
+        ...removedUsers.map((userId) => ({
+          userId,
+          workOrderId: null,
+          type: "work_order_unassigned",
+          priority: "high" as const,
+          title: `Bạn đã được rút khỏi phiếu ${current.code}`,
+          body: "Phiếu này không còn nằm trong danh sách công việc được giao cho bạn.",
+        })),
+      ]);
 
       if (current.status === "pending_assignment") {
         await changeWorkOrderStatus(client, id, "assigned", user, body.note ?? `Phân công ${nextTechnicianIds.length} kỹ thuật viên`);
@@ -100,6 +121,7 @@ export async function POST(request: Request, context: Context) {
       await syncTechnicianStatuses(client, [...oldTechnicianIds, ...nextTechnicianIds]);
     });
 
+    schedulePushProcessing();
     return jsonOk({ ok: true });
   } catch (error) {
     return handleRouteError(error);

@@ -163,7 +163,28 @@ export const acceptanceSchema = z.object({
 });
 
 export const notificationReadSchema = z.object({
-  read: z.boolean().default(true),
+  readBefore: z.string().datetime(),
+});
+
+export const notificationCursorSchema = z.object({
+  after: z.string().datetime().optional(),
+});
+
+export const pushSubscriptionSchema = z.object({
+  endpoint: z.string().url().max(2048),
+  keys: z.object({
+    p256dh: z.string().min(1).max(512),
+    auth: z.string().min(1).max(512),
+  }),
+  deviceName: z.string().trim().max(120).optional().nullable(),
+});
+
+export const pushUnsubscribeSchema = z.object({
+  endpoint: z.string().url().max(2048),
+});
+
+export const pushTestSchema = z.object({
+  endpoint: z.string().url().max(2048),
 });
 
 export const updateUserSchema = z.object({

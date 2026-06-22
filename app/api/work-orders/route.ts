@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { todayInVietnam, vietnamDayRangeUtc, vietnamMonthRangeUtc } from "@/lib/date-ranges";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonCreated, jsonOk } from "@/lib/http";
+import { createNotifications, schedulePushProcessing } from "@/lib/notifications";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createWorkOrderSchema } from "@/lib/validators";
 import { changeWorkOrderStatus, makeWorkOrderCode, requireTechnicianIdForUser } from "@/lib/work-orders";
@@ -309,8 +310,8 @@ export async function POST(request: Request) {
       );
 
       if (technicianIds.length > 0) {
-        const technicianResult = await client.query<{ id: string }>(
-          `select t.id
+        const technicianResult = await client.query<{ id: string; user_id: string }>(
+          `select t.id, t.user_id
            from technicians t
            join users u on u.id = t.user_id
            where t.id = any($1::uuid[]) and u.status = 'active'`,
@@ -327,12 +328,16 @@ export async function POST(request: Request) {
            where id = any($2::uuid[])`,
           [workOrder.id, technicianIds, user.id],
         );
-        await client.query(
-          `insert into notifications (user_id, work_order_id, title, body)
-           select t.user_id, $1, 'Bạn được giao phiếu mới', 'Mở phiếu để xem địa chỉ, liên hệ khách và nhận việc.'
-           from technicians t
-           where t.id = any($2::uuid[])`,
-          [workOrder.id, technicianIds],
+        await createNotifications(
+          client,
+          technicianResult.rows.map((technician) => ({
+            userId: technician.user_id,
+            workOrderId: workOrder.id,
+            type: "work_order_assigned",
+            priority: body.priority === "urgent" ? "urgent" : "high",
+            title: `Bạn được giao phiếu ${workOrder.code}`,
+            body: "Mở phiếu để xem lịch hẹn và nhận việc.",
+          })),
         );
         await changeWorkOrderStatus(
           client,
@@ -370,6 +375,7 @@ export async function POST(request: Request) {
       return { workOrder: listResult.rows[0], customer };
     });
 
+    schedulePushProcessing();
     return jsonCreated(created);
   } catch (error) {
     return handleRouteError(error);

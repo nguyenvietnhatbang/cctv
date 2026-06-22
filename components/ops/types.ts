@@ -176,6 +176,8 @@ export type WorkOrderDetail = {
 export type NotificationItem = {
   id: string;
   work_order_id: string | null;
+  type: string;
+  priority: "normal" | "high" | "urgent";
   title: string;
   body: string;
   read_at: string | null;
