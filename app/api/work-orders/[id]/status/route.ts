@@ -47,6 +47,7 @@ export async function POST(request: Request, context: Context) {
       await changeWorkOrderStatus(client, id, body.status, user, body.note, {
         lat: body.checkInLat,
         lng: body.checkInLng,
+        updateCustomerLocation: body.updateCustomerLocation,
       });
       if (MANAGER_NOTIFICATION_STATUSES.has(body.status)) {
         await client.query(

@@ -127,6 +127,7 @@ export const changeStatusSchema = z.object({
   note: optionalText,
   checkInLat: z.coerce.number().min(-90).max(90).optional(),
   checkInLng: z.coerce.number().min(-180).max(180).optional(),
+  updateCustomerLocation: z.boolean().optional().default(false),
 });
 
 export const createMaterialSchema = z.object({

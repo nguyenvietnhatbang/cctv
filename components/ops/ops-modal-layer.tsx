@@ -9,7 +9,7 @@ import { AssignmentHistoryList } from "@/components/ops/assignment-history-list"
 import { ConfirmModal, Modal, PendingButton, ValidatedForm } from "@/components/ops/ui";
 
 type MaterialPendingAction = { type: "create" } | { type: "update" | "delete"; id: string } | null;
-type CheckInPayload = { checkInLat?: number; checkInLng?: number };
+type CheckInPayload = { checkInLat?: number; checkInLng?: number; updateCustomerLocation?: boolean };
 type StatusNotePayload = CheckInPayload & { note?: string | null };
 type AcceptancePayload = {
   acceptanceName: string;

@@ -17,6 +17,8 @@ type WorkOrderDetailResponse = {
     total_amount: string;
     paid_amount: string;
     payment_status: string;
+    customer_lat: string | null;
+    customer_lng: string | null;
   };
   materials: Array<{
     id: string;
@@ -205,10 +207,28 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
       });
       await expectOk(response);
     }
-    const workingResponse = await technicianPage.request.post(`/api/work-orders/${fixture.orderId}/status`, {
-      data: { status: "working", checkInLat: 21.0245, checkInLng: 105.8412 },
+    const changedCheckInLocation = { checkInLat: 21.0345, checkInLng: 105.8512 };
+    const rejectedWorkingResponse = await technicianPage.request.post(`/api/work-orders/${fixture.orderId}/status`, {
+      data: { status: "working", ...changedCheckInLocation },
     });
-    await expectOk(workingResponse);
+    expect(rejectedWorkingResponse.status()).toBe(422);
+    const detailAfterRejectedCheckIn = await getDetail(technicianPage.request, fixture.orderId);
+    expect(detailAfterRejectedCheckIn.workOrder.status).toBe("traveling");
+    expect(Number(detailAfterRejectedCheckIn.workOrder.customer_lat)).toBeCloseTo(21.0245);
+    expect(Number(detailAfterRejectedCheckIn.workOrder.customer_lng)).toBeCloseTo(105.8412);
+
+    const confirmedWorkingResponse = await technicianPage.request.post(`/api/work-orders/${fixture.orderId}/status`, {
+      data: {
+        status: "working",
+        ...changedCheckInLocation,
+        updateCustomerLocation: true,
+      },
+    });
+    await expectOk(confirmedWorkingResponse);
+    const detailAfterConfirmedCheckIn = await getDetail(technicianPage.request, fixture.orderId);
+    expect(detailAfterConfirmedCheckIn.workOrder.status).toBe("working");
+    expect(Number(detailAfterConfirmedCheckIn.workOrder.customer_lat)).toBeCloseTo(changedCheckInLocation.checkInLat);
+    expect(Number(detailAfterConfirmedCheckIn.workOrder.customer_lng)).toBeCloseTo(changedCheckInLocation.checkInLng);
 
     await technicianPage.goto("/technician");
     const workCard = technicianPage.locator("article").filter({ hasText: fixture.orderCode });

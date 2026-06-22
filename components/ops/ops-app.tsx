@@ -815,7 +815,7 @@ export function OpsApp() {
     if (closeAfterSubmit) closeInlineModal();
   }
 
-  async function updateTechnicianStatus(id: string, status: WorkOrderListItem["status"], payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) {
+  async function updateTechnicianStatus(id: string, status: WorkOrderListItem["status"], payload?: { checkInLat?: number; checkInLng?: number; updateCustomerLocation?: boolean; note?: string | null }) {
     try {
       setError(null);
       await apiFetch(`/api/work-orders/${id}/status`, {

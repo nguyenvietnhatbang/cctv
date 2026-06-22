@@ -169,7 +169,7 @@ export async function changeWorkOrderStatus(
   nextStatus: WorkOrderStatus,
   user: SessionUser,
   note: string | null,
-  checkIn?: { lat?: number; lng?: number },
+  checkIn?: { lat?: number; lng?: number; updateCustomerLocation?: boolean },
 ) {
   const currentResult = await client.query<{
     status: WorkOrderStatus;
@@ -227,9 +227,21 @@ export async function changeWorkOrderStatus(
         { lat: customerLat, lng: customerLng },
       );
       if (distance > CHECK_IN_RADIUS_METERS) {
-        throw new HttpError(
-          422,
-          `Vị trí check-in đang cách tọa độ khách hàng khoảng ${Math.round(distance)}m. Cần trong phạm vi ${CHECK_IN_RADIUS_METERS}m hoặc cập nhật lại tọa độ khách hàng.`,
+        if (!checkIn.updateCustomerLocation) {
+          throw new HttpError(
+            422,
+            `Vị trí check-in đang cách tọa độ khách hàng khoảng ${Math.round(distance)}m. Cần xác nhận cập nhật tọa độ khách hàng trước khi check-in.`,
+          );
+        }
+
+        await client.query(
+          `update customers
+           set lat = $2,
+               lng = $3,
+               location_pinned_at = now(),
+               location_pinned_by = $4
+           where id = $1`,
+          [current.customer_id, checkedInLat, checkedInLng, user.id],
         );
       }
     }

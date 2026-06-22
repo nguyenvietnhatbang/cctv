@@ -49,8 +49,15 @@ const CHECKOUT_REASONS = [
   "Hết giờ làm",
   "Tạm dừng để đi việc gấp khác",
 ] as const;
+const CHECK_IN_RADIUS_METERS = 300;
 
 type TechnicianModalTab = "progress" | "costs" | "files" | "acceptance";
+type CheckInPayload = {
+  checkInLat: number;
+  checkInLng: number;
+  updateCustomerLocation?: boolean;
+  note?: string | null;
+};
 
 const TECHNICIAN_MODAL_TABS: ReadonlyArray<{ id: TechnicianModalTab; label: string; icon: LucideIcon }> = [
   { id: "progress", label: "Tiến độ", icon: ClipboardCheck },
@@ -76,6 +83,21 @@ function getCurrentPosition() {
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function distanceInMeters(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+) {
+  const earthRadius = 6_371_000;
+  const toRadians = (value: number) => value * Math.PI / 180;
+  const latitudeDistance = toRadians(to.lat - from.lat);
+  const longitudeDistance = toRadians(to.lng - from.lng);
+  const fromLatitude = toRadians(from.lat);
+  const toLatitude = toRadians(to.lat);
+  const haversine = Math.sin(latitudeDistance / 2) ** 2
+    + Math.cos(fromLatitude) * Math.cos(toLatitude) * Math.sin(longitudeDistance / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
 function stepIndex(status: WorkOrderStatus) {
@@ -233,7 +255,7 @@ export function TechnicianJobModal({
 }: {
   detail: WorkOrderDetail;
   onClose: () => void;
-  onStatus: (status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => void | Promise<void>;
+  onStatus: (status: WorkOrderStatus, payload?: Partial<CheckInPayload>) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onUpload: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onFileDelete: (file: WorkFile) => void | Promise<void>;
@@ -259,6 +281,11 @@ export function TechnicianJobModal({
 }) {
   const [preparingStatus, setPreparingStatus] = useState(false);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
+  const [pendingLocationUpdate, setPendingLocationUpdate] = useState<{
+    status: WorkOrderStatus;
+    checkIn: CheckInPayload;
+    distance: number;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<TechnicianModalTab>("progress");
   const [showMaterialsModal, setShowMaterialsModal] = useState(false);
   const status = detail.workOrder.status;
@@ -286,6 +313,27 @@ export function TechnicianJobModal({
   const nextStatus = nextFieldTransition?.status ?? null;
   const NextIcon = nextStatus ? ACTION_ICONS[nextStatus] ?? Play : ClipboardCheck;
 
+  async function checkInOrRequestLocationUpdate(nextCheckInStatus: WorkOrderStatus, checkIn: CheckInPayload) {
+    const customerLat = detail.workOrder.customer_lat === null ? null : Number(detail.workOrder.customer_lat);
+    const customerLng = detail.workOrder.customer_lng === null ? null : Number(detail.workOrder.customer_lng);
+
+    if (customerLat !== null && customerLng !== null) {
+      const distance = distanceInMeters(
+        { lat: checkIn.checkInLat, lng: checkIn.checkInLng },
+        { lat: customerLat, lng: customerLng },
+      );
+      if (distance > CHECK_IN_RADIUS_METERS) {
+        setLocationWarning(
+          `Vị trí hiện tại cách tọa độ khách hàng khoảng ${Math.round(distance)}m. Cần xác nhận cập nhật vị trí mới để tiếp tục check-in.`,
+        );
+        setPendingLocationUpdate({ status: nextCheckInStatus, checkIn, distance });
+        return;
+      }
+    }
+
+    await onStatus(nextCheckInStatus, checkIn);
+  }
+
   async function handleNextStatus() {
     if (!nextFieldTransition) return;
     setPreparingStatus(true);
@@ -296,7 +344,11 @@ export function TechnicianJobModal({
         setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
         return;
       }
-      await onStatus(nextFieldTransition.status, checkIn ?? undefined);
+      if (checkIn) {
+        await checkInOrRequestLocationUpdate(nextFieldTransition.status, checkIn);
+      } else {
+        await onStatus(nextFieldTransition.status);
+      }
     } catch (error) {
       setLocationWarning(getErrorMessage(error, "Không cập nhật được trạng thái phiếu. Vui lòng thử lại."));
     } finally {
@@ -313,7 +365,7 @@ export function TechnicianJobModal({
         setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
         return;
       }
-      await onStatus("working", checkIn);
+      await checkInOrRequestLocationUpdate("working", checkIn);
     } catch (error) {
       setLocationWarning(getErrorMessage(error, "Không check-in được. Vui lòng thử lại."));
     } finally {
@@ -332,6 +384,24 @@ export function TechnicianJobModal({
   async function handleResume() {
     if (!resumeTransition) return;
     await onStatus(resumeTransition.status, { note: "Tiếp tục xử lý sau check-out" });
+  }
+
+  async function confirmLocationUpdateAndCheckIn() {
+    if (!pendingLocationUpdate) return;
+    setPreparingStatus(true);
+    setLocationWarning(null);
+    try {
+      await onStatus(pendingLocationUpdate.status, {
+        ...pendingLocationUpdate.checkIn,
+        updateCustomerLocation: true,
+        note: `Xác nhận cập nhật tọa độ khách hàng khi check-in, lệch vị trí cũ khoảng ${Math.round(pendingLocationUpdate.distance)}m.`,
+      });
+      setPendingLocationUpdate(null);
+    } catch (error) {
+      setLocationWarning(getErrorMessage(error, "Không cập nhật được vị trí và check-in. Vui lòng thử lại."));
+    } finally {
+      setPreparingStatus(false);
+    }
   }
 
   return (
@@ -561,6 +631,24 @@ export function TechnicianJobModal({
           </div>
         </Modal>
       )}
+      {pendingLocationUpdate ? (
+        <Modal title="Xác nhận thay đổi vị trí khách hàng" size="sm" onClose={() => setPendingLocationUpdate(null)}>
+          <p className="text-sm leading-6 text-zinc-700">
+            Vị trí hiện tại cách tọa độ khách hàng khoảng <strong>{Math.round(pendingLocationUpdate.distance)}m</strong>, vượt quá giới hạn {CHECK_IN_RADIUS_METERS}m.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-zinc-600">
+            Xác nhận sẽ thay tọa độ khách hàng bằng vị trí hiện tại và thực hiện check-in. Nếu hủy, tọa độ cũ được giữ nguyên và phiếu không được check-in.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button className="btn-secondary h-10" type="button" onClick={() => setPendingLocationUpdate(null)} disabled={preparingStatus}>
+              Không thay đổi
+            </button>
+            <PendingButton className="btn-primary h-10" type="button" onClick={confirmLocationUpdateAndCheckIn} pending={preparingStatus} pendingLabel="Đang cập nhật...">
+              Cập nhật vị trí & check-in
+            </PendingButton>
+          </div>
+        </Modal>
+      ) : null}
     </Modal>
   );
 }
