@@ -254,6 +254,11 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
     await expect(paymentCheckbox).not.toBeChecked();
     await paymentCheckbox.check();
     await technicianPage.locator('select[name="paymentStatus"]').selectOption("debt");
+    const paymentAmount = technicianPage.getByLabel("Số tiền khách thanh toán");
+    await paymentAmount.fill("123456");
+    await expect(paymentAmount).toHaveValue("123.456");
+    await paymentAmount.fill("123456,78");
+    await expect(paymentAmount).toHaveValue("123.456,78");
     const paymentDueDate = technicianPage.getByLabel("Ngày hẹn thanh toán");
     await expect(paymentDueDate).toBeEnabled();
     await paymentDueDate.fill("2026-07-15");

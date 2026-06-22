@@ -192,14 +192,17 @@ export function SignatureAcceptanceForm({
                 <option value="paid">Thu tiền</option>
                 <option value="debt">Công nợ / thu một phần</option>
               </select>
-              <MoneyInput
-                name="paymentAmount"
-                className="input"
-                value={amount}
-                onValueChange={setAmount}
-                placeholder="Số tiền thực thu, VD: 200.000"
-                disabled={isSubmitting}
-              />
+              <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+                Số tiền khách thanh toán
+                <MoneyInput
+                  name="paymentAmount"
+                  className="input"
+                  value={amount}
+                  onValueChange={setAmount}
+                  placeholder="VD: 200.125 hoặc 200.125,50"
+                  disabled={isSubmitting}
+                />
+              </label>
               <select name="paymentMethod" className="input" value={canChoosePaymentMethod ? method : "debt"} onChange={(event) => setMethod(event.target.value)} disabled={isSubmitting || !canChoosePaymentMethod}>
                 <option value="cash">Tiền mặt</option>
                 <option value="bank_transfer">Chuyển khoản</option>

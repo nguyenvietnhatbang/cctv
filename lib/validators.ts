@@ -15,7 +15,12 @@ const optionalText = z.string().trim().optional().nullable().transform((value) =
 const requiredText = z.string().trim().min(1, "Bắt buộc nhập");
 function normalizeMoneyInput(value: unknown) {
   if (typeof value !== "string") return value;
-  const normalized = value.replace(/[^\d-]/g, "");
+  const source = value.trim();
+  const normalized = source.includes(",")
+    ? source.replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, "")
+    : /^\s*-?\d{1,3}(?:\.\d{3})+\s*$/.test(value)
+      ? source.replace(/\./g, "")
+      : source.replace(/[^\d.-]/g, "");
   return normalized ? Number(normalized) : "";
 }
 

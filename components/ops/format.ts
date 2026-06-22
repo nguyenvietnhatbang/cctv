@@ -2,7 +2,8 @@ export function money(value: string | number | null | undefined) {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(Number(value ?? 0));
 }
 
