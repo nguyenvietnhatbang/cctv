@@ -91,7 +91,16 @@ export function PaymentForm({
           <p className="rounded-md bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-500">
             Mã giao dịch sẽ tự tạo khi xác nhận thu tiền.
           </p>
-          <input name="debtDueDate" className="input" type="date" defaultValue={detail.workOrder.debt_due_date ?? ""} disabled={!canSubmit || isSubmitting || !willKeepDebt} />
+          <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+            Ngày hẹn thanh toán
+            <input
+              name="debtDueDate"
+              className="input"
+              type="date"
+              defaultValue={detail.workOrder.debt_due_date ?? ""}
+              disabled={!canSubmit || isSubmitting || !willKeepDebt}
+            />
+          </label>
           <input name="note" className="input" defaultValue={detail.workOrder.payment_note ?? ""} placeholder={willKeepDebt ? "Ghi chú công nợ hoặc ngày hẹn" : "Ghi chú"} disabled={!canSubmit || isSubmitting} />
           <label className="grid gap-1 text-xs font-semibold text-zinc-600">
             Ảnh bill

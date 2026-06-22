@@ -49,3 +49,6 @@ scratch/test_flow.js
 docs/tong-ket-chi-phi-va-ban-giao.md
 .gitignore
 public/logo/markdown-preview.pdf
+playwright-report
+test-results
+test

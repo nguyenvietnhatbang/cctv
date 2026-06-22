@@ -137,12 +137,12 @@ function FieldCostForm({
       </div>
       <div className="mt-3 grid gap-2 rounded-md bg-zinc-50 p-3 text-sm text-zinc-700">
         <div className="flex items-center justify-between gap-3">
-          <span>Chi phí nhân công</span>
-          <strong className="text-zinc-950">{money(laborAmount)}</strong>
-        </div>
-        <div className="flex items-center justify-between gap-3">
           <span>Chi phí vật tư</span>
           <strong className="text-zinc-950">{money(materialAmount)}</strong>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span>Chi phí nhân công</span>
+          <strong className="text-zinc-950">{money(laborAmount)}</strong>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span>VAT</span>

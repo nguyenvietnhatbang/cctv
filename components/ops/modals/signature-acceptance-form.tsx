@@ -132,12 +132,12 @@ export function SignatureAcceptanceForm({
             <h4 className="font-semibold text-zinc-900 border-b border-zinc-200 pb-1.5 mb-2">Tóm tắt chi phí</h4>
             <div className="grid gap-1.5">
               <div className="flex justify-between">
-                <span>Tiền nhân công:</span>
-                <strong>{money(laborAmount)}</strong>
-              </div>
-              <div className="flex justify-between">
                 <span>Chi phí vật tư đã chốt:</span>
                 <strong>{money(detail.workOrder.material_amount)}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span>Tiền nhân công:</span>
+                <strong>{money(laborAmount)}</strong>
               </div>
               <div className="flex justify-between">
                 <span>Thuế VAT:</span>
@@ -206,7 +206,16 @@ export function SignatureAcceptanceForm({
                 <option value="debt">Công nợ</option>
               </select>
               {!canChoosePaymentMethod ? <input type="hidden" name="paymentMethod" value="debt" /> : null}
-              <input name="paymentDebtDueDate" className="input" type="date" defaultValue={detail.workOrder.debt_due_date ?? ""} disabled={isSubmitting || !willKeepDebt} />
+              <label className="grid gap-1 text-xs font-semibold text-zinc-600">
+                Ngày hẹn thanh toán
+                <input
+                  name="paymentDebtDueDate"
+                  className="input"
+                  type="date"
+                  defaultValue={detail.workOrder.debt_due_date ?? ""}
+                  disabled={isSubmitting || !willKeepDebt}
+                />
+              </label>
               <input name="paymentNote" className="input" defaultValue={detail.workOrder.payment_note ?? ""} placeholder={willKeepDebt ? "Ghi chú công nợ hoặc ngày hẹn" : "Ghi chú thanh toán"} disabled={isSubmitting} />
               <label className="grid gap-1 text-xs font-semibold text-zinc-600">
                 Ảnh hóa đơn / Bill chuyển khoản (nếu có)
