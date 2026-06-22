@@ -39,7 +39,7 @@ const nullableMoneyInput = z.preprocess((value) => {
 const percentInput = z.preprocess((value) => {
   if (typeof value !== "string") return value;
   const normalized = value.trim().replace(",", ".");
-  return normalized ? Number(normalized) : value;
+  return normalized ? Number(normalized) : 0;
 }, z.number().min(0).max(100));
 const positiveDecimalInput = z.preprocess((value) => {
   if (typeof value !== "string") return value;

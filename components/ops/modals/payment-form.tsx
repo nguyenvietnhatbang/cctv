@@ -7,6 +7,7 @@ import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
 import { MoneyInput } from "@/components/ops/money-input";
+import { PaymentAmountQuickActions } from "@/components/ops/payment-amount-quick-actions";
 import { WorkFileGallery } from "@/components/ops/work-file-gallery";
 
 export function PaymentForm({
@@ -85,6 +86,14 @@ export function PaymentForm({
               disabled={!canSubmit || isSubmitting}
             />
           </label>
+          <PaymentAmountQuickActions
+            remainingAmount={debtAmount}
+            disabled={!canSubmit || isSubmitting}
+            onSelect={(nextAmount, nextStatus) => {
+              setAmount(nextAmount);
+              setStatus(nextStatus);
+            }}
+          />
           <select name="method" className="input" value={canChoosePaymentMethod ? method : "debt"} onChange={(event) => setMethod(event.target.value)} disabled={!canSubmit || isSubmitting || !canChoosePaymentMethod}>
             <option value="cash">Tiền mặt</option>
             <option value="bank_transfer">Chuyển khoản</option>

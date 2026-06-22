@@ -7,6 +7,7 @@ import { PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { WorkOrderDetail } from "@/components/ops/types";
 import { ImageUploadField } from "@/components/ops/image-upload-field";
 import { MoneyInput } from "@/components/ops/money-input";
+import { PaymentAmountQuickActions } from "@/components/ops/payment-amount-quick-actions";
 
 export function SignatureAcceptanceForm({
   detail,
@@ -203,6 +204,14 @@ export function SignatureAcceptanceForm({
                   disabled={isSubmitting}
                 />
               </label>
+              <PaymentAmountQuickActions
+                remainingAmount={debtAmount}
+                disabled={isSubmitting}
+                onSelect={(nextAmount, nextStatus) => {
+                  setAmount(nextAmount);
+                  setStatus(nextStatus);
+                }}
+              />
               <select name="paymentMethod" className="input" value={canChoosePaymentMethod ? method : "debt"} onChange={(event) => setMethod(event.target.value)} disabled={isSubmitting || !canChoosePaymentMethod}>
                 <option value="cash">Tiền mặt</option>
                 <option value="bank_transfer">Chuyển khoản</option>

@@ -119,8 +119,8 @@ function FieldCostForm({
           <MoneyInput name="laborCost" className="input" defaultValue={Number(detail.workOrder.labor_cost)} placeholder="VD: 200.000" disabled={locked || isSubmitting} />
         </label>
         <label className="grid gap-1 text-xs font-semibold text-zinc-600">
-          VAT (%)
-          <input name="vatRate" className="input" type="number" step="0.1" defaultValue={Number(detail.workOrder.vat_rate)} placeholder="VD: 10" disabled={locked || isSubmitting} />
+          VAT (%) — không bắt buộc
+          <input name="vatRate" className="input" type="number" min="0" max="100" step="0.1" defaultValue={Number(detail.workOrder.vat_rate) || undefined} placeholder="Để trống nếu không có VAT" disabled={locked || isSubmitting} />
         </label>
       </div>
       <div className="flex gap-2">

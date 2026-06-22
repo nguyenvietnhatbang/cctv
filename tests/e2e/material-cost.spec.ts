@@ -182,7 +182,7 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
 
     await adminPage.locator('input[name="materialCost"]').fill("500000");
     await adminPage.locator('input[name="laborCost"]').fill("200000");
-    await adminPage.locator('input[name="vatRate"]').fill("10");
+    await adminPage.locator('input[name="vatRate"]').fill("");
     const costResponsePromise = adminPage.waitForResponse(
       (response) => response.url().endsWith(`/api/work-orders/${fixture!.orderId}`)
         && response.request().method() === "PATCH",
@@ -193,8 +193,8 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
     const costDetail = await getDetail(adminPage.request, fixture.orderId);
     expect(Number(costDetail.workOrder.material_amount)).toBe(500_000);
     expect(Number(costDetail.workOrder.labor_amount)).toBe(200_000);
-    expect(Number(costDetail.workOrder.vat_amount)).toBe(70_000);
-    expect(Number(costDetail.workOrder.total_amount)).toBe(770_000);
+    expect(Number(costDetail.workOrder.vat_amount)).toBe(0);
+    expect(Number(costDetail.workOrder.total_amount)).toBe(700_000);
 
     const technicianPage = await technicianContext.newPage();
     await login(technicianPage, technicianEmail!, sharedPassword!, "Kỹ thuật");
@@ -235,7 +235,7 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
     expect(materialDetail.materials).toHaveLength(1);
     expect(Number(materialDetail.materials[0].line_total)).toBe(360_000);
     expect(Number(materialDetail.workOrder.material_amount)).toBe(500_000);
-    expect(Number(materialDetail.workOrder.total_amount)).toBe(770_000);
+    expect(Number(materialDetail.workOrder.total_amount)).toBe(700_000);
 
     const awaitingAcceptanceResponse = await technicianPage.request.post(
       `/api/work-orders/${fixture.orderId}/status`,
@@ -259,6 +259,13 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
     await expect(paymentAmount).toHaveValue("123.456");
     await paymentAmount.fill("123456,78");
     await expect(paymentAmount).toHaveValue("123.456,78");
+    await technicianPage.getByRole("button", { name: "50%" }).click();
+    await expect(paymentAmount).toHaveValue("350.000");
+    await technicianPage.getByRole("button", { name: "Chưa thu" }).click();
+    await expect(paymentAmount).toHaveValue("0");
+    await technicianPage.getByRole("button", { name: "Thu đủ" }).click();
+    await expect(paymentAmount).toHaveValue("700.000");
+    await technicianPage.getByRole("button", { name: "Chưa thu" }).click();
     const paymentDueDate = technicianPage.getByLabel("Ngày hẹn thanh toán");
     await expect(paymentDueDate).toBeEnabled();
     await paymentDueDate.fill("2026-07-15");
@@ -284,7 +291,7 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
     expect(acceptedDetail.workOrder.status).toBe("completed");
     expect(acceptedDetail.workOrder.payment_status).toBe("unpaid");
     expect(Number(acceptedDetail.workOrder.paid_amount)).toBe(0);
-    expect(Number(acceptedDetail.workOrder.total_amount)).toBe(770_000);
+    expect(Number(acceptedDetail.workOrder.total_amount)).toBe(700_000);
 
     const forbiddenMaterialResponse = await technicianPage.request.post(
       `/api/work-orders/${fixture.orderId}/materials`,
