@@ -128,7 +128,7 @@ export function DashboardScreen({
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <h2>Tình hình nhanh</h2>
+            <h2>Tình hình nhanh!</h2>
             <p className="mt-1 text-sm text-slate-500">Bấm vào từng trạng thái để mở danh sách công việc tương ứng.</p>
           </div>
           <span>{metrics?.total_today ?? "0"} phiếu hẹn hôm nay</span>
