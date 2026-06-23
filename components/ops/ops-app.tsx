@@ -174,6 +174,9 @@ export function OpsApp() {
       method: "PATCH",
       body: JSON.stringify({ readBefore }),
     });
+    if ("clearAppBadge" in navigator) {
+      await navigator.clearAppBadge().catch(() => undefined);
+    }
     setData((current) => ({
       ...current,
       notifications: current.notifications.map((item) => (

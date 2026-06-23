@@ -234,6 +234,8 @@ Vào màn hình `Thông báo` để kiểm tra trạng thái của thiết bị.
 
 Thông báo công việc có thể xuất hiện trên màn hình khóa. Bấm vào thông báo sẽ mở đúng phiếu liên quan.
 
+Các cập nhật liên tiếp của cùng một phiếu được gộp thành thông báo mới nhất trên điện thoại để tránh làm đầy màn hình khóa. Lịch sử đầy đủ vẫn được giữ trong màn hình `Thông báo`. Icon ứng dụng có thể hiển thị số thông báo chưa đọc nếu thiết bị hỗ trợ.
+
 Khi người dùng mở màn hình `Thông báo`, các thông báo hiện có của chính tài khoản đó được tự động đánh dấu đã đọc; không cần bấm từng dòng.
 
 Trước khi đăng xuất khỏi thiết bị dùng chung, hệ thống sẽ hủy đăng ký Push của tài khoản trên thiết bị đó.

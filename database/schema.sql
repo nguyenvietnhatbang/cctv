@@ -240,6 +240,9 @@ create table notifications (
 );
 
 create index notifications_user_created_idx on notifications(user_id, created_at desc);
+create index notifications_user_unread_idx
+  on notifications(user_id)
+  where read_at is null;
 create unique index notifications_user_dedupe_idx
   on notifications(user_id, dedupe_key)
   where dedupe_key is not null;

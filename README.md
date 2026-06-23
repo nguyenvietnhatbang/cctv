@@ -28,6 +28,7 @@ cp .env.example .env
 Với database đã tồn tại, chạy thêm migration:
 
 - `database/add-web-push-notifications.sql`
+- `database/add-notification-unread-index.sql`
 
 4. Chạy dev server:
 

@@ -21,6 +21,8 @@ type PushJob = ClaimedJob & {
   body: string;
   priority: "normal" | "high" | "urgent";
   work_order_id: string | null;
+  created_at: string;
+  unread_count: number;
 };
 
 export function isPushConfigured() {
@@ -47,17 +49,53 @@ function pushPayload(job: PushJob) {
   const url = job.work_order_id
     ? `/notifications?order=${encodeURIComponent(job.work_order_id)}`
     : "/notifications";
+  const notificationTag = job.work_order_id
+    ? `work-order-${job.work_order_id}`
+    : `notification-${job.notification_id}`;
 
   return JSON.stringify({
     title: job.title,
     body: job.body,
     icon: "/pwa/icon-192.png",
     badge: "/pwa/icon-192.png",
-    tag: job.notification_id,
+    tag: notificationTag,
     url,
     notificationId: job.notification_id,
+    timestamp: new Date(job.created_at).getTime(),
+    unreadCount: job.unread_count,
+    renotify: job.priority !== "normal",
     requireInteraction: job.priority === "urgent",
   });
+}
+
+function pushTopic(job: PushJob) {
+  return (job.work_order_id ?? job.notification_id).replaceAll("-", "");
+}
+
+function collapsePushJobs(jobs: PushJob[]) {
+  const latestBySubscriptionAndTopic = new Map<string, PushJob>();
+  const supersededJobIds: string[] = [];
+
+  for (const job of jobs) {
+    const key = `${job.subscription_id}:${pushTopic(job)}`;
+    const current = latestBySubscriptionAndTopic.get(key);
+    if (!current) {
+      latestBySubscriptionAndTopic.set(key, job);
+      continue;
+    }
+
+    if (new Date(job.created_at).getTime() > new Date(current.created_at).getTime()) {
+      supersededJobIds.push(current.id);
+      latestBySubscriptionAndTopic.set(key, job);
+    } else {
+      supersededJobIds.push(job.id);
+    }
+  }
+
+  return {
+    jobsToSend: [...latestBySubscriptionAndTopic.values()],
+    supersededJobIds,
+  };
 }
 
 async function claimPushJobs(limit: number) {
@@ -97,15 +135,36 @@ async function loadPushJobs(claimed: ClaimedJob[]) {
   if (claimed.length === 0) return [];
 
   const result = await query<PushJob>(
-    `select job.id, job.notification_id, job.subscription_id, job.attempt_count,
-            subscription.endpoint, subscription.p256dh, subscription.auth,
-            notification.title, notification.body, notification.priority,
-            notification.work_order_id
-     from notification_push_jobs job
-     join push_subscriptions subscription on subscription.id = job.subscription_id
-     join notifications notification on notification.id = job.notification_id
-     where job.id = any($1::uuid[])
-       and subscription.disabled_at is null`,
+    `with selected_jobs as (
+       select job.id, job.notification_id, job.subscription_id, job.attempt_count,
+              subscription.endpoint, subscription.p256dh, subscription.auth,
+              notification.user_id, notification.title, notification.body,
+              notification.priority, notification.work_order_id,
+              notification.created_at
+       from notification_push_jobs job
+       join push_subscriptions subscription on subscription.id = job.subscription_id
+       join notifications notification on notification.id = job.notification_id
+       where job.id = any($1::uuid[])
+         and subscription.disabled_at is null
+     ),
+     unread_counts as (
+       select notification.user_id, count(*)::integer as unread_count
+       from notifications notification
+       where notification.read_at is null
+         and notification.user_id in (
+           select distinct selected_job.user_id
+           from selected_jobs selected_job
+         )
+       group by notification.user_id
+     )
+     select selected_job.id, selected_job.notification_id,
+            selected_job.subscription_id, selected_job.attempt_count,
+            selected_job.endpoint, selected_job.p256dh, selected_job.auth,
+            selected_job.title, selected_job.body, selected_job.priority,
+            selected_job.work_order_id,
+            selected_job.created_at, coalesce(unread_count.unread_count, 0) as unread_count
+     from selected_jobs selected_job
+     left join unread_counts unread_count on unread_count.user_id = selected_job.user_id`,
     [claimed.map((job) => job.id)],
   );
 
@@ -138,6 +197,20 @@ async function markPushSent(jobId: string) {
          last_error = null
      where id = $1`,
     [jobId],
+  );
+}
+
+async function markPushJobsSuperseded(jobIds: string[]) {
+  if (jobIds.length === 0) return;
+
+  await query(
+    `update notification_push_jobs
+     set status = 'sent',
+         sent_at = now(),
+         locked_at = null,
+         last_error = null
+     where id = any($1::uuid[])`,
+    [jobIds],
   );
 }
 
@@ -195,11 +268,13 @@ export async function processPushJobs(limit = DEFAULT_BATCH_SIZE) {
   configureWebPush();
   const claimed = await claimPushJobs(limit);
   const jobs = await loadPushJobs(claimed);
+  const { jobsToSend, supersededJobIds } = collapsePushJobs(jobs);
+  await markPushJobsSuperseded(supersededJobIds);
   let sent = 0;
   let failed = 0;
 
   await Promise.all(
-    jobs.map(async (job) => {
+    jobsToSend.map(async (job) => {
       try {
         await webPush.sendNotification(
           {
@@ -209,7 +284,8 @@ export async function processPushJobs(limit = DEFAULT_BATCH_SIZE) {
           pushPayload(job),
           {
             TTL: job.priority === "urgent" ? 60 * 60 : 60 * 30,
-            urgency: job.priority === "urgent" ? "high" : "normal",
+            urgency: job.priority === "normal" ? "normal" : "high",
+            topic: pushTopic(job),
           },
         );
         await markPushSent(job.id);
