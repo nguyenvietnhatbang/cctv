@@ -118,9 +118,9 @@ export function OpsShell({
     <main className="app-frame">
       <aside className={`app-sidebar flex flex-col h-screen ${isCollapsed ? "collapsed" : ""}`}>
         {/* Brand Header */}
-        <div className="app-sidebar-header flex items-center justify-between border-b border-blue-100/70 bg-white/45 px-4 py-4 backdrop-blur-sm">
+        <div className="app-sidebar-header flex items-center justify-between border-b border-slate-200/70 bg-white/45 px-4 py-4 backdrop-blur-sm">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-blue-100 bg-white shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white shadow-sm">
               <Image
                 src={brandAssets.mark}
                 alt={companyProfile.displayName}
@@ -170,7 +170,7 @@ export function OpsShell({
         </div>
 
         {/* User Profile */}
-        <div className="app-sidebar-footer mt-auto border-t border-blue-100/70 bg-white/45 p-3 flex items-center justify-between gap-2 backdrop-blur-sm">
+        <div className="app-sidebar-footer mt-auto border-t border-slate-200/70 bg-white/45 p-3 flex items-center justify-between gap-2 backdrop-blur-sm">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs border border-teal-600 shrink-0">
               {user.fullName
