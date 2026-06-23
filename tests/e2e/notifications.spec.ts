@@ -11,6 +11,22 @@ test("cron Push từ chối request không có secret", async ({ request }) => {
   expect(response.status()).toBe(401);
 });
 
+test("bấm Push chỉ đóng thông báo, không mở ứng dụng", async ({ request }) => {
+  const response = await request.get("/sw.js");
+  expect(response.ok()).toBeTruthy();
+  expect(response.headers()["cache-control"]).toBe("no-cache, no-store, must-revalidate");
+
+  const serviceWorker = await response.text();
+  const notificationClickHandler = serviceWorker.match(
+    /self\.addEventListener\("notificationclick",[\s\S]*?\n}\);/,
+  )?.[0];
+
+  expect(notificationClickHandler).toBeTruthy();
+  expect(notificationClickHandler).toContain("event.notification.close()");
+  expect(notificationClickHandler).not.toContain("openWindow");
+  expect(notificationClickHandler).not.toContain(".focus()");
+});
+
 async function login(page: Page, identifier: string, password: string) {
   await page.goto("/");
   await page.getByRole("textbox", { name: "Email hoặc số điện thoại" }).fill(identifier);

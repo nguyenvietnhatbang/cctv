@@ -27,7 +27,6 @@ self.addEventListener("push", (event) => {
     timestamp: data.timestamp || Date.now(),
     requireInteraction: Boolean(data.requireInteraction),
     data: {
-      url: data.url || "/notifications",
       notificationId: data.notificationId || null,
     },
   };
@@ -52,19 +51,4 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || "/notifications", self.location.origin);
-
-  event.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then(async (clients) => {
-        for (const client of clients) {
-          if (client.url === target.href) {
-            return client.focus();
-          }
-        }
-
-        return self.clients.openWindow(target.href);
-      }),
-  );
 });
