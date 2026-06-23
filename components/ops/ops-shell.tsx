@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import type { CSSProperties, ReactNode } from "react";
-import { Bell, KeyRound, LogOut, ChevronsUpDown, Sun, Search } from "lucide-react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Bell, KeyRound, LogOut, ChevronsUpDown, Moon, Sun, Search } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { brandAssets, companyProfile } from "@/lib/company";
 import { tabIcons, type TabId } from "@/components/ops/app-config";
@@ -53,11 +53,26 @@ export function OpsShell({
   modals,
   children,
 }: OpsShellProps) {
+  const [darkMode, setDarkMode] = useState(false);
   const businessTabs = visibleTabs.filter((tab) => BUSINESS_TABS.includes(tab.id));
   const accountingTabs = visibleTabs.filter((tab) => ACCOUNTING_TABS.includes(tab.id));
   const managementTabs = visibleTabs.filter((tab) => MANAGEMENT_TABS.includes(tab.id));
   const mobileTabIds = mobileTabIdsForRole(user.role);
   const mobileTabs = visibleTabs.filter((tab) => mobileTabIds.includes(tab.id));
+
+  useEffect(() => {
+    setDarkMode(document.documentElement.dataset.theme === "dark");
+  }, []);
+
+  function toggleDarkMode() {
+    const nextDarkMode = !darkMode;
+    const theme = nextDarkMode ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("cctv_theme", theme);
+    document.querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", nextDarkMode ? "#0f172a" : "#1d4ed8");
+    setDarkMode(nextDarkMode);
+  }
 
   const renderLink = (item: { id: TabId; label: string }) => {
     const Icon = tabIcons[item.id];
@@ -205,9 +220,15 @@ export function OpsShell({
               </span>
             </div>
 
-            {/* Mock Theme Toggle */}
-            <button className="desktop-theme-button p-2 rounded-md hover:bg-blue-50 text-slate-500 hover:text-blue-700 transition-colors" type="button">
-              <Sun size={17} />
+            <button
+              className="theme-toggle-button p-2 rounded-md hover:bg-blue-50 text-slate-500 hover:text-blue-700 transition-colors"
+              type="button"
+              onClick={toggleDarkMode}
+              title={darkMode ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+              aria-label={darkMode ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+              aria-pressed={darkMode}
+            >
+              {darkMode ? <Sun size={17} /> : <Moon size={17} />}
             </button>
 
             {/* Notifications Icon */}
