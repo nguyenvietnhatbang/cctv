@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, CheckCircle2, Download, Send, Smartphone } from "lucide-react";
+import { Bell, BellOff, CheckCircle2, Download, Smartphone } from "lucide-react";
 import type { PwaPushController } from "@/components/ops/use-pwa-push";
 
 export function PwaPushSettings({ push }: { push: PwaPushController }) {
@@ -49,14 +49,9 @@ export function PwaPushSettings({ push }: { push: PwaPushController }) {
             </button>
           ) : null}
           {push.subscribed ? (
-            <>
-              <button className="btn-secondary h-9 text-xs" type="button" onClick={push.sendTest} disabled={push.busy}>
-                <Send size={14} /> Gửi thử
-              </button>
-              <button className="btn-secondary h-9 text-xs" type="button" onClick={push.unsubscribe} disabled={push.busy}>
-                <BellOff size={14} /> Tắt thông báo
-              </button>
-            </>
+            <button className="btn-secondary h-9 text-xs" type="button" onClick={push.unsubscribe} disabled={push.busy}>
+              <BellOff size={14} /> Tắt thông báo
+            </button>
           ) : (
             <button
               className="btn-primary h-9 text-xs"

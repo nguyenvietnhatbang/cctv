@@ -10,6 +10,9 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/technician",
     scope: "/",
     display: "standalone",
+    launch_handler: {
+      client_mode: "navigate-existing",
+    },
     background_color: "#f8fafc",
     theme_color: "#1d4ed8",
     lang: "vi",

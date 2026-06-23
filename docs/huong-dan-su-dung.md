@@ -222,7 +222,7 @@ Vào màn hình `Thông báo` để kiểm tra trạng thái của thiết bị.
 2. Vào `Thông báo`.
 3. Bấm `Cài ứng dụng` nếu nút này xuất hiện.
 4. Bấm `Bật thông báo` và chấp nhận quyền của trình duyệt.
-5. Bấm `Gửi thử` để kiểm tra.
+5. Khi trạng thái hiển thị `Thiết bị đã đăng ký nhận thông báo`, thiết bị đã sẵn sàng nhận cập nhật công việc.
 
 ### iPhone/iPad
 
@@ -230,7 +230,7 @@ Vào màn hình `Thông báo` để kiểm tra trạng thái của thiết bị.
 2. Mở hệ thống, bấm nút `Chia sẻ`.
 3. Chọn `Thêm vào Màn hình chính`.
 4. Đóng trình duyệt và mở lại hệ thống từ biểu tượng vừa cài.
-5. Vào `Thông báo`, bấm `Bật thông báo`, sau đó `Gửi thử`.
+5. Vào `Thông báo`, bấm `Bật thông báo` và kiểm tra trạng thái thiết bị đã đăng ký.
 
 Thông báo công việc có thể xuất hiện trên màn hình khóa. Bấm vào thông báo sẽ mở đúng phiếu liên quan.
 

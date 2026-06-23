@@ -1,3 +1,11 @@
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
@@ -41,12 +49,11 @@ self.addEventListener("notificationclick", (event) => {
       .matchAll({ type: "window", includeUncontrolled: true })
       .then(async (clients) => {
         for (const client of clients) {
-          const clientUrl = new URL(client.url);
-          if (clientUrl.origin === target.origin) {
-            await client.navigate(target.href);
+          if (client.url === target.href) {
             return client.focus();
           }
         }
+
         return self.clients.openWindow(target.href);
       }),
   );

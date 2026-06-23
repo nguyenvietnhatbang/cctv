@@ -187,32 +187,6 @@ async function markPushFailed(job: PushJob, error: unknown) {
   });
 }
 
-export async function sendTestPush(subscription: {
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-}) {
-  configureWebPush();
-  return webPush.sendNotification(
-    {
-      endpoint: subscription.endpoint,
-      keys: {
-        p256dh: subscription.p256dh,
-        auth: subscription.auth,
-      },
-    },
-    JSON.stringify({
-      title: "Thông báo thử thành công",
-      body: "Thiết bị này đã sẵn sàng nhận cập nhật công việc.",
-      icon: "/pwa/icon-192.png",
-      badge: "/pwa/icon-192.png",
-      tag: `push-test-${Date.now()}`,
-      url: "/notifications",
-    }),
-    { TTL: 60 },
-  );
-}
-
 export async function processPushJobs(limit = DEFAULT_BATCH_SIZE) {
   if (!isPushConfigured()) {
     return { configured: false, processed: 0, sent: 0, failed: 0 };

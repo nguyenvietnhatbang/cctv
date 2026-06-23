@@ -203,23 +203,6 @@ export function usePwaPush({
     }
   }, [subscription]);
 
-  const sendTest = useCallback(async () => {
-    if (!subscription) return;
-    setBusy(true);
-    setFeedback(null);
-    try {
-      await apiFetch("/api/push-subscriptions/test", {
-        method: "POST",
-        body: JSON.stringify({ endpoint: subscription.endpoint }),
-      });
-      setFeedback("Đã gửi thông báo thử. Hãy kiểm tra màn hình thiết bị.");
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Không thể gửi thông báo thử");
-    } finally {
-      setBusy(false);
-    }
-  }, [subscription]);
-
   const install = useCallback(async () => {
     if (!installPrompt) return;
     await installPrompt.prompt();
@@ -242,7 +225,6 @@ export function usePwaPush({
     install,
     subscribe,
     unsubscribe,
-    sendTest,
   };
 }
 

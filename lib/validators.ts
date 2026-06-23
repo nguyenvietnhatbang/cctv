@@ -183,10 +183,6 @@ export const pushUnsubscribeSchema = z.object({
   endpoint: z.string().url().max(2048),
 });
 
-export const pushTestSchema = z.object({
-  endpoint: z.string().url().max(2048),
-});
-
 export const updateUserSchema = z.object({
   fullName: requiredText.optional(),
   email: z.string().email().optional().nullable(),
