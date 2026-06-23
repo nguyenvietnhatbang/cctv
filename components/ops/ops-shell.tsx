@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Bell, KeyRound, LogOut, ChevronsUpDown, Sun, Search } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { brandAssets, companyProfile } from "@/lib/company";
@@ -27,6 +27,19 @@ const BUSINESS_TABS: readonly string[] = ["dashboard", "orders", "customers", "d
 const ACCOUNTING_TABS: readonly string[] = ["payments", "reports"];
 const MANAGEMENT_TABS: readonly string[] = ["users", "notifications"];
 
+function mobileTabIdsForRole(role: SessionUser["role"]): readonly TabId[] {
+  if (role === "technician") {
+    return ["technician", "assignment-history", "notifications"];
+  }
+  if (role === "accountant") {
+    return ["dashboard", "orders", "payments", "reports", "notifications"];
+  }
+  if (role === "admin") {
+    return ["dashboard", "orders", "dispatch", "payments", "notifications"];
+  }
+  return ["dashboard", "orders", "dispatch", "technician", "notifications"];
+}
+
 export function OpsShell({
   user,
   section,
@@ -43,6 +56,8 @@ export function OpsShell({
   const businessTabs = visibleTabs.filter((tab) => BUSINESS_TABS.includes(tab.id));
   const accountingTabs = visibleTabs.filter((tab) => ACCOUNTING_TABS.includes(tab.id));
   const managementTabs = visibleTabs.filter((tab) => MANAGEMENT_TABS.includes(tab.id));
+  const mobileTabIds = mobileTabIdsForRole(user.role);
+  const mobileTabs = visibleTabs.filter((tab) => mobileTabIds.includes(tab.id));
 
   const renderLink = (item: { id: TabId; label: string }) => {
     const Icon = tabIcons[item.id];
@@ -161,13 +176,17 @@ export function OpsShell({
 
       <div className="app-content flex flex-col min-h-screen">
         <header className="app-topbar bg-white/85 backdrop-blur-md flex items-center justify-between border-b border-slate-200">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+          <div className="min-w-0">
+            <div className="desktop-breadcrumb flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
               <span>Vận hành</span>
               <span className="text-[10px]">/</span>
               <span>{companyProfile.displayName}</span>
               <span className="text-[10px]">/</span>
               <span className="text-blue-700 font-semibold">{currentTab.label}</span>
+            </div>
+            <div className="native-app-title">
+              <span className="native-app-eyebrow">{companyProfile.displayName}</span>
+              <strong>{currentTab.label}</strong>
             </div>
           </div>
 
@@ -187,7 +206,7 @@ export function OpsShell({
             </div>
 
             {/* Mock Theme Toggle */}
-            <button className="p-2 rounded-md hover:bg-blue-50 text-slate-500 hover:text-blue-700 transition-colors" type="button">
+            <button className="desktop-theme-button p-2 rounded-md hover:bg-blue-50 text-slate-500 hover:text-blue-700 transition-colors" type="button">
               <Sun size={17} />
             </button>
 
@@ -214,7 +233,7 @@ export function OpsShell({
             </button>
 
             {/* Profile Initial Avatar */}
-            <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
+            <div className="profile-avatar flex items-center gap-2 border-l border-slate-200 pl-3">
               <button
                 className="w-8 h-8 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-[11px] border border-blue-100 hover:bg-blue-100"
                 onClick={onChangePassword}
@@ -240,8 +259,11 @@ export function OpsShell({
         </section>
       </div>
 
-      <nav className="mobile-nav">
-        {visibleTabs.map((item) => {
+      <nav
+        className="mobile-nav"
+        style={{ "--mobile-nav-count": mobileTabs.length } as CSSProperties}
+      >
+        {mobileTabs.map((item) => {
           const Icon = tabIcons[item.id];
           return (
             <Link

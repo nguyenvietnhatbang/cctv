@@ -197,15 +197,15 @@ export function Modal({
   }[size];
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/45 p-3">
-      <section className={`max-h-[92vh] w-full ${width} overflow-hidden rounded-lg bg-white shadow-xl`}>
-        <header className="flex items-center justify-between gap-4 border-b border-zinc-200 px-4 py-3">
+    <div className="app-modal-overlay fixed inset-0 z-50 grid place-items-center bg-zinc-950/45 p-3">
+      <section className={`app-modal-sheet max-h-[92vh] w-full ${width} overflow-hidden rounded-lg bg-white shadow-xl`}>
+        <header className="app-modal-header flex items-center justify-between gap-4 border-b border-zinc-200 px-4 py-3">
           <h2 className="text-base font-bold text-zinc-950">{title}</h2>
           <button className="icon-button" onClick={onClose} type="button" aria-label="Đóng">
             <X size={18} />
           </button>
         </header>
-        <div className="max-h-[calc(92vh-3.5rem)] overflow-auto p-4">{children}</div>
+        <div className="app-modal-body max-h-[calc(92vh-3.5rem)] overflow-auto p-4">{children}</div>
       </section>
     </div>
   );

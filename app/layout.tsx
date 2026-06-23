@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   description: `${companyProfile.legalName} - hệ thống điều phối kỹ thuật, khách hàng, thanh toán và bảo trì CCTV.`,
   applicationName: companyProfile.appName,
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: companyProfile.appName,
+    statusBarStyle: "default",
+  },
   authors: [{ name: companyProfile.legalName, url: `https://${companyProfile.website}` }],
   icons: {
     icon: brandAssets.favicon,
@@ -47,6 +52,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1d4ed8",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
