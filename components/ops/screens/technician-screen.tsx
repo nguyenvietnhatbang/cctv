@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarClock,
@@ -31,6 +31,14 @@ import {
   type WorkOrderType,
 } from "@/lib/types";
 import { apiFetch } from "@/components/ops/api";
+import {
+  CHECK_IN_RADIUS_METERS,
+  checkInDistanceFromCustomer,
+  getCurrentCheckInPosition,
+  type CheckInCoordinates,
+  type CheckInPayload,
+} from "@/components/ops/check-in";
+import { CheckInLocationModal } from "@/components/ops/check-in-location-modal";
 
 
 const TECHNICIAN_WORK_STAGES: ReadonlyArray<{
@@ -56,21 +64,6 @@ const TECHNICIAN_ACTION_ICONS: Partial<Record<WorkOrderStatus, typeof Play>> = {
   traveling: MapPinned,
   working: CheckCircle2,
 };
-
-function getCurrentPosition() {
-  return new Promise<{ checkInLat: number; checkInLng: number } | null>((resolve) => {
-    if (!("geolocation" in navigator)) {
-      resolve(null);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve({ checkInLat: position.coords.latitude, checkInLng: position.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
-    );
-  });
-}
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -283,11 +276,18 @@ export function TechnicianScreen({
   orders: WorkOrderListItem[];
   onView: (id: string) => void;
   onEdit: (id: string) => void;
-  onStatus: (id: string, status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => Promise<void>;
+  onStatus: (id: string, status: WorkOrderStatus, payload?: Partial<CheckInPayload>) => Promise<void>;
 }) {
+  const statusOperationRef = useRef(false);
   const [pendingStatusOrderId, setPendingStatusOrderId] = useState<string | null>(null);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
+  const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ orderId: string; message: string } | null>(null);
+  const [pendingLocationUpdate, setPendingLocationUpdate] = useState<{
+    order: WorkOrderListItem;
+    checkIn: CheckInCoordinates;
+    distance: number;
+  } | null>(null);
   const [historyCustomer, setHistoryCustomer] = useState<{ id: string; name: string } | null>(null);
 
   const activeOrders = orders
@@ -307,49 +307,87 @@ export function TechnicianScreen({
   const nextOrder = activeOrders[0] ?? null;
   const isTeamLead = role === "team_lead";
 
+  function startStatusOperation(orderId: string) {
+    if (statusOperationRef.current) return false;
+    statusOperationRef.current = true;
+    setPendingStatusOrderId(orderId);
+    setLocationWarning(null);
+    setStatusSuccess(null);
+    setActionError(null);
+    return true;
+  }
+
+  function finishStatusOperation() {
+    statusOperationRef.current = false;
+    setPendingStatusOrderId(null);
+  }
+
+  async function performCheckIn(order: WorkOrderListItem) {
+    if (!startStatusOperation(order.id)) return;
+    try {
+      const checkIn = await getCurrentCheckInPosition();
+      const distance = checkInDistanceFromCustomer(order, checkIn);
+      if (distance !== null && distance > CHECK_IN_RADIUS_METERS) {
+        setPendingLocationUpdate({ order, checkIn, distance });
+        return;
+      }
+
+      await onStatus(order.id, "working", checkIn);
+      setStatusSuccess(`Đã check-in thành công phiếu ${order.code}.`);
+    } catch (error) {
+      const message = getErrorMessage(error, "Không check-in được. Vui lòng thử lại.");
+      setLocationWarning(message);
+      setActionError({ orderId: order.id, message });
+    } finally {
+      finishStatusOperation();
+    }
+  }
+
   async function runNextAction(order: WorkOrderListItem) {
     const action = getTechnicianPrimaryAction(order, role);
     if (action.type === "edit") {
       onEdit(order.id);
       return;
     }
+    if (action.status === "working") {
+      await performCheckIn(order);
+      return;
+    }
 
-    setPendingStatusOrderId(order.id);
-    setLocationWarning(null);
-    setActionError(null);
+    if (!startStatusOperation(order.id)) return;
     try {
-      const checkIn = action.status === "working" ? await getCurrentPosition() : null;
-      if (action.status === "working" && !checkIn) {
-        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
-        return;
-      }
-      await onStatus(order.id, action.status, checkIn ?? undefined);
+      await onStatus(order.id, action.status);
+      setStatusSuccess(`Đã chuyển phiếu ${order.code} sang “${action.label}”.`);
     } catch (error) {
       const message = getErrorMessage(error, "Không cập nhật được trạng thái phiếu. Vui lòng thử lại.");
       setLocationWarning(message);
       setActionError({ orderId: order.id, message });
     } finally {
-      setPendingStatusOrderId(null);
+      finishStatusOperation();
     }
   }
 
   async function runCheckIn(order: WorkOrderListItem) {
-    setPendingStatusOrderId(order.id);
-    setLocationWarning(null);
-    setActionError(null);
+    await performCheckIn(order);
+  }
+
+  async function confirmLocationUpdateAndCheckIn() {
+    if (!pendingLocationUpdate || !startStatusOperation(pendingLocationUpdate.order.id)) return;
+    const { order, checkIn, distance } = pendingLocationUpdate;
     try {
-      const checkIn = await getCurrentPosition();
-      if (!checkIn) {
-        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
-        return;
-      }
-      await onStatus(order.id, "working", checkIn);
+      await onStatus(order.id, "working", {
+        ...checkIn,
+        updateCustomerLocation: true,
+        note: `Xác nhận cập nhật tọa độ khách hàng khi check-in, lệch vị trí cũ khoảng ${Math.round(distance)}m.`,
+      });
+      setPendingLocationUpdate(null);
+      setStatusSuccess(`Đã cập nhật vị trí khách hàng và check-in thành công phiếu ${order.code}.`);
     } catch (error) {
-      const message = getErrorMessage(error, "Không check-in được. Vui lòng thử lại.");
+      const message = getErrorMessage(error, "Không cập nhật được vị trí và check-in. Vui lòng thử lại.");
       setLocationWarning(message);
       setActionError({ orderId: order.id, message });
     } finally {
-      setPendingStatusOrderId(null);
+      finishStatusOperation();
     }
   }
 
@@ -394,7 +432,16 @@ export function TechnicianScreen({
         </div>
       </div>
 
-      {locationWarning ? <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{locationWarning}</p> : null}
+      {statusSuccess ? (
+        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800" role="status" aria-live="polite">
+          {statusSuccess}
+        </p>
+      ) : null}
+      {locationWarning ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" role="alert">
+          {locationWarning}
+        </p>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
         <div className="grid gap-5">
@@ -505,6 +552,14 @@ export function TechnicianScreen({
           onClose={() => setHistoryCustomer(null)}
         />
       )}
+      {pendingLocationUpdate ? (
+        <CheckInLocationModal
+          distance={pendingLocationUpdate.distance}
+          pending={pendingStatusOrderId === pendingLocationUpdate.order.id}
+          onCancel={() => setPendingLocationUpdate(null)}
+          onConfirm={confirmLocationUpdateAndCheckIn}
+        />
+      ) : null}
     </section>
   );
 }
