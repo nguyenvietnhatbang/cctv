@@ -342,7 +342,7 @@ a {
 .app-frame {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 16.5rem minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   background: var(--background);
   color: var(--foreground);
 }
@@ -353,9 +353,10 @@ a {
   display: flex;
   height: 100vh;
   flex-direction: column;
-  border-right: 1px solid #dbeafe;
-  background:
-    linear-gradient(180deg, rgba(239, 246, 255, 0.95) 0%, rgba(248, 250, 252, 0.98) 48%, rgba(240, 253, 250, 0.92) 100%);
+  border-right: 1px solid #cbd5e1;
+  background: linear-gradient(185deg, #e0f2fe 0%, #e0e7ff 50%, #f3e8ff 100%);
+  width: 16.5rem;
+  transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-nav {
@@ -365,6 +366,7 @@ a {
 }
 
 .sidebar-link {
+  position: relative;
   display: flex;
   min-height: 2.25rem;
   align-items: center;
@@ -372,24 +374,118 @@ a {
   border: 1px solid transparent;
   border-radius: 0.375rem;
   padding: 0 0.75rem;
-  color: #64748b;
+  color: #475569 !important;
   font-size: 0.875rem;
   font-weight: 500;
   transition: all 150ms ease;
 }
 
+.sidebar-link svg {
+  color: #64748b !important;
+  transition: color 150ms ease;
+}
+
 .sidebar-link:hover {
-  border-color: rgba(191, 219, 254, 0.85);
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--primary-hover);
+  border-color: rgba(191, 219, 254, 0.95) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: var(--primary-hover) !important;
+}
+
+.sidebar-link:hover svg {
+  color: var(--primary-hover) !important;
 }
 
 .sidebar-link-active {
-  border-color: rgba(147, 197, 253, 0.9);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
-  color: var(--primary-hover);
+  border-color: rgba(147, 197, 253, 0.95) !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06) !important;
+  color: var(--primary-hover) !important;
   font-weight: 600;
+}
+
+.sidebar-link-active svg {
+  color: var(--primary) !important;
+}
+
+.sidebar-link span {
+  color: inherit !important;
+  font-weight: inherit !important;
+}
+
+.app-sidebar-header {
+  border-bottom: 1px solid rgba(203, 213, 225, 0.7) !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.app-sidebar-footer {
+  border-top: 1px solid rgba(203, 213, 225, 0.7) !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Sidebar Text and Buttons - Light Mode */
+.brand-title {
+  color: #0f172a;
+}
+.brand-link {
+  color: #64748b;
+}
+.profile-name {
+  color: #0f172a;
+}
+.profile-role {
+  color: #64748b;
+}
+
+.sidebar-toggle-btn,
+.sidebar-footer-btn {
+  color: #64748b;
+  background-color: transparent;
+}
+.sidebar-toggle-btn:hover,
+.sidebar-footer-btn:hover {
+  color: #1d4ed8;
+  background-color: rgba(37, 99, 235, 0.08);
+}
+
+/* Collapsed Sidebar Styles */
+.app-sidebar.collapsed {
+  width: 4.5rem;
+}
+
+.app-sidebar.collapsed .sidebar-group-title {
+  opacity: 0;
+  height: 0;
+  margin-bottom: 0;
+  padding: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.app-sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 0 0.25rem;
+}
+
+.app-sidebar.collapsed .sidebar-link span:not(.sidebar-badge) {
+  display: none;
+}
+
+.app-sidebar.collapsed .active-dot {
+  display: none;
+}
+
+.app-sidebar.collapsed .sidebar-badge {
+  position: absolute;
+  top: 3px;
+  right: 12px;
+  padding: 1.5px 3.5px;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.app-sidebar.collapsed .app-sidebar-footer {
+  justify-content: center;
+  padding: 0.75rem 0.25rem;
 }
 
 .app-content {
@@ -1833,25 +1929,78 @@ html[data-theme="dark"] .app-content {
 }
 
 html[data-theme="dark"] .app-sidebar {
-  border-color: #243247;
-  background: linear-gradient(180deg, #101b2d 0%, #0d1727 55%, #10221f 100%);
+  border-color: #141c2b;
+  background: linear-gradient(180deg, #070a12 0%, #0a0f1b 100%);
 }
 
-html[data-theme="dark"] .app-sidebar > div,
-html[data-theme="dark"] .app-topbar {
-  border-color: #273449 !important;
-  background-color: rgba(15, 23, 42, 0.9) !important;
+html[data-theme="dark"] .app-sidebar-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(15, 23, 42, 0.3) !important;
 }
 
-html[data-theme="dark"] .sidebar-link {
+html[data-theme="dark"] .app-sidebar-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(15, 23, 42, 0.3) !important;
+}
+
+/* Sidebar Text and Buttons - Dark Mode */
+html[data-theme="dark"] .brand-title {
+  color: #ffffff;
+}
+html[data-theme="dark"] .brand-link {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .profile-name {
+  color: #ffffff;
+}
+html[data-theme="dark"] .profile-role {
   color: #94a3b8;
 }
 
-html[data-theme="dark"] .sidebar-link:hover,
+html[data-theme="dark"] .sidebar-toggle-btn,
+html[data-theme="dark"] .sidebar-footer-btn {
+  color: #94a3b8;
+  background-color: transparent;
+}
+html[data-theme="dark"] .sidebar-toggle-btn:hover,
+html[data-theme="dark"] .sidebar-footer-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Sidebar Links - Dark Mode */
+html[data-theme="dark"] .sidebar-link {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .sidebar-link svg {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .sidebar-link:hover {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .sidebar-link:hover svg {
+  color: #ffffff !important;
+}
+
 html[data-theme="dark"] .sidebar-link-active {
-  border-color: #334a68;
-  background: rgba(30, 41, 59, 0.9);
-  color: #93c5fd;
+  border-color: rgba(37, 99, 235, 0.4) !important;
+  background: rgba(37, 99, 235, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .sidebar-link-active svg {
+  color: #3b82f6 !important;
+}
+
+html[data-theme="dark"] .app-topbar {
+  border-color: #273449 !important;
+  background-color: rgba(15, 23, 42, 0.9) !important;
 }
 
 html[data-theme="dark"] .panel,

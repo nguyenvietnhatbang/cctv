@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Bell, KeyRound, LogOut, ChevronsUpDown, Moon, Sun, Search } from "lucide-react";
+import { Bell, KeyRound, LogOut, ChevronLeft, ChevronRight, Moon, Sun, Search } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { brandAssets, companyProfile } from "@/lib/company";
 import { tabIcons, type TabId } from "@/components/ops/app-config";
@@ -60,9 +60,21 @@ export function OpsShell({
   const mobileTabIds = mobileTabIdsForRole(user.role);
   const mobileTabs = visibleTabs.filter((tab) => mobileTabIds.includes(tab.id));
 
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   useEffect(() => {
     setDarkMode(document.documentElement.dataset.theme === "dark");
+    const stored = localStorage.getItem("cctv_sidebar_collapsed");
+    if (stored === "true") {
+      setIsCollapsed(true);
+    }
   }, []);
+
+  function toggleSidebar() {
+    const nextCollapsed = !isCollapsed;
+    setIsCollapsed(nextCollapsed);
+    localStorage.setItem("cctv_sidebar_collapsed", String(nextCollapsed));
+  }
 
   function toggleDarkMode() {
     const nextDarkMode = !darkMode;
@@ -92,11 +104,11 @@ export function OpsShell({
           <span className={isActive ? "font-semibold text-slate-950" : "text-slate-600"}>{item.label}</span>
         </div>
         {item.id === "notifications" && unreadNotifications > 0 ? (
-          <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+          <span className="sidebar-badge rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
             {unreadNotifications}
           </span>
         ) : isActive ? (
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 mr-0.5" />
+          <span className="active-dot w-1.5 h-1.5 rounded-full bg-blue-600 mr-0.5" />
         ) : null}
       </Link>
     );
@@ -104,9 +116,9 @@ export function OpsShell({
 
   return (
     <main className="app-frame">
-      <aside className="app-sidebar flex flex-col h-screen">
+      <aside className={`app-sidebar flex flex-col h-screen ${isCollapsed ? "collapsed" : ""}`}>
         {/* Brand Header */}
-        <div className="flex items-center justify-between border-b border-blue-100/70 bg-white/45 px-4 py-4 backdrop-blur-sm">
+        <div className="app-sidebar-header flex items-center justify-between border-b border-blue-100/70 bg-white/45 px-4 py-4 backdrop-blur-sm">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-blue-100 bg-white shadow-sm">
               <Image
@@ -118,13 +130,18 @@ export function OpsShell({
                 className="h-7 w-7 object-contain"
               />
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-bold text-slate-950 leading-tight">{companyProfile.appName}</p>
-              <p className="truncate text-[10px] text-slate-400 font-medium leading-none">{companyProfile.website}</p>
+            <div className={`min-w-0 transition-opacity duration-200 ${isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"}`}>
+              <p className="brand-title truncate text-xs font-bold leading-tight">{companyProfile.appName}</p>
+              <p className="brand-link truncate text-[10px] font-medium leading-none">{companyProfile.website}</p>
             </div>
           </div>
-          <button className="text-slate-400 hover:text-blue-700">
-            <ChevronsUpDown size={15} />
+          <button
+            onClick={toggleSidebar}
+            className="sidebar-toggle-btn p-1 rounded transition-colors"
+            title={isCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+            type="button"
+          >
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         </div>
 
@@ -132,28 +149,28 @@ export function OpsShell({
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-6">
           {businessTabs.length > 0 ? (
             <div>
-              <div className="px-5 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Business</div>
+              <div className="sidebar-group-title px-5 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Business</div>
               <nav className="grid gap-0.5 px-2">{businessTabs.map(renderLink)}</nav>
             </div>
           ) : null}
 
           {accountingTabs.length > 0 ? (
             <div>
-              <div className="px-5 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Accounting</div>
+              <div className="sidebar-group-title px-5 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Accounting</div>
               <nav className="grid gap-0.5 px-2">{accountingTabs.map(renderLink)}</nav>
             </div>
           ) : null}
 
           {managementTabs.length > 0 ? (
             <div>
-              <div className="px-5 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Management</div>
+              <div className="sidebar-group-title px-5 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Management</div>
               <nav className="grid gap-0.5 px-2">{managementTabs.map(renderLink)}</nav>
             </div>
           ) : null}
         </div>
 
         {/* User Profile */}
-        <div className="mt-auto border-t border-blue-100/70 bg-white/45 p-3 flex items-center justify-between gap-2 backdrop-blur-sm">
+        <div className="app-sidebar-footer mt-auto border-t border-blue-100/70 bg-white/45 p-3 flex items-center justify-between gap-2 backdrop-blur-sm">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs border border-teal-600 shrink-0">
               {user.fullName
@@ -163,15 +180,15 @@ export function OpsShell({
                 .substring(0, 2)
                 .toUpperCase()}
             </div>
-            <div className="text-xs truncate">
-              <p className="font-semibold text-slate-950 leading-tight truncate">{user.fullName}</p>
-              <p className="text-slate-500 leading-none truncate mt-0.5">{ROLE_LABELS[user.role]}</p>
+            <div className={`text-xs truncate transition-opacity duration-200 ${isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"}`}>
+              <p className="profile-name font-semibold leading-tight truncate">{user.fullName}</p>
+              <p className="profile-role leading-none truncate mt-0.5">{ROLE_LABELS[user.role]}</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className={`flex shrink-0 items-center gap-1 transition-opacity duration-200 ${isCollapsed ? "opacity-0 w-0 overflow-hidden" : "opacity-100"}`}>
             <button
               onClick={onChangePassword}
-              className="text-slate-400 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 transition-colors"
+              className="sidebar-footer-btn p-1.5 rounded-md transition-colors"
               title="Đổi mật khẩu"
               type="button"
             >
@@ -179,7 +196,7 @@ export function OpsShell({
             </button>
             <button
               onClick={onLogout}
-              className="text-slate-400 hover:text-blue-700 p-1.5 rounded-md hover:bg-blue-50 transition-colors"
+              className="sidebar-footer-btn p-1.5 rounded-md transition-colors"
               title="Đăng xuất"
               type="button"
             >

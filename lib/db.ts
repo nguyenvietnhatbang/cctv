@@ -30,14 +30,21 @@ function getPool() {
     throw new Error("Missing DATABASE_URL");
   }
 
-  globalThis.cctvPgPool = new Pool({
+  const pool = new Pool({
     connectionString,
     max: readPositiveIntegerEnv("PG_POOL_MAX", 10),
     idleTimeoutMillis: readPositiveIntegerEnv("PG_IDLE_TIMEOUT_MS", 30_000),
-    connectionTimeoutMillis: readPositiveIntegerEnv("PG_CONNECTION_TIMEOUT_MS", 5_000),
+    connectionTimeoutMillis: readPositiveIntegerEnv("PG_CONNECTION_TIMEOUT_MS", 15_000),
     ssl: shouldUseSsl(connectionString) ? { rejectUnauthorized: false } : undefined,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10_000,
   });
 
+  pool.on("error", (err) => {
+    console.error("Unexpected error on idle pg client:", err);
+  });
+
+  globalThis.cctvPgPool = pool;
   return globalThis.cctvPgPool;
 }
 
