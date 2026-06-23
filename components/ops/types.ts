@@ -35,6 +35,8 @@ export type WorkOrderListItem = {
   customer_address: string;
   customer_lat: string | null;
   customer_lng: string | null;
+  check_in_lat?: string | number | null;
+  check_in_lng?: string | number | null;
   technician_id: string | null;
   technician_name: string | null;
   assigned_technicians: AssignedTechnician[];

@@ -57,6 +57,7 @@ function pushPayload(job: PushJob) {
     badge: "/pwa/icon-192.png",
     tag: notificationTag,
     notificationId: job.notification_id,
+    workOrderId: job.work_order_id,
     timestamp: new Date(job.created_at).getTime(),
     unreadCount: job.unread_count,
     renotify: job.priority !== "normal",

@@ -113,8 +113,25 @@ export function usePwaPush({
     const status = await apiFetch<PushStatusResponse>("/api/push-subscriptions");
     setConfigured(status.configured);
 
-    if (currentSubscription) {
-      const serialized = currentSubscription.toJSON();
+    let activeSubscription = currentSubscription;
+    if (!activeSubscription && Notification.permission === "granted" && status.configured) {
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (publicKey) {
+        try {
+          const nextSubscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+          });
+          activeSubscription = nextSubscription;
+          setSubscription(nextSubscription);
+        } catch (error) {
+          console.error("Tự động đăng ký thông báo thất bại:", error);
+        }
+      }
+    }
+
+    if (activeSubscription) {
+      const serialized = activeSubscription.toJSON();
       if (serialized.endpoint && serialized.keys?.p256dh && serialized.keys.auth) {
         await apiFetch("/api/push-subscriptions", {
           method: "POST",
@@ -217,6 +234,7 @@ export function usePwaPush({
     configured,
     permission,
     subscribed: Boolean(subscription),
+    subscription,
     canInstall: Boolean(installPrompt),
     isIOS,
     isStandalone,

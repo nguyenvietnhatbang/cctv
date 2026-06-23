@@ -13,6 +13,13 @@ import { FileUploadForm } from "@/components/ops/modals/file-upload-form";
 import { MaterialsForm } from "@/components/ops/modals/materials-form";
 import { PaymentForm } from "@/components/ops/modals/payment-form";
 import { SignatureAcceptanceForm } from "@/components/ops/modals/signature-acceptance-form";
+import {
+  CHECK_IN_RADIUS_METERS,
+  checkInDistanceFromCustomer,
+  getCurrentCheckInPosition,
+  type CheckInPayload,
+} from "@/components/ops/check-in";
+import { CheckInLocationModal } from "@/components/ops/check-in-location-modal";
 
 type EditTab = "basic" | "workflow" | "costs" | "resources" | "acceptance" | "payment";
 
@@ -34,21 +41,6 @@ const technicianTabs: ReadonlyArray<{ id: EditTab; label: string; icon: LucideIc
 ];
 
 const FINANCIAL_LOCKED_STATUSES: WorkOrderStatus[] = ["completed", "awaiting_payment", "paid", "debt", "cancelled"];
-
-function getCurrentPosition() {
-  return new Promise<{ checkInLat: number; checkInLng: number } | null>((resolve) => {
-    if (!("geolocation" in navigator)) {
-      resolve(null);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve({ checkInLat: position.coords.latitude, checkInLng: position.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
-    );
-  });
-}
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -159,7 +151,7 @@ export function WorkOrderEditModal({
   role: Role;
   technicians: Technician[];
   onClose: () => void;
-  onStatus: (status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; note?: string | null }) => void | Promise<void>;
+  onStatus: (status: WorkOrderStatus, payload?: { checkInLat?: number; checkInLng?: number; updateCustomerLocation?: boolean; note?: string | null }) => void | Promise<void>;
   onCancel: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onAssign: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onUpdate: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -177,6 +169,13 @@ export function WorkOrderEditModal({
   const [activeTab, setActiveTab] = useState<EditTab>(() => getInitialTab(role, detail.workOrder.status));
   const [preparingStatus, setPreparingStatus] = useState(false);
   const [locationWarning, setLocationWarning] = useState<string | null>(null);
+  const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
+  const [pendingLocationUpdate, setPendingLocationUpdate] = useState<{
+    status: WorkOrderStatus;
+    checkIn: CheckInPayload;
+    distance: number;
+  } | null>(null);
+
   const nextAction = NEXT_STATUS_ACTIONS[detail.workOrder.status] ?? null;
   const canNext = nextAction?.roles.includes(role) ?? false;
   const canAssign = isOpsManagerRole(role)
@@ -194,44 +193,79 @@ export function WorkOrderEditModal({
   const visibleTabs = role === "technician" ? technicianTabs : tabs;
   const adminAction = role === "technician" ? null : getAdminAction(detail.workOrder.status);
 
-  async function handleNextStatus() {
-    if (!nextAction) return;
+  function startStatusOperation() {
     setPreparingStatus(true);
     setLocationWarning(null);
+    setStatusSuccess(null);
+  }
+
+  function finishStatusOperation() {
+    setPreparingStatus(false);
+  }
+
+  async function checkInOrRequestLocationUpdate(nextCheckInStatus: WorkOrderStatus, checkIn: CheckInPayload) {
+    const distance = checkInDistanceFromCustomer(detail.workOrder, checkIn);
+    if (distance !== null && distance > CHECK_IN_RADIUS_METERS) {
+      setPendingLocationUpdate({ status: nextCheckInStatus, checkIn, distance });
+      return;
+    }
+
+    await onStatus(nextCheckInStatus, checkIn);
+    setStatusSuccess(`Đã check-in thành công phiếu ${detail.workOrder.code}.`);
+  }
+
+  async function handleNextStatus() {
+    if (!nextAction) return;
+    startStatusOperation();
     try {
-      const checkIn = nextAction.status === "working" ? await getCurrentPosition() : null;
-      if (nextAction.status === "working" && !checkIn) {
-        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
-        return;
+      const checkIn = nextAction.status === "working" ? await getCurrentCheckInPosition() : null;
+      if (checkIn) {
+        await checkInOrRequestLocationUpdate(nextAction.status, checkIn);
+      } else {
+        await onStatus(nextAction.status);
+        setStatusSuccess(`Đã chuyển phiếu sang “${nextAction.label}”.`);
       }
-      await onStatus(nextAction.status, checkIn ?? undefined);
     } catch (error) {
       setLocationWarning(getErrorMessage(error, "Không cập nhật được trạng thái phiếu. Vui lòng thử lại."));
     } finally {
-      setPreparingStatus(false);
+      finishStatusOperation();
     }
   }
 
   async function handleQuickCheckIn() {
-    setPreparingStatus(true);
-    setLocationWarning(null);
+    startStatusOperation();
     try {
-      const checkIn = await getCurrentPosition();
-      if (!checkIn) {
-        setLocationWarning("Không lấy được vị trí check-in. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost rồi thử lại.");
-        return;
-      }
-      await onStatus("working", checkIn);
+      const checkIn = await getCurrentCheckInPosition();
+      await checkInOrRequestLocationUpdate("working", checkIn);
     } catch (error) {
       setLocationWarning(getErrorMessage(error, "Không check-in được. Vui lòng thử lại."));
     } finally {
-      setPreparingStatus(false);
+      finishStatusOperation();
+    }
+  }
+
+  async function confirmLocationUpdateAndCheckIn() {
+    if (!pendingLocationUpdate) return;
+    startStatusOperation();
+    try {
+      await onStatus(pendingLocationUpdate.status, {
+        ...pendingLocationUpdate.checkIn,
+        updateCustomerLocation: true,
+        note: `Xác nhận cập nhật tọa độ khách hàng khi check-in, lệch vị trí cũ khoảng ${Math.round(pendingLocationUpdate.distance)}m.`,
+      });
+      setPendingLocationUpdate(null);
+      setStatusSuccess(`Đã cập nhật vị trí khách hàng và check-in thành công phiếu ${detail.workOrder.code}.`);
+    } catch (error) {
+      setLocationWarning(getErrorMessage(error, "Không cập nhật được vị trí và check-in. Vui lòng thử lại."));
+    } finally {
+      finishStatusOperation();
     }
   }
 
   return (
-    <Modal title={`${role === "technician" ? "Xử lý phiếu" : "Sửa phiếu"} ${detail.workOrder.code}`} size="xl" onClose={onClose}>
-      <div className="grid gap-4">
+    <>
+      <Modal title={`${role === "technician" ? "Xử lý phiếu" : "Sửa phiếu"} ${detail.workOrder.code}`} size="xl" onClose={onClose}>
+        <div className="grid gap-4">
         <section className="modal-summary">
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge order={detail.workOrder} />
@@ -355,6 +389,11 @@ export function WorkOrderEditModal({
                   {locationWarning ? (
                     <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{locationWarning}</p>
                   ) : null}
+                  {statusSuccess ? (
+                    <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800" role="status" aria-live="polite">
+                      {statusSuccess}
+                    </p>
+                  ) : null}
                   <PendingButton className="btn-primary mt-3 h-10" onClick={handleNextStatus} type="button" pending={pendingAction === "status" || preparingStatus} pendingLabel={preparingStatus ? "Đang chuẩn bị..." : "Đang chuyển..."}>
                     <CheckCircle2 size={15} />{nextAction.label}
                   </PendingButton>
@@ -460,5 +499,14 @@ export function WorkOrderEditModal({
         </div>
       </div>
     </Modal>
-  );
+    {pendingLocationUpdate ? (
+      <CheckInLocationModal
+        distance={pendingLocationUpdate.distance}
+        pending={preparingStatus}
+        onCancel={() => setPendingLocationUpdate(null)}
+        onConfirm={confirmLocationUpdateAndCheckIn}
+      />
+    ) : null}
+  </>
+);
 }

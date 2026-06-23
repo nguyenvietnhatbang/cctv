@@ -265,6 +265,48 @@ export function OpsModalLayer({
     }
   }
 
+  async function handleStatusUpdate(status: WorkOrderDetail["workOrder"]["status"], payload?: StatusNotePayload) {
+    if (!detail) return;
+    await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, ...payload }),
+    });
+
+    setDetail((current) => {
+      if (!current) return null;
+      return {
+        ...current,
+        workOrder: {
+          ...current.workOrder,
+          status,
+          check_in_lat: payload?.checkInLat ?? current.workOrder.check_in_lat,
+          check_in_lng: payload?.checkInLng ?? current.workOrder.check_in_lng,
+          customer_lat: payload?.updateCustomerLocation && payload?.checkInLat ? String(payload.checkInLat) : current.workOrder.customer_lat,
+          customer_lng: payload?.updateCustomerLocation && payload?.checkInLng ? String(payload.checkInLng) : current.workOrder.customer_lng,
+        },
+      };
+    });
+
+    setData((current) => {
+      const nextOrders = current.orders.map((o) => {
+        if (o.id === detail.workOrder.id) {
+          return {
+            ...o,
+            status,
+            check_in_lat: payload?.checkInLat ?? o.check_in_lat,
+            check_in_lng: payload?.checkInLng ?? o.check_in_lng,
+            customer_lat: payload?.updateCustomerLocation && payload?.checkInLat ? String(payload.checkInLat) : o.customer_lat,
+            customer_lng: payload?.updateCustomerLocation && payload?.checkInLng ? String(payload.checkInLng) : o.customer_lng,
+          };
+        }
+        return o;
+      });
+      return { ...current, orders: nextOrders };
+    });
+
+    void afterMutation();
+  }
+
   async function runMaterialMutation(action: Exclude<MaterialPendingAction, null>, callback: () => Promise<void>) {
     setMaterialPendingAction(action);
     setError(null);
@@ -339,7 +381,7 @@ export function OpsModalLayer({
           pendingAction={pendingAction}
           materialPendingAction={materialPendingAction}
           deletingFileId={deletingFileId}
-          onStatus={(status, payload) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...payload }) }); await afterMutation(); })}
+          onStatus={(status, payload) => runMutation("status", () => handleStatusUpdate(status, payload))}
           onCancel={(event) => runMutation("cancel", async () => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status: "cancelled", note: formData.get("note") }) }); await afterMutation(); })}
           onAssign={(event) => runMutation("assign", () => submitAssignment(event))}
           onUpdate={(event) => runMutation("update", () => submitWorkOrderPatch(event))}
@@ -363,7 +405,7 @@ export function OpsModalLayer({
           pendingAction={pendingAction}
           materialPendingAction={materialPendingAction}
           deletingFileId={deletingFileId}
-          onStatus={(status, payload) => runMutation("status", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/status`, { method: "POST", body: JSON.stringify({ status, ...payload }) }); await afterMutation(); })}
+          onStatus={(status, payload) => runMutation("status", () => handleStatusUpdate(status, payload))}
           onUpdate={(event) => runMutation("update", () => submitWorkOrderPatch(event))}
           onMaterialCreate={(event) => runMaterialMutation({ type: "create" }, async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials`, { method: "POST", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); form.reset(); await afterMutation(); })}
           onMaterialUpdate={(material, event) => runMaterialMutation({ type: "update", id: material.id }, async () => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "PATCH", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); await afterMutation(); })}

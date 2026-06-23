@@ -3,24 +3,8 @@
 import { useState } from "react";
 import { LocateFixed, MapPinned, X } from "lucide-react";
 import { mapSearchUrl } from "@/components/ops/app-utils";
+import { getCurrentCheckInPosition } from "@/components/ops/check-in";
 
-function getCurrentCoordinates() {
-  return new Promise<{ lat: number; lng: number }>((resolve, reject) => {
-    if (!("geolocation" in navigator)) {
-      reject(new Error("Trình duyệt không hỗ trợ lấy vị trí."));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => resolve({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      }),
-      () => reject(new Error("Không lấy được vị trí. Hãy cho phép quyền vị trí và mở app qua HTTPS hoặc localhost.")),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 },
-    );
-  });
-}
 
 function formatCoordinate(value: number | string | null) {
   if (value === null || value === "") return "";
@@ -52,9 +36,9 @@ export function LocationPinField({
     setPending(true);
     setMessage(null);
     try {
-      const coordinates = await getCurrentCoordinates();
-      setLat(coordinates.lat.toFixed(7));
-      setLng(coordinates.lng.toFixed(7));
+      const coordinates = await getCurrentCheckInPosition();
+      setLat(coordinates.checkInLat.toFixed(7));
+      setLng(coordinates.checkInLng.toFixed(7));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Không lấy được vị trí.");
     } finally {

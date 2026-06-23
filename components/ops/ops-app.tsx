@@ -716,8 +716,15 @@ export function OpsApp() {
   async function handleLogout() {
     setError(null);
     try {
-      if (pwaPush.subscribed) {
-        await pwaPush.unsubscribe();
+      if (pwaPush.subscription?.endpoint) {
+        try {
+          await apiFetch("/api/push-subscriptions", {
+            method: "DELETE",
+            body: JSON.stringify({ endpoint: pwaPush.subscription.endpoint }),
+          });
+        } catch (error) {
+          console.error("Không thể hủy liên kết thông báo trên server:", error);
+        }
       }
       await apiFetch("/api/auth/logout", { method: "POST" });
     } finally {
@@ -926,7 +933,23 @@ export function OpsApp() {
         method: "POST",
         body: JSON.stringify({ status, ...payload }),
       });
-      await afterMutation();
+      setData((current) => {
+        const nextOrders = current.orders.map((o) => {
+          if (o.id === id) {
+            return {
+              ...o,
+              status,
+              check_in_lat: payload?.checkInLat ?? o.check_in_lat,
+              check_in_lng: payload?.checkInLng ?? o.check_in_lng,
+              customer_lat: payload?.updateCustomerLocation && payload?.checkInLat ? String(payload.checkInLat) : o.customer_lat,
+              customer_lng: payload?.updateCustomerLocation && payload?.checkInLng ? String(payload.checkInLng) : o.customer_lng,
+            };
+          }
+          return o;
+        });
+        return { ...current, orders: nextOrders };
+      });
+      void afterMutation();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Không cập nhật được trạng thái phiếu";
       setError(message);
