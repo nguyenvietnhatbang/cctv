@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Download, Edit, Eye, Plus, XCircle, Search } from "lucide-react";
+import { Check, ChevronDown, Download, Edit, Eye, Plus, XCircle, Search } from "lucide-react";
 import {
   DISPLAY_STATUS_LABELS,
   DISPLAY_STATUS_ORDER,
@@ -34,6 +34,122 @@ const SCOPE_FILTERS: Array<{ value: Filters["scope"]; label: string }> = [
   { value: "today", label: "Hôm nay" },
   { value: "all", label: "Tất cả" },
 ];
+
+const DISPLAY_STATUS_VALUES = new Set<string>(DISPLAY_STATUS_ORDER);
+
+type FilterOption = {
+  value: string;
+  label: string;
+  searchText?: string;
+};
+
+function SearchableFilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const selectedOption = options.find((option) => option.value === value);
+  const normalizedQuery = query.trim().toLocaleLowerCase("vi");
+  const filteredOptions = normalizedQuery
+    ? options.filter((option) => `${option.label} ${option.searchText ?? ""}`.toLocaleLowerCase("vi").includes(normalizedQuery))
+    : options;
+
+  useEffect(() => {
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      return;
+    }
+    window.requestAnimationFrame(() => searchInputRef.current?.focus());
+  }, [open]);
+
+  return (
+    <div className="searchable-filter" ref={rootRef}>
+      <button
+        type="button"
+        className="searchable-filter-trigger"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className="truncate">{label}: {selectedOption?.label ?? "Tất cả"}</span>
+        <ChevronDown size={14} className="shrink-0" />
+      </button>
+      {open ? (
+        <div className="searchable-filter-menu">
+          <div className="searchable-filter-search">
+            <Search size={13} aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setOpen(false);
+              }}
+              placeholder={`Tìm ${label.toLocaleLowerCase("vi")}...`}
+              aria-label={`Tìm ${label.toLocaleLowerCase("vi")}`}
+            />
+          </div>
+          <div className="searchable-filter-options" role="listbox" aria-label={label}>
+            <button
+              type="button"
+              className="searchable-filter-option"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              role="option"
+              aria-selected={!value}
+            >
+              <span className="truncate">Tất cả</span>
+              {!value ? <Check size={14} /> : null}
+            </button>
+            {filteredOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className="searchable-filter-option"
+                onClick={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                role="option"
+                aria-selected={option.value === value}
+                title={option.label}
+              >
+                <span className="truncate">{option.label}</span>
+                {option.value === value ? <Check size={14} /> : null}
+              </button>
+            ))}
+            {filteredOptions.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-zinc-500">Không tìm thấy lựa chọn.</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 type WorkOrderCreateModalProps = {
   customers: Customer[];
@@ -86,6 +202,45 @@ export function OrdersScreen({
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
   const [queryDraft, setQueryDraft] = useState(filters.q);
+  const statusOptions = useMemo<FilterOption[]>(
+    () => [
+      ...DISPLAY_STATUS_ORDER.map((status) => ({
+        value: status,
+        label: DISPLAY_STATUS_LABELS[status],
+        searchText: "nhóm vận hành",
+      })),
+      ...WORK_ORDER_STATUSES.filter((status) => !DISPLAY_STATUS_VALUES.has(status)).map((status) => ({
+        value: status,
+        label: WORK_ORDER_STATUS_LABELS[status],
+        searchText: "trạng thái nghiệp vụ",
+      })),
+    ],
+    [],
+  );
+  const typeOptions = useMemo<FilterOption[]>(
+    () => WORK_ORDER_TYPES.map((type) => ({ value: type, label: WORK_ORDER_TYPE_LABELS[type] })),
+    [],
+  );
+  const customerOptions = useMemo<FilterOption[]>(
+    () => customers
+      .map((customer) => ({
+        value: customer.id,
+        label: `${customer.name} · ${customer.phone}`,
+        searchText: customer.address,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label, "vi")),
+    [customers],
+  );
+  const technicianOptions = useMemo<FilterOption[]>(
+    () => technicians
+      .map((technician) => ({
+        value: technician.id,
+        label: technician.full_name,
+        searchText: `${technician.phone ?? ""} ${technician.email ?? ""} ${technician.service_area ?? ""}`,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label, "vi")),
+    [technicians],
+  );
   const statusSummary = useMemo(
     () => orders.reduce<Record<DisplayStatus, number>>(
       (summary, order) => {
@@ -209,8 +364,8 @@ export function OrdersScreen({
 
       {/* Orders Table Shell with Compact Filter Header */}
       <TableShell className="orders-table-shell">
-        <div className="table-toolbar">
-          <div className="table-filter-row">
+        <div className="table-toolbar orders-filter-toolbar">
+          <div className="orders-filter-primary-row">
             {SCOPE_FILTERS.map((item) => (
               <button
                 key={item.value}
@@ -221,53 +376,33 @@ export function OrdersScreen({
                 {item.label}
               </button>
             ))}
-            <select
+            <SearchableFilterSelect
+              label="Trạng thái"
               value={filters.status}
-              onChange={(event) => applyFilter({ ...filters, status: event.target.value })}
-              className="input h-9 bg-white py-1 text-xs"
-            >
-              <option value="">Trạng thái: Tất cả</option>
-              <optgroup label="Nhóm vận hành">
-                {DISPLAY_STATUS_ORDER.map((status) => (
-                  <option key={status} value={status}>
-                    {DISPLAY_STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Trạng thái nghiệp vụ">
-                {WORK_ORDER_STATUSES.map((status) => (
-                  <option key={status} value={status}>
-                    {WORK_ORDER_STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-            <select
+              options={statusOptions}
+              onChange={(status) => applyFilter({ ...filters, status })}
+            />
+            <SearchableFilterSelect
+              label="Loại việc"
               value={filters.type}
-              onChange={(event) => applyFilter({ ...filters, type: event.target.value })}
-              className="input h-9 bg-white py-1 text-xs"
-            >
-              <option value="">Loại việc: Tất cả</option>
-              {WORK_ORDER_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {WORK_ORDER_TYPE_LABELS[type]}
-                </option>
-              ))}
-            </select>
-            <select
+              options={typeOptions}
+              onChange={(type) => applyFilter({ ...filters, type })}
+            />
+            <SearchableFilterSelect
+              label="Khách hàng"
+              value={filters.customerId}
+              options={customerOptions}
+              onChange={(customerId) => applyFilter({ ...filters, customerId })}
+            />
+            <SearchableFilterSelect
+              label="Kỹ thuật"
               value={filters.technicianId}
-              onChange={(event) => applyFilter({ ...filters, technicianId: event.target.value })}
-              className="input h-9 bg-white py-1 text-xs"
-            >
-              <option value="">Kỹ thuật: Tất cả</option>
-              {technicians.map((technician) => (
-                <option key={technician.id} value={technician.id}>
-                  {technician.full_name}
-                </option>
-              ))}
-            </select>
+              options={technicianOptions}
+              onChange={(technicianId) => applyFilter({ ...filters, technicianId })}
+            />
+          </div>
 
-            {/* Combined Date Range Box */}
+          <div className="orders-filter-secondary-row">
             <div className="date-range-control">
               <span className="text-[10px] uppercase font-bold text-zinc-400">Hẹn từ:</span>
               <input
@@ -294,16 +429,16 @@ export function OrdersScreen({
                 Bỏ ngày
               </button>
             ) : null}
-          </div>
 
-          <div className="table-search">
-            <Search size={13} className="search-field-icon" />
-            <input
-              value={queryDraft}
-              onChange={(event) => setQueryDraft(event.target.value)}
-              className="input search-field-input h-9 !w-full py-1 text-xs"
-              placeholder="Tìm kiếm công việc..."
-            />
+            <div className="table-search orders-filter-search">
+              <Search size={13} className="search-field-icon" />
+              <input
+                value={queryDraft}
+                onChange={(event) => setQueryDraft(event.target.value)}
+                className="input search-field-input h-9 !w-full py-1 text-xs"
+                placeholder="Tìm kiếm công việc..."
+              />
+            </div>
           </div>
         </div>
 

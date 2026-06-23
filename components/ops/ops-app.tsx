@@ -109,12 +109,13 @@ export function OpsApp() {
     if (filters.scope !== "open") params.set("scope", filters.scope);
     if (filters.status) params.set("status", filters.status);
     if (filters.type) params.set("type", filters.type);
+    if (filters.customerId) params.set("customerId", filters.customerId);
     if (filters.technicianId) params.set("technicianId", filters.technicianId);
     if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
 
     return params.toString();
-  }, [filters.dateFrom, filters.dateTo, filters.q, filters.scope, filters.status, filters.technicianId, filters.type]);
+  }, [filters.customerId, filters.dateFrom, filters.dateTo, filters.q, filters.scope, filters.status, filters.technicianId, filters.type]);
 
   const workOrderListRequest = useCallback((targetSection = section) => {
     const params = new URLSearchParams(targetSection === "dispatch" ? "" : workOrderQueryString());
@@ -887,6 +888,7 @@ export function OpsApp() {
     if (nextFilters.scope !== "open") params.set("scope", nextFilters.scope);
     if (nextFilters.status) params.set("status", nextFilters.status);
     if (nextFilters.type) params.set("type", nextFilters.type);
+    if (nextFilters.customerId) params.set("customerId", nextFilters.customerId);
     if (nextFilters.technicianId) params.set("technicianId", nextFilters.technicianId);
     if (nextFilters.dateFrom) params.set("dateFrom", nextFilters.dateFrom);
     if (nextFilters.dateTo) params.set("dateTo", nextFilters.dateTo);

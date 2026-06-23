@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { todayInVietnam, vietnamDayRangeUtc, vietnamMonthRangeUtc } from "@/lib/date-ranges";
 import { query, withTransaction } from "@/lib/db";
@@ -69,6 +70,7 @@ export async function GET(request: Request) {
 
     const status = searchParams.get("status");
     const type = searchParams.get("type");
+    const customerId = searchParams.get("customerId");
     const technicianId = searchParams.get("technicianId");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
@@ -123,6 +125,15 @@ export async function GET(request: Request) {
     if (type) {
       params.push(type);
       filters.push(`wo.type = $${params.length}`);
+    }
+
+    if (customerId) {
+      const parsedCustomerId = z.string().uuid().safeParse(customerId);
+      if (!parsedCustomerId.success) {
+        throw new HttpError(422, "Bộ lọc khách hàng không hợp lệ");
+      }
+      params.push(parsedCustomerId.data);
+      filters.push(`wo.customer_id = $${params.length}`);
     }
 
     if (technicianId && user.role !== "technician") {

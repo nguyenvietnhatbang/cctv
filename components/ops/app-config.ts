@@ -69,6 +69,7 @@ export const defaultFilters: Filters = {
   scope: "open",
   status: "",
   type: "",
+  customerId: "",
   technicianId: "",
   dateFrom: "",
   dateTo: "",

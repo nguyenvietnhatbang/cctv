@@ -9,6 +9,7 @@ export function filtersFromSearchParams(searchParams: { get: (key: string) => st
     scope: scopeParam === "this_month" || scopeParam === "today" || scopeParam === "all" ? scopeParam : "open",
     status: searchParams.get("status") ?? "",
     type: searchParams.get("type") ?? "",
+    customerId: searchParams.get("customerId") ?? "",
     technicianId: searchParams.get("technicianId") ?? "",
     dateFrom: searchParams.get("dateFrom") ?? "",
     dateTo: searchParams.get("dateTo") ?? "",
@@ -20,6 +21,7 @@ export function sameFilters(left: Filters, right: Filters) {
     && left.scope === right.scope
     && left.status === right.status
     && left.type === right.type
+    && left.customerId === right.customerId
     && left.technicianId === right.technicianId
     && left.dateFrom === right.dateFrom
     && left.dateTo === right.dateTo;
@@ -80,6 +82,7 @@ export function orderMatchesFilters(order: WorkOrderListItem, filters: Filters) 
     }
   }
   if (filters.type && order.type !== filters.type) return false;
+  if (filters.customerId && order.customer_id !== filters.customerId) return false;
   if (filters.technicianId && !(order.assigned_technicians ?? []).some((technician) => technician.id === filters.technicianId)) return false;
   const appointmentDate = orderAppointmentDate(order);
   if (filters.dateFrom && (!appointmentDate || appointmentDate < filters.dateFrom)) return false;

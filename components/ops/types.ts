@@ -222,6 +222,7 @@ export type Filters = {
   scope: "open" | "this_month" | "today" | "all";
   status: string;
   type: string;
+  customerId: string;
   technicianId: string;
   dateFrom: string;
   dateTo: string;
