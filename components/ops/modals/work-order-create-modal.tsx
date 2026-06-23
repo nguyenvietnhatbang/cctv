@@ -123,25 +123,25 @@ export function WorkOrderCreateModal({
               </>
             )}
           </div>
-          <div className="grid gap-3 md:grid-cols-4">
-            <label className="grid gap-1">
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid min-w-0 content-start gap-1">
               <span className="text-xs font-bold uppercase text-zinc-500">Loại công việc</span>
               <select name="type" className="input" defaultValue="installation">
                 {WORK_ORDER_TYPES.map((type) => <option key={type} value={type}>{WORK_ORDER_TYPE_LABELS[type]}</option>)}
               </select>
             </label>
-            <label className="grid gap-1">
+            <label className="grid min-w-0 content-start gap-1">
               <span className="text-xs font-bold uppercase text-zinc-500">Ưu tiên</span>
               <select name="priority" className="input" defaultValue="normal">
                 <option value="normal">Bình thường</option>
                 <option value="urgent">Gấp</option>
               </select>
             </label>
-            <label className="grid gap-1">
+            <label className="grid min-w-0 content-start gap-1">
               <span className="text-xs font-bold uppercase text-zinc-500">Ngày hẹn khách</span>
               <input name="appointmentAt" type="datetime-local" className="input" />
             </label>
-            <label className="grid gap-1">
+            <label className="grid min-w-0 content-start gap-1">
               <span className="text-xs font-bold uppercase text-zinc-500">Kỹ thuật viên</span>
               <select name="technicianIds" className="input min-h-24" multiple aria-label="Kỹ thuật viên phân công">
                 {technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.full_name}</option>)}

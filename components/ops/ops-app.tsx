@@ -679,6 +679,7 @@ export function OpsApp() {
 
   async function afterMutation() {
     ordersCacheRef.current = {};
+    detailsCacheRef.current = {};
     setData((current) => ({ ...current, report: null }));
     await Promise.all([
       refreshOrderContext(),
