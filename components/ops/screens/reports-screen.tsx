@@ -105,10 +105,10 @@ export function ReportsScreen({
     }
   }
 
-  function exportReport() {
+  async function exportReport() {
     if (!report) return;
 
-    exportWorkbookToExcel({
+    await exportWorkbookToExcel({
       title: "Báo cáo hệ thống",
       subtitle: `Kỳ báo cáo: ${report.range.from} đến ${report.range.to}`,
       filename: `bao-cao-he-thong-${report.range.from}-den-${report.range.to}`,

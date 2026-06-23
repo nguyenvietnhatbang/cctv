@@ -51,15 +51,6 @@ function escapeHtml(value: ExcelCellValue) {
     .replaceAll("\n", "<br />");
 }
 
-function escapeXml(value: ExcelCellValue) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
-
 function safeFilename(value: string) {
   return value
     .trim()
@@ -170,115 +161,89 @@ export function exportSectionsToExcel(options: ExportExcelOptions) {
   URL.revokeObjectURL(url);
 }
 
-function renderWorkbookCell(value: ExcelCellValue, styleId?: string) {
-  const type = typeof value === "number" && Number.isFinite(value) ? "Number" : "String";
-  const content = type === "Number" ? String(value) : escapeXml(value);
-  return `<Cell${styleId ? ` ss:StyleID="${styleId}"` : ""}><Data ss:Type="${type}">${content}</Data></Cell>`;
-}
-
-function renderWorksheet(
-  section: ResolvedExcelSection,
-  sheetName: string,
-  title: string,
-  subtitle?: string,
-) {
-  const columnCount = Math.max(section.columns.length, 1);
-  const columns = section.columns.map(() => '<Column ss:AutoFitWidth="1" ss:Width="120"/>').join("");
-  const headerCells = section.columns.map((column) => renderWorkbookCell(column.header, "Header")).join("");
-  const bodyRows = section.rows.length > 0
-    ? section.rows.map((row, rowIndex) => {
-      const cells = section.columns.map((column) => {
-        const alignmentStyle = column.align === "right"
-          ? "Right"
-          : column.align === "center"
-            ? "Center"
-            : undefined;
-        return renderWorkbookCell(column.value(row, rowIndex), alignmentStyle);
-      }).join("");
-      return `<Row>${cells}</Row>`;
-    }).join("")
-    : `<Row><Cell ss:MergeAcross="${Math.max(columnCount - 1, 0)}" ss:StyleID="Empty"><Data ss:Type="String">${escapeXml(section.emptyText ?? "Không có dữ liệu")}</Data></Cell></Row>`;
-
-  return `
-    <Worksheet ss:Name="${escapeXml(sheetName)}">
-      <Table>
-        ${columns}
-        <Row ss:Height="24">
-          <Cell ss:MergeAcross="${Math.max(columnCount - 1, 0)}" ss:StyleID="Title">
-            <Data ss:Type="String">${escapeXml(title)} - ${escapeXml(section.title)}</Data>
-          </Cell>
-        </Row>
-        <Row>
-          <Cell ss:MergeAcross="${Math.max(columnCount - 1, 0)}" ss:StyleID="Meta">
-            <Data ss:Type="String">${escapeXml(subtitle ?? "")}${subtitle ? " | " : ""}Thời điểm xuất: ${escapeXml(nowLabel())}</Data>
-          </Cell>
-        </Row>
-        <Row>${headerCells}</Row>
-        ${bodyRows}
-      </Table>
-      <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
-        <FreezePanes/>
-        <FrozenNoSplit/>
-        <SplitHorizontal>3</SplitHorizontal>
-        <TopRowBottomPane>3</TopRowBottomPane>
-        <ActivePane>2</ActivePane>
-        <ProtectObjects>False</ProtectObjects>
-        <ProtectScenarios>False</ProtectScenarios>
-      </WorksheetOptions>
-    </Worksheet>
-  `;
-}
-
-export function exportWorkbookToExcel(options: ExportExcelWorkbookOptions) {
+export async function exportWorkbookToExcel(options: ExportExcelWorkbookOptions) {
   if (typeof window === "undefined") return;
 
-  const usedNames = new Set<string>();
-  const worksheets = options.sheets.map((sheet) => renderWorksheet(
-    sheet,
-    safeSheetName(sheet.title, usedNames),
-    options.title,
-    options.subtitle,
-  )).join("");
-  const workbook = `<?xml version="1.0"?>
-    <?mso-application progid="Excel.Sheet"?>
-    <Workbook
-      xmlns="urn:schemas-microsoft-com:office:spreadsheet"
-      xmlns:o="urn:schemas-microsoft-com:office:office"
-      xmlns:x="urn:schemas-microsoft-com:office:excel"
-      xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
-      xmlns:html="http://www.w3.org/TR/REC-html40">
-      <Styles>
-        <Style ss:ID="Default" ss:Name="Normal">
-          <Alignment ss:Vertical="Top"/>
-          <Font ss:FontName="Arial" ss:Size="10"/>
-        </Style>
-        <Style ss:ID="Title">
-          <Font ss:FontName="Arial" ss:Size="14" ss:Bold="1" ss:Color="#FFFFFF"/>
-          <Interior ss:Color="#1D4ED8" ss:Pattern="Solid"/>
-          <Alignment ss:Vertical="Center"/>
-        </Style>
-        <Style ss:ID="Meta">
-          <Font ss:FontName="Arial" ss:Size="9" ss:Color="#4B5563"/>
-        </Style>
-        <Style ss:ID="Header">
-          <Font ss:FontName="Arial" ss:Size="10" ss:Bold="1"/>
-          <Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/>
-          <Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#93C5FD"/></Borders>
-        </Style>
-        <Style ss:ID="Right"><Alignment ss:Horizontal="Right" ss:Vertical="Top"/></Style>
-        <Style ss:ID="Center"><Alignment ss:Horizontal="Center" ss:Vertical="Top"/></Style>
-        <Style ss:ID="Empty"><Font ss:Color="#6B7280" ss:Italic="1"/><Alignment ss:Horizontal="Center"/></Style>
-      </Styles>
-      ${worksheets}
-    </Workbook>`;
+  const ExcelJS = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "CCTV Ops";
+  workbook.created = new Date();
+  workbook.modified = new Date();
 
-  const blob = new Blob([`\ufeff${workbook}`], {
-    type: "application/vnd.ms-excel;charset=utf-8",
+  const usedNames = new Set<string>();
+  for (const sheet of options.sheets) {
+    const worksheet = workbook.addWorksheet(safeSheetName(sheet.title, usedNames), {
+      views: [{ state: "frozen", ySplit: 3 }],
+    });
+    const columnCount = Math.max(sheet.columns.length, 1);
+
+    worksheet.mergeCells(1, 1, 1, columnCount);
+    const titleCell = worksheet.getCell(1, 1);
+    titleCell.value = `${options.title} - ${sheet.title}`;
+    titleCell.font = { name: "Arial", size: 14, bold: true, color: { argb: "FFFFFFFF" } };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D4ED8" } };
+    titleCell.alignment = { vertical: "middle" };
+    worksheet.getRow(1).height = 24;
+
+    worksheet.mergeCells(2, 1, 2, columnCount);
+    const metaCell = worksheet.getCell(2, 1);
+    metaCell.value = `${options.subtitle ? `${options.subtitle} | ` : ""}Thời điểm xuất: ${nowLabel()}`;
+    metaCell.font = { name: "Arial", size: 9, color: { argb: "FF4B5563" } };
+
+    const headerRow = worksheet.getRow(3);
+    headerRow.values = sheet.columns.map((column) => column.header);
+    headerRow.eachCell((cell) => {
+      cell.font = { name: "Arial", size: 10, bold: true };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
+      cell.border = { bottom: { style: "thin", color: { argb: "FF93C5FD" } } };
+      cell.alignment = { vertical: "middle" };
+    });
+
+    if (sheet.rows.length === 0) {
+      worksheet.mergeCells(4, 1, 4, columnCount);
+      const emptyCell = worksheet.getCell(4, 1);
+      emptyCell.value = sheet.emptyText ?? "Không có dữ liệu";
+      emptyCell.font = { italic: true, color: { argb: "FF6B7280" } };
+      emptyCell.alignment = { horizontal: "center" };
+    } else {
+      sheet.rows.forEach((row, rowIndex) => {
+        const values = sheet.columns.map((column) => column.value(row, rowIndex) ?? "");
+        const excelRow = worksheet.addRow(values);
+        excelRow.eachCell((cell, columnIndex) => {
+          const column = sheet.columns[columnIndex - 1];
+          cell.font = { name: "Arial", size: 10 };
+          cell.alignment = {
+            horizontal: column.align ?? "left",
+            vertical: "top",
+            wrapText: true,
+          };
+        });
+      });
+    }
+
+    worksheet.columns.forEach((column, columnIndex) => {
+      const headerLength = sheet.columns[columnIndex]?.header.length ?? 10;
+      let maxLength = headerLength;
+      column.eachCell?.({ includeEmpty: true }, (cell) => {
+        maxLength = Math.max(maxLength, String(cell.value ?? "").length);
+      });
+      column.width = Math.min(Math.max(maxLength + 2, 12), 36);
+    });
+
+    worksheet.autoFilter = {
+      from: { row: 3, column: 1 },
+      to: { row: 3, column: columnCount },
+    };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer as ArrayBuffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${safeFilename(options.filename)}.xml`;
+  link.download = `${safeFilename(options.filename)}.xlsx`;
   document.body.appendChild(link);
   link.click();
   link.remove();
