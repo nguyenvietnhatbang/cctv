@@ -31,6 +31,7 @@ export function DashboardScreen({
       href: "/orders",
       icon: ClipboardList,
       stat: `${orders.length} phiếu đang hiển thị`,
+      tone: "blue",
     },
     {
       title: "Khách hàng",
@@ -38,6 +39,7 @@ export function DashboardScreen({
       href: "/customers",
       icon: Users,
       stat: "Danh bạ khách",
+      tone: "violet",
     },
     {
       title: "Phân công",
@@ -45,6 +47,7 @@ export function DashboardScreen({
       href: "/dispatch",
       icon: MapPinned,
       stat: `${metrics?.todo ?? "0"} việc chưa làm`,
+      tone: "orange",
     },
     {
       title: "DS kỹ thuật",
@@ -52,6 +55,7 @@ export function DashboardScreen({
       href: "/technicians",
       icon: UserCog,
       stat: "Đội hiện trường",
+      tone: "cyan",
     },
     {
       title: "Thanh toán",
@@ -59,6 +63,7 @@ export function DashboardScreen({
       href: "/payments",
       icon: CreditCard,
       stat: `${money(metrics?.open_debt)} công nợ`,
+      tone: "emerald",
     },
     {
       title: "Báo cáo",
@@ -66,6 +71,7 @@ export function DashboardScreen({
       href: "/reports",
       icon: ReceiptText,
       stat: `${money(metrics?.paid_today)} đã thu hôm nay`,
+      tone: "rose",
     },
     {
       title: "Nhân viên",
@@ -73,6 +79,7 @@ export function DashboardScreen({
       href: "/users",
       icon: UserCog,
       stat: "Quản trị truy cập",
+      tone: "indigo",
     },
     {
       title: "Thông báo",
@@ -80,6 +87,7 @@ export function DashboardScreen({
       href: "/notifications",
       icon: Bell,
       stat: "Nhắc việc nội bộ",
+      tone: "amber",
     },
   ];
 
@@ -108,13 +116,14 @@ export function DashboardScreen({
             <Link
               key={item.title}
               href={item.href}
-              className="group grid min-h-36 gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/40 hover:shadow-md"
+              className="dashboard-function-card group grid min-h-36 gap-4 rounded-lg border p-4 shadow-sm transition hover:shadow-md"
+              data-tone={item.tone}
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm shadow-blue-600/20 transition group-hover:bg-blue-700">
+                <span className="dashboard-function-icon inline-flex h-10 w-10 items-center justify-center rounded-md border transition">
                   <Icon size={18} />
                 </span>
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">{item.stat}</span>
+                <span className="dashboard-function-stat rounded-full border px-2.5 py-1 text-xs font-semibold">{item.stat}</span>
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-950">{item.title}</h3>

@@ -19,7 +19,7 @@ import {
 import { BarChart3, CalendarDays, ClipboardCheck, CreditCard, Download, PackageCheck, Search, TrendingUp, Users2 } from "lucide-react";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
 import { money, monthStartInVietnam, todayInVietnam } from "@/components/ops/format";
-import { createExcelSection, exportSectionsToExcel } from "@/components/ops/export-excel";
+import { createExcelSection, exportWorkbookToExcel } from "@/components/ops/export-excel";
 import { PendingButton, StatusBadge, TablePagination, ValidatedForm, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { ReportData } from "@/components/ops/types";
 
@@ -108,11 +108,11 @@ export function ReportsScreen({
   function exportReport() {
     if (!report) return;
 
-    exportSectionsToExcel({
+    exportWorkbookToExcel({
       title: "Báo cáo hệ thống",
       subtitle: `Kỳ báo cáo: ${report.range.from} đến ${report.range.to}`,
       filename: `bao-cao-he-thong-${report.range.from}-den-${report.range.to}`,
-      sections: [
+      sheets: [
         createExcelSection({
           title: "Tổng quan",
           rows: [report.summary],
@@ -245,42 +245,11 @@ export function ReportsScreen({
 
       {report ? (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
-            <div className="metric-card">
-              <span>Số công việc</span>
-              <strong>{report.summary.order_count}</strong>
-            </div>
-            <div className="metric-card">
-              <span>Đã thu theo phiếu</span>
-              <strong>{money(report.summary.paid_revenue)}</strong>
-            </div>
-            <div className="metric-card">
-              <span>Thu trong kỳ</span>
-              <strong>{money(report.summary.collected_amount)}</strong>
-            </div>
-            <div className="metric-card">
-              <span>Công nợ</span>
-              <strong>{money(report.summary.open_debt)}</strong>
-            </div>
-            <div className="metric-card">
-              <span>Nhân công</span>
-              <strong>{money(report.summary.labor_amount)}</strong>
-            </div>
-            <div className="metric-card">
-              <span>Vật tư đã chốt</span>
-              <strong>{money(report.summary.material_amount)}</strong>
-            </div>
-            <div className="metric-card">
-              <span>Tổng phát sinh</span>
-              <strong>{money(report.summary.gross_amount)}</strong>
-            </div>
-          </section>
-
-          <section className="grid gap-3 lg:grid-cols-5">
+          <section className="report-status-grid grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {displayStatusData.map((item) => {
               const tone = DISPLAY_STATUS_TONE[item.status] ?? DISPLAY_STATUS_TONE.todo;
               return (
-                <div key={item.status} className={`rounded-lg border border-zinc-200 p-4 shadow-sm ${tone.bg}`}>
+                <div key={item.status} className={`report-status-card min-w-0 rounded-lg border border-zinc-200 p-4 shadow-sm ${tone.bg}`}>
                   <div className="flex items-center justify-between gap-3">
                     <h3 className={`text-base font-black ${tone.text}`}>{item.label}</h3>
                     <span className="h-3 w-3 rounded-full" style={{ backgroundColor: tone.accent }} />
@@ -293,6 +262,41 @@ export function ReportsScreen({
                 </div>
               );
             })}
+          </section>
+
+          <section className="panel report-finance-overview">
+            <div className="panel-heading">
+              <div>
+                <h2>Tổng quan tài chính</h2>
+                <p className="mt-1 text-sm text-zinc-500">Các chỉ số chính trong kỳ báo cáo đã chọn.</p>
+              </div>
+            </div>
+            <div className="report-finance-grid">
+              <div className="report-finance-item" data-tone="blue">
+                <span>Số công việc</span>
+                <strong>{report.summary.order_count}</strong>
+              </div>
+              <div className="report-finance-item" data-tone="emerald">
+                <span>Thu trong kỳ</span>
+                <strong>{money(report.summary.collected_amount)}</strong>
+              </div>
+              <div className="report-finance-item" data-tone="rose">
+                <span>Công nợ</span>
+                <strong>{money(report.summary.open_debt)}</strong>
+              </div>
+              <div className="report-finance-item" data-tone="violet">
+                <span>Nhân công</span>
+                <strong>{money(report.summary.labor_amount)}</strong>
+              </div>
+              <div className="report-finance-item" data-tone="amber">
+                <span>Vật tư đã chốt</span>
+                <strong>{money(report.summary.material_amount)}</strong>
+              </div>
+              <div className="report-finance-item" data-tone="cyan">
+                <span>Tổng phát sinh</span>
+                <strong>{money(report.summary.gross_amount)}</strong>
+              </div>
+            </div>
           </section>
 
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">

@@ -492,6 +492,113 @@ a {
   color: #0f172a;
 }
 
+.report-status-card h3,
+.report-status-card p {
+  overflow-wrap: anywhere;
+}
+
+.report-finance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+}
+
+.report-finance-item {
+  --report-accent: #2563eb;
+  position: relative;
+  min-width: 0;
+  padding: 1rem 1rem 1rem 1.25rem;
+}
+
+.report-finance-item::before {
+  position: absolute;
+  top: 0.875rem;
+  bottom: 0.875rem;
+  left: 0;
+  width: 0.25rem;
+  border-radius: 999px;
+  background: var(--report-accent);
+  content: "";
+}
+
+.report-finance-item:not(:nth-child(3n + 1)) {
+  border-left: 1px solid #e2e8f0;
+}
+
+.report-finance-item:nth-child(n + 4) {
+  border-top: 1px solid #e2e8f0;
+}
+
+.report-finance-item[data-tone="emerald"] {
+  --report-accent: #059669;
+}
+
+.report-finance-item[data-tone="rose"] {
+  --report-accent: #e11d48;
+}
+
+.report-finance-item[data-tone="violet"] {
+  --report-accent: #7c3aed;
+}
+
+.report-finance-item[data-tone="amber"] {
+  --report-accent: #d97706;
+}
+
+.report-finance-item[data-tone="cyan"] {
+  --report-accent: #0891b2;
+}
+
+.report-finance-item span {
+  display: block;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.report-finance-item strong {
+  display: block;
+  margin-top: 0.375rem;
+  color: #0f172a;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .report-finance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-finance-item:not(:nth-child(3n + 1)) {
+    border-left: 0;
+  }
+
+  .report-finance-item:not(:nth-child(2n + 1)) {
+    border-left: 1px solid #e2e8f0;
+  }
+
+  .report-finance-item:nth-child(n + 3) {
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+@media (max-width: 520px) {
+  .report-finance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .report-finance-item {
+    border-left: 0 !important;
+  }
+
+  .report-finance-item:nth-child(n + 2) {
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
 .compact-row,
 .order-row {
   display: grid;
@@ -582,6 +689,59 @@ a {
   font-size: 0.9rem;
   font-weight: 600;
   color: #0f172a;
+}
+
+.dashboard-function-card {
+  --card-accent: #2563eb;
+  --card-soft: #eff6ff;
+  border-color: var(--card-accent);
+  background: #ffffff;
+}
+
+.dashboard-function-card[data-tone="violet"] {
+  --card-accent: #7c3aed;
+  --card-soft: #f5f3ff;
+}
+
+.dashboard-function-card[data-tone="orange"] {
+  --card-accent: #ea580c;
+  --card-soft: #fff7ed;
+}
+
+.dashboard-function-card[data-tone="cyan"] {
+  --card-accent: #0891b2;
+  --card-soft: #ecfeff;
+}
+
+.dashboard-function-card[data-tone="emerald"] {
+  --card-accent: #059669;
+  --card-soft: #ecfdf5;
+}
+
+.dashboard-function-card[data-tone="rose"] {
+  --card-accent: #e11d48;
+  --card-soft: #fff1f2;
+}
+
+.dashboard-function-card[data-tone="indigo"] {
+  --card-accent: #4f46e5;
+  --card-soft: #eef2ff;
+}
+
+.dashboard-function-card[data-tone="amber"] {
+  --card-accent: #d97706;
+  --card-soft: #fffbeb;
+}
+
+.dashboard-function-card:hover {
+  background: var(--card-soft);
+}
+
+.dashboard-function-icon,
+.dashboard-function-stat {
+  border-color: color-mix(in srgb, var(--card-accent) 28%, transparent);
+  background: var(--card-soft);
+  color: var(--card-accent);
 }
 
 .table-shell {
@@ -1710,6 +1870,37 @@ html[data-theme="dark"] .data-table tr {
   border-color: #273449;
   background-color: #111c2e;
   color: #e5edf8;
+}
+
+html[data-theme="dark"] .dashboard-function-card {
+  --card-soft: color-mix(in srgb, var(--card-accent) 16%, #0b1220);
+  border-color: var(--card-accent);
+  background: #0b1220;
+  color: #e5edf8;
+}
+
+html[data-theme="dark"] .dashboard-function-card:hover {
+  background: #0f1929;
+}
+
+html[data-theme="dark"] .dashboard-function-icon,
+html[data-theme="dark"] .dashboard-function-stat {
+  border-color: color-mix(in srgb, var(--card-accent) 55%, #0b1220);
+  background: var(--card-soft);
+  color: color-mix(in srgb, var(--card-accent) 72%, white);
+}
+
+html[data-theme="dark"] .report-finance-grid,
+html[data-theme="dark"] .report-finance-item {
+  border-color: #273449;
+}
+
+html[data-theme="dark"] .report-finance-item span {
+  color: #94a3b8;
+}
+
+html[data-theme="dark"] .report-finance-item strong {
+  color: #f1f5f9;
 }
 
 html[data-theme="dark"] .modal-section-muted,
