@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".agents/**",
     "scratch/**",
+    "playwright-report/**",
+    "test-results/**",
   ]),
   {
     rules: {
