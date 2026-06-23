@@ -46,9 +46,6 @@ function configureWebPush() {
 }
 
 function pushPayload(job: PushJob) {
-  const url = job.work_order_id
-    ? `/notifications?order=${encodeURIComponent(job.work_order_id)}`
-    : "/notifications";
   const notificationTag = job.work_order_id
     ? `work-order-${job.work_order_id}`
     : `notification-${job.notification_id}`;
@@ -59,7 +56,7 @@ function pushPayload(job: PushJob) {
     icon: "/pwa/icon-192.png",
     badge: "/pwa/icon-192.png",
     tag: notificationTag,
-    url,
+    url: "/notifications",
     notificationId: job.notification_id,
     timestamp: new Date(job.created_at).getTime(),
     unreadCount: job.unread_count,

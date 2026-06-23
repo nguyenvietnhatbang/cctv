@@ -65,10 +65,13 @@ export function OpsApp() {
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
+  const detailRequestsRef = useRef<Record<string, Promise<WorkOrderDetail>>>({});
   const ordersCacheRef = useRef<Record<string, WorkOrderListItem[]>>({});
   const notificationSnapshotRef = useRef<string | null>(null);
   const lastReadSnapshotRef = useRef<string | null>(null);
   const resourcesLoadedRef = useRef({ customers: false, technicians: false, users: false });
+  const dashboardLoadedRef = useRef(false);
+  const skipNextNotificationsRefreshRef = useRef(false);
   const initialLoadedRef = useRef<boolean>(false);
   const prefetchedSectionsRef = useRef<Set<TabId>>(new Set());
   const prefetchingDataRef = useRef<Set<string>>(new Set());
@@ -125,15 +128,32 @@ export function OpsApp() {
   }, [section, workOrderQueryString]);
 
   const loadDetail = useCallback(async (id: string) => {
-    const payload = await apiFetch<WorkOrderDetail>(`/api/work-orders/${id}`);
-    setDetail(payload);
-    detailsCacheRef.current[id] = payload;
-    return payload;
+    const cached = detailsCacheRef.current[id];
+    if (cached) {
+      setDetail(cached);
+      return cached;
+    }
+
+    const pendingRequest = detailRequestsRef.current[id];
+    if (pendingRequest) return pendingRequest;
+
+    const request = apiFetch<WorkOrderDetail>(`/api/work-orders/${id}`)
+      .then((payload) => {
+        detailsCacheRef.current[id] = payload;
+        setDetail(payload);
+        return payload;
+      })
+      .finally(() => {
+        delete detailRequestsRef.current[id];
+      });
+    detailRequestsRef.current[id] = request;
+    return request;
   }, []);
 
   const refreshDashboard = useCallback(async () => {
     const payload = await apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard");
     setData((current) => ({ ...current, metrics: payload.metrics }));
+    dashboardLoadedRef.current = true;
     return payload.metrics;
   }, []);
 
@@ -241,10 +261,13 @@ export function OpsApp() {
   }, [refreshDashboard, refreshOpenDetail, refreshOrders, refreshTechnicians, userRole]);
 
   const loadDataForUser = useCallback(async (currentUser: SessionUser) => {
-    const dataSection = currentUser.role === "technician" ? "technician" : section;
+    const isNotificationsEntry = section === "notifications";
+    const dataSection = currentUser.role === "technician" && !isNotificationsEntry
+      ? "technician"
+      : section;
     const ordersRequest = workOrderListRequest(dataSection);
     const shouldLoadOrders = ORDER_BACKED_SECTIONS.has(dataSection);
-    const shouldLoadDashboard = currentUser.role !== "technician";
+    const shouldLoadDashboard = currentUser.role !== "technician" && !isNotificationsEntry;
     const shouldLoadTechnicians = needsTechnicians(dataSection, currentUser.role);
     const shouldLoadCustomers = needsCustomers(dataSection, currentUser.role);
     const shouldLoadUsers = needsUsers(dataSection, currentUser.role);
@@ -269,8 +292,10 @@ export function OpsApp() {
     });
 
     if (orders) ordersCacheRef.current[ordersRequest.key] = orders.workOrders;
+    dashboardLoadedRef.current = Boolean(dashboard);
     notificationSnapshotRef.current = notifications.snapshotAt;
     lastReadSnapshotRef.current = null;
+    skipNextNotificationsRefreshRef.current = section === "notifications";
     resourcesLoadedRef.current = {
       customers: Boolean(customers),
       technicians: Boolean(technicians),
@@ -439,6 +464,10 @@ export function OpsApp() {
 
   useEffect(() => {
     if (section !== "notifications" || loading || !user || !initialLoadedRef.current) return;
+    if (skipNextNotificationsRefreshRef.current) {
+      skipNextNotificationsRefreshRef.current = false;
+      return;
+    }
     refreshNotifications().catch((reason) => {
       setError(reason instanceof Error ? reason.message : "Không tải được thông báo mới");
     });
@@ -449,6 +478,12 @@ export function OpsApp() {
   useEffect(() => {
     if (loading || !user || !initialLoadedRef.current) return;
     const resources = resourcesLoadedRef.current;
+
+    if (section === "dashboard" && user.role !== "technician" && !dashboardLoadedRef.current) {
+      refreshDashboard().catch((reason) => {
+        setError(reason instanceof Error ? reason.message : "Không tải được tổng quan");
+      });
+    }
 
     if (needsCustomers(section, user.role) && !resources.customers) {
       refreshCustomers().catch((reason) => {
@@ -472,7 +507,7 @@ export function OpsApp() {
           setError(reason instanceof Error ? reason.message : "Không tải được nhân viên");
         });
     }
-  }, [loading, refreshCustomers, refreshTechnicians, section, user]);
+  }, [loading, refreshCustomers, refreshDashboard, refreshTechnicians, section, user]);
 
   useEffect(() => {
     const canViewReports = userRole ? BACK_OFFICE_ROLES.includes(userRole) && userRole !== "team_lead" : false;
@@ -666,9 +701,12 @@ export function OpsApp() {
       setUser(payload.user);
       router.push(payload.user.role === "technician" ? "/technician" : "/dashboard");
       initialLoadedRef.current = false;
+      dashboardLoadedRef.current = false;
+      skipNextNotificationsRefreshRef.current = false;
       resourcesLoadedRef.current = { customers: false, technicians: false, users: false };
       ordersCacheRef.current = {};
       detailsCacheRef.current = {};
+      detailRequestsRef.current = {};
       await loadData(payload.user);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Đăng nhập thất bại");
@@ -688,9 +726,12 @@ export function OpsApp() {
       setDetail(null);
       setModal(null);
       initialLoadedRef.current = false;
+      dashboardLoadedRef.current = false;
+      skipNextNotificationsRefreshRef.current = false;
       resourcesLoadedRef.current = { customers: false, technicians: false, users: false };
       ordersCacheRef.current = {};
       detailsCacheRef.current = {};
+      detailRequestsRef.current = {};
       router.push("/dashboard");
     }
   }
