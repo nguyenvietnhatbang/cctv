@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { defaultFilters, type PendingAction, type TabId } from "@/components/ops/app-config";
 import type { AppData, Customer, Filters, ReportData, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 import { DashboardScreen } from "@/components/ops/screens/dashboard-screen";
+import { NotificationsScreen } from "@/components/ops/screens/notifications-screen";
 import { OrdersScreen } from "@/components/ops/screens/orders-screen";
 import { TechnicianScreen } from "@/components/ops/screens/technician-screen";
 import { isOpsManagerRole } from "@/lib/types";
@@ -48,12 +49,6 @@ type PaymentsScreenProps = {
   onPayment: (id: string) => void;
 };
 
-type NotificationsScreenProps = {
-  notifications: AppData["notifications"];
-  onOpen: (id: string) => void;
-  pwaPush: PwaPushController;
-};
-
 type UsersScreenProps = {
   users: AppData["users"];
   isCreating: boolean;
@@ -70,7 +65,6 @@ const loadDispatchScreen = () => import("@/components/ops/screens/dispatch-scree
 const loadAssignmentHistoryScreen = () => import("@/components/ops/screens/assignment-history-screen").then((mod) => mod.AssignmentHistoryScreen);
 const loadTechniciansScreen = () => import("@/components/ops/screens/technicians-screen").then((mod) => mod.TechniciansScreen);
 const loadPaymentsScreen = () => import("@/components/ops/screens/payments-screen").then((mod) => mod.PaymentsScreen);
-const loadNotificationsScreen = () => import("@/components/ops/screens/notifications-screen").then((mod) => mod.NotificationsScreen);
 const loadUsersScreen = () => import("@/components/ops/screens/users-screen").then((mod) => mod.UsersScreen);
 const loadReportsScreen = () => import("@/components/ops/screens/reports-screen").then((mod) => mod.ReportsScreen);
 
@@ -94,10 +88,6 @@ const PaymentsScreen = dynamic<PaymentsScreenProps>(
   loadPaymentsScreen,
   { loading: () => <ScreenLoading label="Đang tải thanh toán..." /> },
 );
-const NotificationsScreen = dynamic<NotificationsScreenProps>(
-  loadNotificationsScreen,
-  { loading: () => <ScreenLoading label="Đang tải thông báo..." /> },
-);
 const UsersScreen = dynamic<UsersScreenProps>(
   loadUsersScreen,
   { loading: () => <ScreenLoading label="Đang tải nhân viên..." /> },
@@ -120,7 +110,7 @@ export function preloadOpsScreen(section: TabId) {
   if (section === "assignment-history") return void loadAssignmentHistoryScreen();
   if (section === "technicians") return void loadTechniciansScreen();
   if (section === "payments") return void loadPaymentsScreen();
-  if (section === "notifications") return void loadNotificationsScreen();
+  if (section === "notifications") return;
   if (section === "users") return void loadUsersScreen();
   if (section === "reports") return void loadReportsScreen();
 }

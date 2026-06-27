@@ -288,13 +288,21 @@ export function OpsApp() {
     const shouldLoadCustomers = needsCustomers(dataSection, currentUser.role);
     const shouldLoadUsers = needsUsers(dataSection, currentUser.role);
 
-    const [dashboard, orders, notifications, technicians, customers, users] = await Promise.all([
+    const detailRequest = routedOrderId
+      ? apiFetch<WorkOrderDetail>(`/api/work-orders/${routedOrderId}`).catch((reason) => {
+          setError(reason instanceof Error ? reason.message : "Không tải được chi tiết phiếu");
+          return null;
+        })
+      : Promise.resolve(null);
+
+    const [dashboard, orders, notifications, technicians, customers, users, routedDetail] = await Promise.all([
       shouldLoadDashboard ? apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard") : Promise.resolve(null),
       shouldLoadOrders ? apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url) : Promise.resolve(null),
       apiFetch<{ notifications: AppData["notifications"]; snapshotAt: string }>("/api/notifications"),
       shouldLoadTechnicians ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
       shouldLoadCustomers ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
       shouldLoadUsers ? apiFetch<{ users: AppUser[] }>("/api/users") : Promise.resolve(null),
+      detailRequest,
     ]);
 
     setData({
@@ -308,6 +316,18 @@ export function OpsApp() {
     });
 
     if (orders) ordersCacheRef.current[ordersRequest.key] = orders.workOrders;
+    if (routedOrderId && routedDetail) {
+      detailsCacheRef.current[routedOrderId] = routedDetail;
+      setDetail(routedDetail);
+      setModal({
+        type: currentUser.role === "technician"
+          ? "technician-job"
+          : searchParams.get("mode") === "edit"
+            ? "order-edit"
+            : "order-detail",
+        id: routedOrderId,
+      });
+    }
     dashboardLoadedRef.current = Boolean(dashboard);
     notificationSnapshotRef.current = notifications.snapshotAt;
     lastReadSnapshotRef.current = null;
@@ -318,7 +338,7 @@ export function OpsApp() {
       users: Boolean(users),
     };
     initialLoadedRef.current = true;
-  }, [section, workOrderListRequest]);
+  }, [routedOrderId, searchParams, section, workOrderListRequest]);
 
   const loadData = useCallback(async (nextUser?: SessionUser | null) => {
     const currentUser = nextUser ?? user;
