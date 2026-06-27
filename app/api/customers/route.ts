@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
-import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
+import { handleRouteError, HttpError, jsonCreated, jsonOk } from "@/lib/http";
 import { BACK_OFFICE_ROLES, OPS_MANAGER_ROLES } from "@/lib/types";
 import { createCustomerSchema } from "@/lib/validators";
 
@@ -37,6 +37,11 @@ export async function GET(request: Request) {
     await requireUser(BACK_OFFICE_ROLES);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("q")?.trim() ?? "";
+    const limitParam = searchParams.get("limit");
+    const limit = limitParam ? Number(limitParam) : 500;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+      throw new HttpError(422, "Giới hạn danh sách khách hàng không hợp lệ");
+    }
 
     const result = await query(
       `${customerSelect}
@@ -50,11 +55,26 @@ export async function GET(request: Request) {
               and (cc.name ilike '%' || $1 || '%' or cc.phone ilike '%' || $1 || '%')
           )
        order by c.created_at desc
-       limit 30`,
+       limit $2`,
+      [search, limit],
+    );
+
+    const countResult = await query<{ total: string }>(
+      `select count(*)::text as total
+       from customers c
+       where $1 = ''
+          or c.name ilike '%' || $1 || '%'
+          or c.phone ilike '%' || $1 || '%'
+          or exists (
+            select 1
+            from customer_contacts cc
+            where cc.customer_id = c.id
+              and (cc.name ilike '%' || $1 || '%' or cc.phone ilike '%' || $1 || '%')
+          )`,
       [search],
     );
 
-    return jsonOk({ customers: result.rows });
+    return jsonOk({ customers: result.rows, total: Number(countResult.rows[0]?.total ?? 0) });
   } catch (error) {
     return handleRouteError(error);
   }
