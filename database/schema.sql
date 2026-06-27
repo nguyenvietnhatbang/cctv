@@ -130,6 +130,10 @@ create table work_order_assignments (
   assigned_by uuid references users(id) on delete set null,
   assigned_at timestamptz not null default now(),
   unassigned_at timestamptz,
+  field_status work_order_status not null default 'assigned',
+  check_in_at timestamptz,
+  check_in_lat numeric(10, 7),
+  check_in_lng numeric(10, 7),
   note text
 );
 
@@ -143,6 +147,10 @@ create index work_order_assignments_technician_active_idx
 
 create index work_order_assignments_order_active_assigned_idx
   on work_order_assignments(work_order_id, assigned_at)
+  where unassigned_at is null;
+
+create index work_order_assignments_field_status_active_idx
+  on work_order_assignments(technician_id, field_status)
   where unassigned_at is null;
 
 create table work_order_status_history (

@@ -1045,6 +1045,12 @@ export function OpsApp() {
               status,
               check_in_lat: payload?.checkInLat ?? o.check_in_lat,
               check_in_lng: payload?.checkInLng ?? o.check_in_lng,
+              own_assignment_status: status,
+              own_assignment_check_in_at: status === "working" && !o.own_assignment_check_in_at
+                ? new Date().toISOString()
+                : o.own_assignment_check_in_at,
+              own_assignment_check_in_lat: payload?.checkInLat ?? o.own_assignment_check_in_lat,
+              own_assignment_check_in_lng: payload?.checkInLng ?? o.own_assignment_check_in_lng,
               customer_lat: payload?.updateCustomerLocation && payload?.checkInLat ? String(payload.checkInLat) : o.customer_lat,
               customer_lng: payload?.updateCustomerLocation && payload?.checkInLng ? String(payload.checkInLng) : o.customer_lng,
             };

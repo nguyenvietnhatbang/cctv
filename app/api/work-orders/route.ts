@@ -46,7 +46,9 @@ const assignmentLateralJoin = `
                  'email', u.email,
                  'service_area', t.service_area,
                  'status', t.status,
-                 'assigned_at', woa.assigned_at
+                 'assigned_at', woa.assigned_at,
+                 'field_status', woa.field_status,
+                 'check_in_at', woa.check_in_at
                )
                order by u.full_name
              ),
@@ -78,6 +80,7 @@ export async function GET(request: Request) {
     const view = searchParams.get("view");
     const q = searchParams.get("q")?.trim();
     const technicianView = view === "technician";
+    let ownTechnicianId: string | null = null;
 
     const params: unknown[] = [];
     const filters = ["true"];
@@ -191,7 +194,7 @@ export async function GET(request: Request) {
     }
 
     if (user.role === "technician") {
-      const ownTechnicianId = await requireTechnicianIdForUser(user.id);
+      ownTechnicianId = await requireTechnicianIdForUser(user.id);
       params.push(ownTechnicianId);
       filters.push(
         `exists (
@@ -206,23 +209,35 @@ export async function GET(request: Request) {
 
     const selectSql = technicianView
       ? `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
-              wo.appointment_at, null::timestamptz as assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
+              wo.appointment_at, own_woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
               c.lat as customer_lat, c.lng as customer_lng,
               null::uuid as technician_id, null::text as technician_name, '[]'::jsonb as assigned_technicians,
+              own_woa.field_status as own_assignment_status,
+              own_woa.check_in_at as own_assignment_check_in_at,
+              own_woa.check_in_lat as own_assignment_check_in_lat,
+              own_woa.check_in_lng as own_assignment_check_in_lng,
               0::numeric as total_amount,
               0::numeric as paid_amount,
               0::numeric as debt_amount,
               null::payment_status as payment_status
        from work_orders wo
-       join customers c on c.id = wo.customer_id`
+       join customers c on c.id = wo.customer_id
+       left join work_order_assignments own_woa
+         on own_woa.work_order_id = wo.id
+        and own_woa.technician_id = ${ownTechnicianId ? `$${params.length}` : "null::uuid"}
+        and own_woa.unassigned_at is null`
       : `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
               wo.appointment_at, assn.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
               c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
               c.lat as customer_lat, c.lng as customer_lng,
               assn.technician_id, assn.technician_name, coalesce(assn.assigned_technicians, '[]'::jsonb) as assigned_technicians,
+              null::work_order_status as own_assignment_status,
+              null::timestamptz as own_assignment_check_in_at,
+              null::numeric as own_assignment_check_in_lat,
+              null::numeric as own_assignment_check_in_lng,
               coalesce(p.total_amount, 0) as total_amount,
               coalesce(p.paid_amount, 0) as paid_amount,
               case

@@ -37,6 +37,10 @@ export type WorkOrderListItem = {
   customer_lng: string | null;
   check_in_lat?: string | number | null;
   check_in_lng?: string | number | null;
+  own_assignment_status?: WorkOrderStatus | null;
+  own_assignment_check_in_at?: string | null;
+  own_assignment_check_in_lat?: string | number | null;
+  own_assignment_check_in_lng?: string | number | null;
   technician_id: string | null;
   technician_name: string | null;
   assigned_technicians: AssignedTechnician[];
@@ -55,6 +59,8 @@ export type AssignedTechnician = {
   service_area: string | null;
   status: "available" | "traveling" | "working" | "off";
   assigned_at: string;
+  field_status?: WorkOrderStatus;
+  check_in_at?: string | null;
 };
 
 export type Customer = {

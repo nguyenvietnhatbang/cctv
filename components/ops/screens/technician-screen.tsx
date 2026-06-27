@@ -87,6 +87,10 @@ function technicianStageIndex(status: WorkOrderStatus) {
 }
 
 function getTechnicianPrimaryAction(order: WorkOrderListItem, role: Role) {
+  if (order.status === "working" && !order.own_assignment_check_in_at) {
+    return { type: "status" as const, status: "working" as const, label: "Check-in", icon: MapPinned };
+  }
+
   if (order.status === "awaiting_acceptance") {
     return { type: "edit" as const, label: "Nghiệm thu", icon: ClipboardCheck };
   }

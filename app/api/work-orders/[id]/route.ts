@@ -28,7 +28,9 @@ const assignmentLateralJoin = `
                  'email', u.email,
                  'service_area', t.service_area,
                  'status', t.status,
-                 'assigned_at', woa.assigned_at
+                 'assigned_at', woa.assigned_at,
+                 'field_status', woa.field_status,
+                 'check_in_at', woa.check_in_at
                )
                order by u.full_name
              ),

@@ -19,6 +19,7 @@ import {
 const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "awaiting_payment", "paid", "debt", "cancelled"]);
 const CHECK_IN_RADIUS_METERS = 300;
 const FIELD_PROGRESS_STATUSES: WorkOrderStatus[] = ["assigned", "accepted", "traveling", "working"];
+const ASSIGNMENT_FIELD_STATUSES = new Set<WorkOrderStatus>(["assigned", "accepted", "traveling", "working", "paused", "awaiting_acceptance"]);
 
 function distanceInMeters(left: { lat: number; lng: number }, right: { lat: number; lng: number }) {
   const toRadians = (degrees: number) => degrees * Math.PI / 180;
@@ -115,18 +116,16 @@ export async function syncTechnicianStatuses(client: PoolClient, technicianIds: 
        when exists (
          select 1
          from work_order_assignments woa
-         join work_orders wo on wo.id = woa.work_order_id
          where woa.technician_id = t.id
            and woa.unassigned_at is null
-           and wo.status in ('working', 'awaiting_acceptance')
+           and woa.field_status in ('working', 'awaiting_acceptance')
        ) then 'working'::technician_status
        when exists (
          select 1
          from work_order_assignments woa
-         join work_orders wo on wo.id = woa.work_order_id
          where woa.technician_id = t.id
            and woa.unassigned_at is null
-           and wo.status = 'traveling'
+           and woa.field_status = 'traveling'
        ) then 'traveling'::technician_status
        when t.status = 'off' then 'off'::technician_status
        else 'available'::technician_status
@@ -164,6 +163,86 @@ function isStaleFieldProgression(from: WorkOrderStatus, to: WorkOrderStatus, use
   return currentIndex >= 0 && nextIndex >= 0 && currentIndex > nextIndex;
 }
 
+async function getAssignedTechnicianIdForFieldUser(client: PoolClient, user: SessionUser, workOrderId: string) {
+  if (user.role !== "technician") return null;
+  const technicianId = await requireTechnicianIdForUser(user.id);
+  const result = await client.query<{ technician_id: string }>(
+    `select technician_id
+     from work_order_assignments
+     where work_order_id = $1
+       and technician_id = $2
+       and unassigned_at is null
+     limit 1`,
+    [workOrderId, technicianId],
+  );
+
+  if (!result.rows[0]) {
+    throw new HttpError(403, "Bạn không còn được phân công phiếu này");
+  }
+
+  return technicianId;
+}
+
+async function updateAssignmentFieldProgress(
+  client: PoolClient,
+  workOrderId: string,
+  technicianId: string | null,
+  nextStatus: WorkOrderStatus,
+  user: SessionUser,
+  checkIn: { lat?: number; lng?: number } | undefined,
+) {
+  if (!technicianId || !ASSIGNMENT_FIELD_STATUSES.has(nextStatus)) return null;
+
+  const assignmentResult = await client.query<{
+    field_status: WorkOrderStatus;
+    check_in_at: string | null;
+  }>(
+    `select field_status, check_in_at
+     from work_order_assignments
+     where work_order_id = $1
+       and technician_id = $2
+       and unassigned_at is null
+     for update`,
+    [workOrderId, technicianId],
+  );
+
+  const assignment = assignmentResult.rows[0];
+  if (!assignment) {
+    throw new HttpError(403, "Bạn không còn được phân công phiếu này");
+  }
+
+  const firstCheckIn = nextStatus === "working" && !assignment.check_in_at;
+  if (firstCheckIn && (checkIn?.lat === undefined || checkIn.lng === undefined)) {
+    throw new HttpError(422, "Check-in cần lấy được vị trí GPS. Hãy mở quyền vị trí trên trình duyệt và thử lại.");
+  }
+
+  await client.query(
+    `update work_order_assignments
+     set field_status = $3,
+         check_in_at = case when $4 then now() else check_in_at end,
+         check_in_lat = case when $4 then $5 else check_in_lat end,
+         check_in_lng = case when $4 then $6 else check_in_lng end
+     where work_order_id = $1
+       and technician_id = $2
+       and unassigned_at is null`,
+    [
+      workOrderId,
+      technicianId,
+      nextStatus,
+      firstCheckIn,
+      checkIn?.lat ?? null,
+      checkIn?.lng ?? null,
+    ],
+  );
+
+  return {
+    previousStatus: assignment.field_status,
+    firstCheckIn,
+    changed: assignment.field_status !== nextStatus || firstCheckIn,
+    changedBy: user.id,
+  };
+}
+
 export async function changeWorkOrderStatus(
   client: PoolClient,
   workOrderId: string,
@@ -191,7 +270,39 @@ export async function changeWorkOrderStatus(
     throw new HttpError(404, "Không tìm thấy phiếu");
   }
 
+  const assignedTechnicianId = await getAssignedTechnicianIdForFieldUser(client, user, workOrderId);
+  const shouldValidateCheckInLocation = assignedTechnicianId !== null && nextStatus === "working" && checkIn?.lat !== undefined && checkIn.lng !== undefined;
+  if (shouldValidateCheckInLocation) {
+    const customerLat = current.customer_lat === null ? null : Number(current.customer_lat);
+    const customerLng = current.customer_lng === null ? null : Number(current.customer_lng);
+    if (customerLat !== null && customerLng !== null) {
+      const distance = distanceInMeters(
+        { lat: checkIn.lat!, lng: checkIn.lng! },
+        { lat: customerLat, lng: customerLng },
+      );
+      if (distance > CHECK_IN_RADIUS_METERS) {
+        if (!checkIn.updateCustomerLocation) {
+          throw new HttpError(
+            422,
+            `Vị trí check-in đang cách tọa độ khách hàng khoảng ${Math.round(distance)}m. Cần xác nhận cập nhật tọa độ khách hàng trước khi check-in.`,
+          );
+        }
+
+        await client.query(
+          `update customers
+           set lat = $2,
+               lng = $3,
+               location_pinned_at = now(),
+               location_pinned_by = $4
+           where id = $1`,
+          [current.customer_id, checkIn.lat, checkIn.lng, user.id],
+        );
+      }
+    }
+  }
+
   if (isStaleFieldProgression(current.status, nextStatus, user)) {
+    await updateAssignmentFieldProgress(client, workOrderId, assignedTechnicianId, nextStatus, user, checkIn);
     await client.query(
       `insert into work_order_status_history
          (work_order_id, from_status, to_status, changed_by, note)
@@ -247,6 +358,8 @@ export async function changeWorkOrderStatus(
       }
     }
   }
+
+  await updateAssignmentFieldProgress(client, workOrderId, assignedTechnicianId, nextStatus, user, checkIn);
 
   await client.query(
     `update work_orders
