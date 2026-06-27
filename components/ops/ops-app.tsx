@@ -68,6 +68,7 @@ export function OpsApp() {
   const [detail, setDetail] = useState<WorkOrderDetail | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
   const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
   const detailRequestsRef = useRef<Record<string, Promise<WorkOrderDetail>>>({});
   const ordersCacheRef = useRef<Record<string, WorkOrderListItem[]>>({});
@@ -162,13 +163,13 @@ export function OpsApp() {
     return payload.metrics;
   }, []);
 
-  const refreshOrders = useCallback(async () => {
-    const request = workOrderListRequest();
+  const refreshOrders = useCallback(async (targetSection = section) => {
+    const request = workOrderListRequest(targetSection);
     const payload = await apiFetch<{ workOrders: AppData["orders"] }>(request.url);
     setData((current) => ({ ...current, orders: payload.workOrders }));
     ordersCacheRef.current[request.key] = payload.workOrders;
     return payload.workOrders;
-  }, [workOrderListRequest]);
+  }, [section, workOrderListRequest]);
 
   const refreshNotifications = useCallback(async () => {
     const latestCreatedAt = data.notifications[0]?.created_at;
@@ -698,6 +699,72 @@ export function OpsApp() {
     ]);
   }
 
+  async function activateAvailableServiceWorkerUpdate() {
+    if (!("serviceWorker" in navigator)) return false;
+
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    if (!registration) return false;
+
+    let shouldReload = false;
+    const reloadOnce = () => {
+      if (shouldReload) return;
+      shouldReload = true;
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener("controllerchange", reloadOnce, { once: true });
+    await registration.update();
+
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+      window.setTimeout(reloadOnce, 900);
+      return true;
+    }
+
+    navigator.serviceWorker.removeEventListener("controllerchange", reloadOnce);
+    return false;
+  }
+
+  async function handleManualRefresh() {
+    if (manualRefreshing) return;
+
+    setManualRefreshing(true);
+    setError(null);
+    try {
+      const waitingForReload = await activateAvailableServiceWorkerUpdate();
+      if (waitingForReload) return;
+
+      const currentUser = await loadMe();
+      if (!currentUser) return;
+
+      const tasks: Promise<unknown>[] = [refreshNotifications()];
+      const shouldRefreshOrders = ORDER_BACKED_SECTIONS.has(section)
+        || section === "notifications"
+        || currentUser.role === "technician";
+
+      if (shouldRefreshOrders) {
+        ordersCacheRef.current = {};
+        tasks.push(refreshOrders(currentUser.role === "technician" ? "technician" : section));
+      }
+      if (currentUser.role !== "technician" && (section === "dashboard" || ORDER_BACKED_SECTIONS.has(section))) {
+        tasks.push(refreshDashboard());
+      }
+      if (needsCustomers(section, currentUser.role)) tasks.push(refreshCustomers());
+      if (needsTechnicians(section, currentUser.role)) tasks.push(refreshTechnicians());
+      if (section === "reports" && currentUser.role !== "team_lead" && BACK_OFFICE_ROLES.includes(currentUser.role)) {
+        tasks.push(refreshDefaultReport());
+      }
+      tasks.push(refreshOpenDetail());
+
+      await Promise.all(tasks);
+      router.refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không thể làm mới dữ liệu");
+    } finally {
+      setManualRefreshing(false);
+    }
+  }
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -1010,6 +1077,8 @@ export function OpsApp() {
       visibleTabs={visibleTabs}
       unreadNotifications={unreadNotifications}
       error={error}
+      refreshing={manualRefreshing}
+      onRefresh={handleManualRefresh}
       onLogout={handleLogout}
       onChangePassword={() => setModal({ type: "own-password" })}
       onNavigateIntent={prefetchSection}

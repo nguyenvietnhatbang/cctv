@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { Bell, KeyRound, LogOut, ChevronLeft, ChevronRight, Moon, Sun, Search } from "lucide-react";
+import { Bell, KeyRound, LogOut, ChevronLeft, ChevronRight, Moon, Sun, RefreshCw, Search } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { brandAssets, companyProfile } from "@/lib/company";
 import { tabIcons, type TabId } from "@/components/ops/app-config";
@@ -16,6 +16,8 @@ type OpsShellProps = {
   visibleTabs: ReadonlyArray<{ id: TabId; label: string }>;
   unreadNotifications: number;
   error: string | null;
+  refreshing: boolean;
+  onRefresh: () => void;
   onLogout: () => void;
   onChangePassword: () => void;
   onNavigateIntent?: (section: TabId) => void;
@@ -47,6 +49,8 @@ export function OpsShell({
   visibleTabs,
   unreadNotifications,
   error,
+  refreshing,
+  onRefresh,
   onLogout,
   onChangePassword,
   onNavigateIntent,
@@ -246,6 +250,17 @@ export function OpsShell({
               aria-pressed={darkMode}
             >
               {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+
+            <button
+              className="topbar-icon-button p-2 rounded-md hover:bg-blue-50 text-slate-500 hover:text-blue-700 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              onClick={onRefresh}
+              disabled={refreshing}
+              title={refreshing ? "Đang làm mới" : "Làm mới dữ liệu và kiểm tra bản mới"}
+              aria-label={refreshing ? "Đang làm mới" : "Làm mới dữ liệu và kiểm tra bản mới"}
+            >
+              <RefreshCw size={17} className={refreshing ? "animate-spin" : ""} />
             </button>
 
             {/* Notifications Icon */}

@@ -1729,6 +1729,7 @@ a {
 
   .app-topbar > div:last-child > a,
   .theme-toggle-button,
+  .topbar-icon-button,
   .mobile-logout-button,
   .profile-avatar button {
     display: inline-flex;
@@ -2193,6 +2194,7 @@ html[data-theme="dark"] .native-app-eyebrow {
 
   html[data-theme="dark"] .app-topbar > div:last-child > a,
   html[data-theme="dark"] .theme-toggle-button,
+  html[data-theme="dark"] .topbar-icon-button,
   html[data-theme="dark"] .mobile-logout-button,
   html[data-theme="dark"] .profile-avatar button {
     background: rgba(17, 28, 46, 0.95);

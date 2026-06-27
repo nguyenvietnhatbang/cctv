@@ -64,6 +64,11 @@ function hasKnownStandaloneClient() {
 }
 
 self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+
   if (event.data?.type !== "APP_CLIENT_STATE") return;
   if (!event.source?.id) return;
 
