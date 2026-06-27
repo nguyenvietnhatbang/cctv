@@ -12,16 +12,19 @@ import {
   Users,
 } from "lucide-react";
 import { money } from "@/components/ops/format";
+import { routePath } from "@/components/ops/routing";
 import type { Metrics, WorkOrderListItem } from "@/components/ops/types";
 import { DISPLAY_STATUS_LABELS, DISPLAY_STATUS_ORDER, DISPLAY_STATUS_TONE, type DisplayStatus } from "@/lib/types";
 
 export function DashboardScreen({
   metrics,
   orders,
+  appMode,
   onOpenOrders,
 }: {
   metrics: Metrics | null;
   orders: WorkOrderListItem[];
+  appMode: boolean;
   onOpenOrders: (status: string) => void;
 }) {
   const functionCards = [
@@ -104,7 +107,7 @@ export function DashboardScreen({
           <h2 className="text-3xl font-extrabold tracking-normal text-slate-950">Tổng quan</h2>
           <p className="mt-1 text-sm text-slate-500">Các chức năng quản trị chính và tình hình công việc nhanh.</p>
         </div>
-        <Link className="btn-primary h-10" href="/reports">
+        <Link className="btn-primary h-10" href={routePath("reports", appMode)}>
           <BarChart3 size={15} />Xem báo cáo hệ thống
         </Link>
       </div>
@@ -115,7 +118,7 @@ export function DashboardScreen({
           return (
             <Link
               key={item.title}
-              href={item.href}
+              href={routePath(item.href, appMode)}
               className="dashboard-function-card group grid min-h-36 gap-4 rounded-lg border p-4 shadow-sm transition hover:shadow-md"
               data-tone={item.tone}
             >

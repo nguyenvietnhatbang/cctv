@@ -128,6 +128,7 @@ export function preloadOpsScreen(section: TabId) {
 type OpsScreenSwitcherProps = {
   section: TabId;
   role: Role;
+  appMode: boolean;
   data: AppData;
   filters: Filters;
   reportLoading: boolean;
@@ -162,6 +163,7 @@ type OpsScreenSwitcherProps = {
 export function OpsScreenSwitcher({
   section,
   role,
+  appMode,
   data,
   filters,
   reportLoading,
@@ -193,7 +195,7 @@ export function OpsScreenSwitcher({
   onOpenCreateModal,
 }: OpsScreenSwitcherProps) {
   if (section === "dashboard") {
-    return <DashboardScreen metrics={data.metrics} orders={data.orders} onOpenOrders={(status) => onFilter({ ...defaultFilters, status })} />;
+    return <DashboardScreen appMode={appMode} metrics={data.metrics} orders={data.orders} onOpenOrders={(status) => onFilter({ ...defaultFilters, status })} />;
   }
 
   if (section === "orders") {

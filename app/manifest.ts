@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: companyProfile.appName,
     short_name: "An Việt Ops",
     description: "Ứng dụng điều phối và xử lý công việc kỹ thuật An Việt Tech.",
-    start_url: "/technician",
-    scope: "/",
+    start_url: "/app/technician",
+    scope: "/app/",
     display: "standalone",
     launch_handler: {
       client_mode: "navigate-existing",

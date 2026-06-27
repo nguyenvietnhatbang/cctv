@@ -16,14 +16,16 @@ function syncAppBadge(unreadCount) {
 }
 
 function notificationTargetUrl(data) {
-  const targetUrl = new URL("/notifications", self.location.origin);
+  const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+  const targetUrl = new URL(`${scopePath || ""}/notifications`, self.location.origin);
   if (data.workOrderId) targetUrl.searchParams.set("order", data.workOrderId);
   return targetUrl;
 }
 
 function safeTargetUrl(value) {
-  const targetUrl = new URL(value || "/notifications", self.location.origin);
-  if (targetUrl.origin !== self.location.origin) return new URL("/notifications", self.location.origin);
+  const fallbackUrl = notificationTargetUrl({});
+  const targetUrl = new URL(value || fallbackUrl.pathname, self.location.origin);
+  if (targetUrl.origin !== self.location.origin) return fallbackUrl;
   return targetUrl;
 }
 
@@ -46,7 +48,7 @@ function clientSortScore(client, targetUrl) {
   try {
     const clientUrl = new URL(client.url);
     if (clientUrl.pathname === targetUrl.pathname && clientUrl.search === targetUrl.search) score += 10;
-    if (clientUrl.pathname === "/notifications") score += 5;
+    if (clientUrl.pathname.endsWith("/notifications")) score += 5;
   } catch {
     // Ignore malformed client URLs.
   }

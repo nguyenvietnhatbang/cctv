@@ -143,18 +143,20 @@ export function usePwaPush({
     setPermission(canPush ? Notification.permission : "unsupported");
     if (!canPush || !enabled) return;
     const appMode = detectStandalone();
+    if (!appMode) {
+      const status = await apiFetch<PushStatusResponse>("/api/push-subscriptions");
+      setConfigured(status.configured);
+      setSubscription(null);
+      return;
+    }
 
     const registration = await navigator.serviceWorker.register("/sw.js", {
-      scope: "/",
+      scope: "/app/",
       updateViaCache: "none",
     });
 
     const status = await apiFetch<PushStatusResponse>("/api/push-subscriptions");
     setConfigured(status.configured);
-    if (!appMode) {
-      setSubscription(null);
-      return;
-    }
 
     const currentSubscription = await registration.pushManager.getSubscription();
     setSubscription(currentSubscription);
@@ -216,7 +218,10 @@ export function usePwaPush({
 
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicKey) throw new Error("Thiếu VAPID public key");
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.register("/sw.js", {
+        scope: "/app/",
+        updateViaCache: "none",
+      });
       const nextSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),

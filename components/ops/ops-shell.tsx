@@ -7,6 +7,7 @@ import { Bell, KeyRound, LogOut, ChevronLeft, ChevronRight, Moon, Sun, RefreshCw
 import { ROLE_LABELS } from "@/lib/types";
 import { brandAssets, companyProfile } from "@/lib/company";
 import { tabIcons, type TabId } from "@/components/ops/app-config";
+import { routePath } from "@/components/ops/routing";
 import type { SessionUser } from "@/components/ops/types";
 
 type OpsShellProps = {
@@ -16,6 +17,7 @@ type OpsShellProps = {
   visibleTabs: ReadonlyArray<{ id: TabId; label: string }>;
   unreadNotifications: number;
   error: string | null;
+  appMode: boolean;
   refreshing: boolean;
   onRefresh: () => void;
   onLogout: () => void;
@@ -49,6 +51,7 @@ export function OpsShell({
   visibleTabs,
   unreadNotifications,
   error,
+  appMode,
   refreshing,
   onRefresh,
   onLogout,
@@ -96,7 +99,7 @@ export function OpsShell({
     return (
       <Link
         key={item.id}
-        href={`/${item.id}`}
+        href={routePath(item.id, appMode)}
         prefetch
         onMouseEnter={() => onNavigateIntent?.(item.id)}
         onFocus={() => onNavigateIntent?.(item.id)}
@@ -265,7 +268,7 @@ export function OpsShell({
 
             {/* Notifications Icon */}
             <Link
-              href="/notifications"
+              href={routePath("notifications", appMode)}
               className="relative p-2 rounded-md hover:bg-blue-50 text-slate-500 hover:text-blue-700 transition-colors"
               aria-label="Thông báo"
             >
@@ -321,7 +324,7 @@ export function OpsShell({
           return (
             <Link
               key={item.id}
-              href={`/${item.id}`}
+              href={routePath(item.id, appMode)}
               prefetch
               onMouseEnter={() => onNavigateIntent?.(item.id)}
               onFocus={() => onNavigateIntent?.(item.id)}

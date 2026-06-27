@@ -17,6 +17,7 @@ type PushJob = ClaimedJob & {
   endpoint: string;
   p256dh: string;
   auth: string;
+  display_mode: "browser" | "standalone";
   title: string;
   body: string;
   priority: "normal" | "high" | "urgent";
@@ -49,6 +50,10 @@ function pushPayload(job: PushJob) {
   const notificationTag = job.work_order_id
     ? `work-order-${job.work_order_id}`
     : `notification-${job.notification_id}`;
+  const appPrefix = job.display_mode === "standalone" ? "/app" : "";
+  const targetPath = job.work_order_id
+    ? `${appPrefix}/notifications?order=${encodeURIComponent(job.work_order_id)}`
+    : `${appPrefix}/notifications`;
 
   return JSON.stringify({
     title: job.title,
@@ -58,7 +63,7 @@ function pushPayload(job: PushJob) {
     tag: notificationTag,
     notificationId: job.notification_id,
     workOrderId: job.work_order_id,
-    url: job.work_order_id ? `/notifications?order=${encodeURIComponent(job.work_order_id)}` : "/notifications",
+    url: targetPath,
     timestamp: new Date(job.created_at).getTime(),
     unreadCount: job.unread_count,
     renotify: job.priority !== "normal",
@@ -136,6 +141,7 @@ async function loadPushJobs(claimed: ClaimedJob[]) {
     `with selected_jobs as (
        select job.id, job.notification_id, job.subscription_id, job.attempt_count,
               subscription.endpoint, subscription.p256dh, subscription.auth,
+              subscription.display_mode,
               notification.user_id, notification.title, notification.body,
               notification.priority, notification.work_order_id,
               notification.created_at
@@ -158,6 +164,7 @@ async function loadPushJobs(claimed: ClaimedJob[]) {
      select selected_job.id, selected_job.notification_id,
             selected_job.subscription_id, selected_job.attempt_count,
             selected_job.endpoint, selected_job.p256dh, selected_job.auth,
+            selected_job.display_mode,
             selected_job.title, selected_job.body, selected_job.priority,
             selected_job.work_order_id,
             selected_job.created_at, coalesce(unread_count.unread_count, 0) as unread_count

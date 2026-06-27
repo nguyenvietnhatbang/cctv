@@ -2,13 +2,14 @@ import "server-only";
 
 import bcrypt from "bcryptjs";
 import { jwtVerify, SignJWT, type JWTPayload } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { query } from "@/lib/db";
 import { HttpError } from "@/lib/http";
 import type { Role, SessionUser } from "@/lib/types";
 
 const SESSION_COOKIE = "cctv_session";
+const APP_SESSION_COOKIE = "cctv_app_session";
 const SESSION_DAYS = 7;
 
 type UserRow = {
@@ -60,9 +61,25 @@ async function signSession(payload: SessionPayload) {
     .sign(getEncodedSecret());
 }
 
+async function sessionCookieName() {
+  const headerStore = await headers();
+  if (headerStore.get("x-cctv-client") === "app") return APP_SESSION_COOKIE;
+
+  const referer = headerStore.get("referer");
+  if (referer) {
+    try {
+      if (new URL(referer).pathname.startsWith("/app/")) return APP_SESSION_COOKIE;
+    } catch {
+      // Ignore malformed referer values.
+    }
+  }
+
+  return SESSION_COOKIE;
+}
+
 async function readSession() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const token = cookieStore.get(await sessionCookieName())?.value;
   if (!token) {
     return null;
   }
@@ -82,7 +99,7 @@ export async function createSession(user: SessionUser) {
   const token = await signSession({ userId: user.id, role: user.role });
   const cookieStore = await cookies();
 
-  cookieStore.set(SESSION_COOKIE, token, {
+  cookieStore.set(await sessionCookieName(), token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -93,7 +110,7 @@ export async function createSession(user: SessionUser) {
 
 export async function deleteSession() {
   const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
+  cookieStore.delete(await sessionCookieName());
 }
 
 export const getCurrentUser = cache(async () => {

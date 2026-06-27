@@ -30,6 +30,7 @@ import type {
 import { OpsModalLayer } from "@/components/ops/ops-modal-layer";
 import { OpsScreenSwitcher, preloadOpsScreen } from "@/components/ops/ops-screen-switcher";
 import { OpsShell } from "@/components/ops/ops-shell";
+import { isAppRoute, routePath, stripAppRoutePrefix } from "@/components/ops/routing";
 import { LoadingScreen } from "@/components/ops/ui";
 import { usePwaPush } from "@/components/ops/use-pwa-push";
 import { BACK_OFFICE_ROLES, isOpsManagerRole } from "@/lib/types";
@@ -80,19 +81,22 @@ export function OpsApp() {
   const initialLoadedRef = useRef<boolean>(false);
   const prefetchedSectionsRef = useRef<Set<TabId>>(new Set());
   const prefetchingDataRef = useRef<Set<string>>(new Set());
+  const appMode = isAppRoute(pathname);
+  const appPathname = stripAppRoutePrefix(pathname);
+  const hrefFor = useCallback((path: string) => routePath(path, appMode), [appMode]);
 
   const section = useMemo<TabId>(() => {
-    const segment = pathname.split("/").filter(Boolean)[0] as TabId | undefined;
+    const segment = appPathname.split("/").filter(Boolean)[0] as TabId | undefined;
     if (segment && tabs.some((item) => item.id === segment)) return segment;
     return "dashboard";
-  }, [pathname]);
+  }, [appPathname]);
 
   const routedOrderId = useMemo(() => {
-    const parts = pathname.split("/").filter(Boolean);
+    const parts = appPathname.split("/").filter(Boolean);
     if (parts[0] === "orders" && parts[1]) return parts[1];
     if (parts[0] === "notifications") return searchParams.get("order");
     return null;
-  }, [pathname, searchParams]);
+  }, [appPathname, searchParams]);
 
   const visibleTabs = useMemo(() => tabs.filter((item) => user && item.roles.includes(user.role)), [user]);
   const currentTab = useMemo(() => tabs.find((item) => item.id === section) ?? tabs[0], [section]);
@@ -224,7 +228,7 @@ export function OpsApp() {
     onNotificationOpen: (url) => {
       if (!isSafeInternalPath(url)) return;
       preloadOpsScreen("notifications");
-      router.push(url);
+      router.push(hrefFor(url));
     },
   });
 
@@ -335,7 +339,7 @@ export function OpsApp() {
   }, []);
 
   const prefetchSection = useCallback((targetSection: TabId) => {
-    router.prefetch(`/${targetSection}`);
+    router.prefetch(hrefFor(targetSection));
     preloadOpsScreen(targetSection);
 
     if (!user || !initialLoadedRef.current) return;
@@ -380,7 +384,7 @@ export function OpsApp() {
         await refreshDefaultReport();
       });
     }
-  }, [data.report, prefetchDataOnce, refreshDefaultReport, reportLoading, router, user, workOrderListRequest]);
+  }, [data.report, hrefFor, prefetchDataOnce, refreshDefaultReport, reportLoading, router, user, workOrderListRequest]);
 
   useEffect(() => {
     let active = true;
@@ -425,7 +429,7 @@ export function OpsApp() {
       visibleTabs.forEach((tab) => {
         if (prefetchedSectionsRef.current.has(tab.id)) return;
         prefetchedSectionsRef.current.add(tab.id);
-        router.prefetch(`/${tab.id}`);
+        router.prefetch(hrefFor(tab.id));
         preloadOpsScreen(tab.id);
       });
     };
@@ -440,7 +444,7 @@ export function OpsApp() {
     const idleId = requestIdleCallback(preloadVisibleRoutes, { timeout: 1800 });
 
     return () => cancelIdleCallback(idleId);
-  }, [loading, router, user, visibleTabs]);
+  }, [hrefFor, loading, router, user, visibleTabs]);
 
   useEffect(() => {
     if (loading || !user || !initialLoadedRef.current) return;
@@ -536,15 +540,15 @@ export function OpsApp() {
 
   useEffect(() => {
     if (user?.role !== "technician") return;
-    const currentSegment = pathname.split("/").filter(Boolean)[0];
-    if (!currentSegment || currentSegment === "dashboard") router.replace("/technician");
-  }, [pathname, router, user]);
+    const currentSegment = appPathname.split("/").filter(Boolean)[0];
+    if (!currentSegment || currentSegment === "dashboard") router.replace(hrefFor("technician"));
+  }, [appPathname, hrefFor, router, user]);
 
   useEffect(() => {
     if (!user) return;
     const allowed = tabs.some((item) => item.id === section && item.roles.includes(user.role));
-    if (!allowed) router.replace(user.role === "technician" ? "/technician" : "/dashboard");
-  }, [router, section, user]);
+    if (!allowed) router.replace(hrefFor(user.role === "technician" ? "technician" : "dashboard"));
+  }, [hrefFor, router, section, user]);
 
   useEffect(() => {
     if (!routedOrderId || !user) return;
@@ -702,7 +706,7 @@ export function OpsApp() {
   async function activateAvailableServiceWorkerUpdate() {
     if (!("serviceWorker" in navigator)) return false;
 
-    const registration = await navigator.serviceWorker.getRegistration("/");
+    const registration = await navigator.serviceWorker.getRegistration(appMode ? "/app/" : "/");
     if (!registration) return false;
 
     let shouldReload = false;
@@ -778,7 +782,7 @@ export function OpsApp() {
         }),
       });
       setUser(payload.user);
-      router.push(payload.user.role === "technician" ? "/technician" : "/dashboard");
+      router.push(hrefFor(payload.user.role === "technician" ? "technician" : "dashboard"));
       initialLoadedRef.current = false;
       dashboardLoadedRef.current = false;
       skipNextNotificationsRefreshRef.current = false;
@@ -818,7 +822,7 @@ export function OpsApp() {
       ordersCacheRef.current = {};
       detailsCacheRef.current = {};
       detailRequestsRef.current = {};
-      router.push("/dashboard");
+      router.push(hrefFor("dashboard"));
     }
   }
 
@@ -969,7 +973,7 @@ export function OpsApp() {
     if (nextFilters.technicianId) params.set("technicianId", nextFilters.technicianId);
     if (nextFilters.dateFrom) params.set("dateFrom", nextFilters.dateFrom);
     if (nextFilters.dateTo) params.set("dateTo", nextFilters.dateTo);
-    const nextUrl = `/orders${params.toString() ? `?${params.toString()}` : ""}`;
+    const nextUrl = `${hrefFor("orders")}${params.toString() ? `?${params.toString()}` : ""}`;
     if (section === "orders") {
       setFilters(nextFilters);
       window.history.replaceState(null, "", nextUrl);
@@ -982,7 +986,7 @@ export function OpsApp() {
     setModal(null);
     setDetail(null);
     if (routedOrderId) {
-      router.push(section === "notifications" ? "/notifications" : "/orders");
+      router.push(hrefFor(section === "notifications" ? "notifications" : "orders"));
     }
   }
 
@@ -1077,6 +1081,7 @@ export function OpsApp() {
       visibleTabs={visibleTabs}
       unreadNotifications={unreadNotifications}
       error={error}
+      appMode={appMode}
       refreshing={manualRefreshing}
       onRefresh={handleManualRefresh}
       onLogout={handleLogout}
@@ -1109,6 +1114,7 @@ export function OpsApp() {
       <OpsScreenSwitcher
         section={section}
         role={user.role}
+        appMode={appMode}
         data={data}
         filters={filters}
         reportLoading={reportLoading}
@@ -1143,7 +1149,7 @@ export function OpsApp() {
             setReportLoading(false);
           }
         }}
-        onOpenNotification={(id) => router.push(`/notifications?order=${encodeURIComponent(id)}`)}
+        onOpenNotification={(id) => router.push(`${hrefFor("notifications")}?order=${encodeURIComponent(id)}`)}
         pwaPush={pwaPush}
         onEditUser={(item) => setModal({ type: "user-edit", item })}
         onDeleteUser={(item) => setModal({ type: "user-delete", item })}
