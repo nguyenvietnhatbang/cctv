@@ -237,6 +237,7 @@ export type Filters = {
 export type AppData = {
   metrics: Metrics | null;
   orders: WorkOrderListItem[];
+  ordersTotal: number;
   customers: Customer[];
   technicians: Technician[];
   users: AppUser[];

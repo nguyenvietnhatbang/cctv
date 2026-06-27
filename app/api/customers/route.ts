@@ -37,17 +37,26 @@ export async function GET(request: Request) {
     await requireUser(BACK_OFFICE_ROLES);
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("q")?.trim() ?? "";
+    const pageParam = searchParams.get("page");
+    const pageSizeParam = searchParams.get("pageSize");
     const limitParam = searchParams.get("limit");
-    const limit = limitParam ? Number(limitParam) : 500;
+    const page = pageParam ? Number(pageParam) : 1;
+    const limit = pageSizeParam ? Number(pageSizeParam) : limitParam ? Number(limitParam) : 500;
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
       throw new HttpError(422, "Giới hạn danh sách khách hàng không hợp lệ");
     }
+    if (!Number.isInteger(page) || page < 1) {
+      throw new HttpError(422, "Trang danh sách khách hàng không hợp lệ");
+    }
+    const offset = pageSizeParam || pageParam ? (page - 1) * limit : 0;
 
     const result = await query(
       `${customerSelect}
        where $1 = ''
           or c.name ilike '%' || $1 || '%'
           or c.phone ilike '%' || $1 || '%'
+          or c.address ilike '%' || $1 || '%'
+          or coalesce(c.address_note, '') ilike '%' || $1 || '%'
           or exists (
             select 1
             from customer_contacts cc
@@ -55,8 +64,8 @@ export async function GET(request: Request) {
               and (cc.name ilike '%' || $1 || '%' or cc.phone ilike '%' || $1 || '%')
           )
        order by c.created_at desc
-       limit $2`,
-      [search, limit],
+       limit $2 offset $3`,
+      [search, limit, offset],
     );
 
     const countResult = await query<{ total: string }>(
@@ -65,6 +74,8 @@ export async function GET(request: Request) {
        where $1 = ''
           or c.name ilike '%' || $1 || '%'
           or c.phone ilike '%' || $1 || '%'
+          or c.address ilike '%' || $1 || '%'
+          or coalesce(c.address_note, '') ilike '%' || $1 || '%'
           or exists (
             select 1
             from customer_contacts cc
@@ -74,7 +85,14 @@ export async function GET(request: Request) {
       [search],
     );
 
-    return jsonOk({ customers: result.rows, total: Number(countResult.rows[0]?.total ?? 0) });
+    const total = Number(countResult.rows[0]?.total ?? 0);
+    return jsonOk({
+      customers: result.rows,
+      total,
+      page,
+      pageSize: limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
   } catch (error) {
     return handleRouteError(error);
   }

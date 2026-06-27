@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
 import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, WORK_ORDER_TYPES } from "@/lib/types";
+import { apiFetch } from "@/components/ops/api";
 import { Modal, PendingButton, ValidatedForm } from "@/components/ops/ui";
 import type { Customer, Technician } from "@/components/ops/types";
 
@@ -22,25 +23,19 @@ export function WorkOrderCreateModal({
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
+  const [customerOptions, setCustomerOptions] = useState<Customer[]>(() => customers.slice(0, 25));
+  const [customerTotal, setCustomerTotal] = useState(customers.length);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
   const [selectedTechnicianIds, setSelectedTechnicianIds] = useState<string[]>([]);
   const [technicianQuery, setTechnicianQuery] = useState("");
   const [technicianDropdownOpen, setTechnicianDropdownOpen] = useState(false);
   const technicianDropdownRef = useRef<HTMLDivElement | null>(null);
   const selectedCustomer = useMemo(
-    () => customers.find((customer) => customer.id === selectedCustomerId) ?? null,
-    [customers, selectedCustomerId],
+    () => customerOptions.find((customer) => customer.id === selectedCustomerId)
+      ?? customers.find((customer) => customer.id === selectedCustomerId)
+      ?? null,
+    [customerOptions, customers, selectedCustomerId],
   );
-  const filteredCustomers = useMemo(() => {
-    const q = customerQuery.trim().toLowerCase();
-
-    return customers
-      .filter((customer) => {
-        if (!q) return true;
-        return [customer.name, customer.phone, customer.address]
-          .some((value) => value.toLowerCase().includes(q));
-      })
-      .sort((left, right) => left.name.localeCompare(right.name, "vi", { sensitivity: "base" }));
-  }, [customerQuery, customers]);
   const filteredTechnicians = useMemo(() => {
     const query = technicianQuery.trim().toLocaleLowerCase("vi");
 
@@ -80,6 +75,52 @@ export function WorkOrderCreateModal({
   useEffect(() => {
     if (!technicianDropdownOpen) setTechnicianQuery("");
   }, [technicianDropdownOpen]);
+
+  useEffect(() => {
+    if (!customerDropdownOpen) return;
+
+    let active = true;
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        page: "1",
+        pageSize: "25",
+      });
+      if (customerQuery.trim()) params.set("q", customerQuery.trim());
+
+      setIsLoadingCustomers(true);
+      apiFetch<{ customers: Customer[]; total: number }>(`/api/customers?${params.toString()}`)
+        .then((payload) => {
+          if (!active) return;
+          setCustomerOptions((current) => {
+            const selected = selectedCustomerId
+              ? current.find((customer) => customer.id === selectedCustomerId)
+                ?? customers.find((customer) => customer.id === selectedCustomerId)
+              : null;
+            const merged = new Map(payload.customers.map((customer) => [customer.id, customer]));
+            if (selected) merged.set(selected.id, selected);
+            return [...merged.values()].sort((left, right) => left.name.localeCompare(right.name, "vi", { sensitivity: "base" }));
+          });
+          setCustomerTotal(payload.total);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (active) setIsLoadingCustomers(false);
+        });
+    }, customerQuery ? 250 : 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [customerDropdownOpen, customerQuery, customers, selectedCustomerId]);
+
+  useEffect(() => {
+    setCustomerOptions((current) => {
+      const merged = new Map([...customers.slice(0, 25), ...current].map((customer) => [customer.id, customer]));
+      return [...merged.values()].slice(0, 25);
+    });
+    setCustomerTotal((current) => Math.max(current, customers.length));
+  }, [customers]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     try {
@@ -132,7 +173,7 @@ export function WorkOrderCreateModal({
                       <span className="font-semibold">Khách mới</span>
                       <span className="text-xs text-zinc-500">Nhập thông tin khách hàng mới bên dưới</span>
                     </button>
-                    {filteredCustomers.map((customer) => (
+                    {customerOptions.map((customer) => (
                       <button
                         key={customer.id}
                         type="button"
@@ -146,8 +187,16 @@ export function WorkOrderCreateModal({
                         <span className="line-clamp-2 text-xs leading-5 text-zinc-500">{customer.address}</span>
                       </button>
                     ))}
-                    {filteredCustomers.length === 0 ? (
+                    {isLoadingCustomers ? (
+                      <p className="rounded-md bg-zinc-50 px-3 py-3 text-center text-sm text-zinc-500">Đang tải khách hàng...</p>
+                    ) : null}
+                    {!isLoadingCustomers && customerOptions.length === 0 ? (
                       <p className="rounded-md bg-zinc-50 px-3 py-4 text-center text-sm text-zinc-500">Không tìm thấy khách hàng phù hợp.</p>
+                    ) : null}
+                    {customerTotal > customerOptions.length ? (
+                      <p className="px-2 py-2 text-xs font-medium text-zinc-500">
+                        Đang hiển thị {customerOptions.length}/{customerTotal}. Nhập tên, SĐT hoặc địa chỉ để tìm chính xác hơn.
+                      </p>
                     ) : null}
                   </div>
                 </div>

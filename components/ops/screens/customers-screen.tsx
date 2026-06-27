@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Edit, Eye, Trash2, Plus, Search, MapPin, Filter } from "lucide-react";
-import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { apiFetch } from "@/components/ops/api";
+import { EmptyState, TABLE_PAGE_SIZE, TablePagination, TableShell, clampTablePage } from "@/components/ops/ui";
 import type { Customer } from "@/components/ops/types";
 import { displayCustomerContacts } from "@/components/ops/app-utils";
 import { exportTableToExcel } from "@/components/ops/export-excel";
@@ -23,30 +24,53 @@ export function CustomersScreen({
   onTriggerCreate: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [serverCustomers, setServerCustomers] = useState(customers);
+  const [totalCustomers, setTotalCustomers] = useState(customers.length);
   const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filteredCustomers = customers.filter((customer) => {
-    return (
-      !searchQuery ||
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery) ||
-      customer.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (customer.address_note && customer.address_note.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      displayCustomerContacts(customer).some((contact) => (
-        contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        contact.phone.includes(searchQuery)
-      ))
-    );
-  });
-  const safePage = clampTablePage(page, filteredCustomers.length);
-  const visibleCustomers = getPageItems(filteredCustomers, safePage);
+  const safePage = clampTablePage(page, totalCustomers);
+
+  useEffect(() => {
+    let active = true;
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(TABLE_PAGE_SIZE),
+      });
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+
+      setIsLoading(true);
+      apiFetch<{ customers: Customer[]; total: number }>(`/api/customers?${params.toString()}`)
+        .then((payload) => {
+          if (!active) return;
+          setServerCustomers(payload.customers);
+          setTotalCustomers(payload.total);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (active) setIsLoading(false);
+        });
+    }, searchQuery ? 250 : 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [page, searchQuery]);
+
+  useEffect(() => {
+    if (searchQuery || page !== 1) return;
+    setServerCustomers(customers.slice(0, TABLE_PAGE_SIZE));
+    setTotalCustomers((current) => Math.max(current, customers.length));
+  }, [customers, page, searchQuery]);
 
   function exportCustomers() {
     exportTableToExcel({
       title: "Danh sách khách hàng",
-      subtitle: `Số dòng: ${filteredCustomers.length}`,
+      subtitle: `Số dòng đang hiển thị: ${serverCustomers.length} / ${totalCustomers}`,
       filename: "danh-sach-khach-hang",
-      rows: filteredCustomers,
+      rows: serverCustomers,
       emptyText: "Không tìm thấy khách hàng phù hợp.",
       columns: [
         { header: "STT", value: (_customer, index) => index + 1, align: "center" },
@@ -85,7 +109,7 @@ export function CustomersScreen({
         <div className="table-toolbar">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-zinc-500">
-              Tổng số: {filteredCustomers.length} khách hàng
+              Tổng số: {totalCustomers} khách hàng{isLoading ? " · Đang tải..." : ""}
             </span>
           </div>
           <div className="table-filter-row">
@@ -109,7 +133,7 @@ export function CustomersScreen({
           </div>
         </div>
 
-        {filteredCustomers.length === 0 ? (
+        {serverCustomers.length === 0 ? (
           <EmptyState>Không tìm thấy khách hàng phù hợp.</EmptyState>
         ) : (
           <table className="data-table">
@@ -124,7 +148,7 @@ export function CustomersScreen({
               </tr>
             </thead>
             <tbody>
-              {visibleCustomers.map((customer) => {
+              {serverCustomers.map((customer) => {
                 const initials = customer.name
                   .split(" ")
                   .map((n) => n[0])
@@ -201,7 +225,7 @@ export function CustomersScreen({
             </tbody>
           </table>
         )}
-        <TablePagination page={safePage} total={filteredCustomers.length} onPageChange={setPage} />
+        <TablePagination page={safePage} total={totalCustomers} onPageChange={setPage} />
       </TableShell>
     </div>
   );

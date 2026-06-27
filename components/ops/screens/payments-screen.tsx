@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CreditCard, Download, Eye, Coins, ReceiptText, Search, UserRound, ListFilter, type LucideIcon } from "lucide-react";
+import { apiFetch } from "@/components/ops/api";
 import { dateTime, money } from "@/components/ops/format";
 import { exportTableToExcel } from "@/components/ops/export-excel";
-import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { DeadlineBadge, EmptyState, StatusBadge, TABLE_PAGE_SIZE, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { WorkOrderListItem } from "@/components/ops/types";
 
 type PaymentViewMode = "orders" | "customers";
@@ -70,28 +71,40 @@ export function PaymentsScreen({
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [customerPage, setCustomerPage] = useState(1);
-  const allPaymentOrders = orders.filter((order) =>
-    ["completed", "awaiting_payment", "debt", "paid"].includes(order.status),
-  );
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const paymentOrders = allPaymentOrders.filter((order) => {
-    const matchesFilter =
-      filter === "awaiting" ? ["completed", "awaiting_payment"].includes(order.status) && !["paid", "debt"].includes(order.payment_status ?? "unpaid")
-      : filter === "paid" ? order.status === "paid" || order.payment_status === "paid"
-      : filter === "debt" ? order.status === "debt" || order.payment_status === "debt"
-      : true;
-    const matchesSearch =
-      !normalizedSearchQuery ||
-      [
-        order.code,
-        order.customer_name,
-        order.customer_phone,
-        order.customer_address,
-        order.technician_name ?? "",
-        paymentStatusLabel(order),
-      ].some((value) => value.toLowerCase().includes(normalizedSearchQuery));
-    return matchesFilter && matchesSearch;
-  });
+  const [paymentOrders, setPaymentOrders] = useState<WorkOrderListItem[]>(orders);
+  const [paymentTotal, setPaymentTotal] = useState(orders.length);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams({
+        scope: "all",
+        paymentFilter: filter,
+        page: String(page),
+        pageSize: String(TABLE_PAGE_SIZE),
+      });
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+
+      setIsLoading(true);
+      apiFetch<{ workOrders: WorkOrderListItem[]; total: number }>(`/api/work-orders?${params.toString()}`)
+        .then((payload) => {
+          if (!active) return;
+          setPaymentOrders(payload.workOrders);
+          setPaymentTotal(payload.total);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (active) setIsLoading(false);
+        });
+    }, searchQuery ? 320 : 0);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [filter, page, searchQuery]);
+
   const customerGroups = useMemo(() => {
     const groups = new Map<string, CustomerPaymentGroup>();
 
@@ -125,11 +138,11 @@ export function PaymentsScreen({
       || left.customerName.localeCompare(right.customerName, "vi"),
     );
   }, [paymentOrders]);
-  const safePage = clampTablePage(page, paymentOrders.length);
-  const visiblePaymentOrders = getPageItems(paymentOrders, safePage);
+  const safePage = clampTablePage(page, paymentTotal);
+  const visiblePaymentOrders = paymentOrders;
   const safeCustomerPage = clampTablePage(customerPage, customerGroups.length);
   const visibleCustomerGroups = getPageItems(customerGroups, safeCustomerPage);
-  const activeCount = viewMode === "orders" ? paymentOrders.length : customerGroups.length;
+  const activeCount = viewMode === "orders" ? paymentTotal : customerGroups.length;
 
   function showCustomerOrders(group: CustomerPaymentGroup) {
     setViewMode("orders");
@@ -255,6 +268,7 @@ export function PaymentsScreen({
             <span className="text-xs font-semibold text-zinc-500 flex items-center gap-1">
               <Coins size={13} />
               {viewMode === "orders" ? "Số công việc" : "Số khách"}: {activeCount}
+              {isLoading ? " · Đang tải..." : ""}
             </span>
           </div>
         </div>
@@ -387,7 +401,7 @@ export function PaymentsScreen({
         {viewMode === "customers" ? (
           <TablePagination page={safeCustomerPage} total={customerGroups.length} onPageChange={setCustomerPage} />
         ) : (
-          <TablePagination page={safePage} total={paymentOrders.length} onPageChange={setPage} />
+          <TablePagination page={safePage} total={paymentTotal} onPageChange={setPage} />
         )}
       </TableShell>
     </div>

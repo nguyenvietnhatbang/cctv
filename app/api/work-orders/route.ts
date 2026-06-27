@@ -76,9 +76,21 @@ export async function GET(request: Request) {
     const technicianId = searchParams.get("technicianId");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
+    const paymentFilter = searchParams.get("paymentFilter");
     const scope = searchParams.get("scope") ?? "open";
     const view = searchParams.get("view");
     const q = searchParams.get("q")?.trim();
+    const pageParam = searchParams.get("page");
+    const pageSizeParam = searchParams.get("pageSize");
+    const limitParam = searchParams.get("limit");
+    const page = pageParam ? Number(pageParam) : 1;
+    const limit = pageSizeParam ? Number(pageSizeParam) : limitParam ? Number(limitParam) : 80;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+      throw new HttpError(422, "Giới hạn danh sách công việc không hợp lệ");
+    }
+    if (!Number.isInteger(page) || page < 1) {
+      throw new HttpError(422, "Trang danh sách công việc không hợp lệ");
+    }
     const technicianView = view === "technician";
     let ownTechnicianId: string | null = null;
 
@@ -122,6 +134,20 @@ export async function GET(request: Request) {
       } else {
         params.push(status);
         filters.push(`wo.status = $${params.length}`);
+      }
+    }
+
+    if (paymentFilter) {
+      if (paymentFilter === "awaiting") {
+        filters.push(`wo.status in ('completed', 'awaiting_payment') and coalesce(p.status::text, 'unpaid') not in ('paid', 'debt')`);
+      } else if (paymentFilter === "paid") {
+        filters.push(`(wo.status = 'paid' or p.status = 'paid')`);
+      } else if (paymentFilter === "debt") {
+        filters.push(`(wo.status = 'debt' or p.status = 'debt')`);
+      } else if (paymentFilter === "all") {
+        filters.push(`wo.status in ('completed', 'awaiting_payment', 'debt', 'paid')`);
+      } else {
+        throw new HttpError(422, "Bộ lọc thanh toán không hợp lệ");
       }
     }
 
@@ -207,6 +233,24 @@ export async function GET(request: Request) {
       );
     }
 
+    const offset = pageSizeParam || pageParam ? (page - 1) * limit : 0;
+    const fromSql = technicianView
+      ? `from work_orders wo
+       join customers c on c.id = wo.customer_id
+       left join work_order_assignments own_woa
+         on own_woa.work_order_id = wo.id
+        and own_woa.technician_id = ${ownTechnicianId ? `$${params.length}` : "null::uuid"}
+        and own_woa.unassigned_at is null`
+      : `from work_orders wo
+       join customers c on c.id = wo.customer_id
+       ${assignmentLateralJoin}
+       left join payments p on p.work_order_id = wo.id`;
+
+    const countFromSql = technicianView
+      ? `from work_orders wo
+       join customers c on c.id = wo.customer_id`
+      : fromSql;
+
     const selectSql = technicianView
       ? `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
               wo.appointment_at, own_woa.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
@@ -222,12 +266,7 @@ export async function GET(request: Request) {
               0::numeric as paid_amount,
               0::numeric as debt_amount,
               null::payment_status as payment_status
-       from work_orders wo
-       join customers c on c.id = wo.customer_id
-       left join work_order_assignments own_woa
-         on own_woa.work_order_id = wo.id
-        and own_woa.technician_id = ${ownTechnicianId ? `$${params.length}` : "null::uuid"}
-        and own_woa.unassigned_at is null`
+       ${fromSql}`
       : `select wo.id, wo.code, wo.type, wo.priority, wo.status, wo.description,
               wo.appointment_at, assn.assigned_at, wo.created_at, wo.updated_at, wo.labor_cost, wo.vat_rate,
               c.id as customer_id,
@@ -246,20 +285,33 @@ export async function GET(request: Request) {
                 else greatest(coalesce(p.total_amount, 0) - coalesce(p.paid_amount, 0), 0)
               end as debt_amount,
               p.status as payment_status
-       from work_orders wo
-       join customers c on c.id = wo.customer_id
-       ${assignmentLateralJoin}
-       left join payments p on p.work_order_id = wo.id`;
+       ${fromSql}`;
+
+    const countResult = await query<{ total: string }>(
+      `select count(*)::text as total
+       ${countFromSql}
+       where ${filters.join(" and ")}`,
+      params,
+    );
+
+    const paginatedParams = [...params, limit, offset];
 
     const result = await query(
       `${selectSql}
        where ${filters.join(" and ")}
        order by wo.appointment_at desc nulls last, wo.created_at desc
-       limit 80`,
-      params,
+       limit $${paginatedParams.length - 1} offset $${paginatedParams.length}`,
+      paginatedParams,
     );
 
-    return jsonOk({ workOrders: result.rows });
+    const total = Number(countResult.rows[0]?.total ?? 0);
+    return jsonOk({
+      workOrders: result.rows,
+      total,
+      page,
+      pageSize: limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
   } catch (error) {
     return handleRouteError(error);
   }

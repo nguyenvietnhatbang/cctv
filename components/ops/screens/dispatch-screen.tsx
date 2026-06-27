@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Clock, Download, Eye, MapPinned, Phone, Search, UserPlus } from "lucide-react";
 import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_TYPE_LABELS, type WorkOrderStatus } from "@/lib/types";
 import { dateTime, todayInVietnam } from "@/components/ops/format";
+import { CustomerSearchSelect } from "@/components/ops/customer-search-select";
 import { createExcelSection, exportSectionsToExcel } from "@/components/ops/export-excel";
 import { EmptyState, StatusBadge, TablePagination, TableShell, Toolbar, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { Customer, Technician, WorkOrderListItem } from "@/components/ops/types";
@@ -199,19 +200,16 @@ export function DispatchScreen({
               </div>
             </div>
             <div className="dispatch-toolbar-row">
-              <select
-                className="input dispatch-customer-filter h-9 py-1 text-xs"
+              <CustomerSearchSelect
+                className="dispatch-customer-filter"
+                label="Khách"
                 value={customerId}
-                onChange={(event) => {
-                  setCustomerId(event.target.value);
+                customers={customers}
+                onChange={(nextCustomerId) => {
+                  setCustomerId(nextCustomerId);
                   setOrderPage(1);
                 }}
-              >
-                <option value="">Tất cả khách hàng</option>
-                {customers.map((customer) => (
-                  <option key={customer.id} value={customer.id}>{customer.name} · {customer.phone}</option>
-                ))}
-              </select>
+              />
               <div className="date-range-control dispatch-date-range">
                 <span className="text-[10px] uppercase font-bold text-zinc-400">Từ:</span>
                 <input

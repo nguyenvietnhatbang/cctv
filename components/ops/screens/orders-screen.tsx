@@ -19,7 +19,8 @@ import {
 } from "@/lib/types";
 import { dateTime, money } from "@/components/ops/format";
 import { exportTableToExcel } from "@/components/ops/export-excel";
-import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { CustomerSearchSelect } from "@/components/ops/customer-search-select";
+import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage } from "@/components/ops/ui";
 import type { Customer, Filters, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -177,10 +178,13 @@ export function OrdersScreen({
   customers,
   technicians,
   orders,
+  total,
+  page,
   role,
   canCreate,
   isCreating,
   onFilter,
+  onPageChange,
   onCreate,
   onView,
   onEdit,
@@ -190,17 +194,19 @@ export function OrdersScreen({
   customers: Customer[];
   technicians: Technician[];
   orders: WorkOrderListItem[];
+  total: number;
+  page: number;
   role: Role;
   canCreate: boolean;
   isCreating: boolean;
   onFilter: (filters: Filters) => void;
+  onPageChange: (page: number) => void;
   onCreate: (event: React.FormEvent<HTMLFormElement>) => void;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onCancel: (item: WorkOrderListItem) => void;
 }) {
   const [creating, setCreating] = useState(false);
-  const [page, setPage] = useState(1);
   const [queryDraft, setQueryDraft] = useState(filters.q);
   const statusOptions = useMemo<FilterOption[]>(
     () => [
@@ -220,16 +226,6 @@ export function OrdersScreen({
   const typeOptions = useMemo<FilterOption[]>(
     () => WORK_ORDER_TYPES.map((type) => ({ value: type, label: WORK_ORDER_TYPE_LABELS[type] })),
     [],
-  );
-  const customerOptions = useMemo<FilterOption[]>(
-    () => customers
-      .map((customer) => ({
-        value: customer.id,
-        label: `${customer.name} · ${customer.phone}`,
-        searchText: customer.address,
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label, "vi")),
-    [customers],
   );
   const technicianOptions = useMemo<FilterOption[]>(
     () => technicians
@@ -272,13 +268,13 @@ export function OrdersScreen({
     ),
     [orders],
   );
-  const safePage = clampTablePage(page, orders.length);
-  const visibleOrders = useMemo(() => getPageItems(orders, safePage), [orders, safePage]);
+  const safePage = clampTablePage(page, total);
+  const visibleOrders = useMemo(() => orders, [orders]);
 
   function exportOrders() {
     exportTableToExcel({
       title: "Danh sách công việc",
-      subtitle: `Số dòng: ${orders.length}`,
+      subtitle: `Số dòng đang hiển thị: ${orders.length} / ${total}`,
       filename: "danh-sach-cong-viec",
       rows: orders,
       emptyText: "Không có công việc phù hợp bộ lọc.",
@@ -304,7 +300,6 @@ export function OrdersScreen({
   }
 
   function applyFilter(nextFilters: Filters) {
-    setPage(1);
     onFilter(nextFilters);
   }
 
@@ -388,10 +383,10 @@ export function OrdersScreen({
               options={typeOptions}
               onChange={(type) => applyFilter({ ...filters, type })}
             />
-            <SearchableFilterSelect
+            <CustomerSearchSelect
               label="Khách hàng"
               value={filters.customerId}
-              options={customerOptions}
+              customers={customers}
               onChange={(customerId) => applyFilter({ ...filters, customerId })}
             />
             <SearchableFilterSelect
@@ -534,7 +529,7 @@ export function OrdersScreen({
             </table>
           </div>
         )}
-        <TablePagination page={safePage} total={orders.length} onPageChange={setPage} />
+        <TablePagination page={safePage} total={total} onPageChange={onPageChange} />
       </TableShell>
 
       <div className="grid gap-2 sm:grid-cols-3">

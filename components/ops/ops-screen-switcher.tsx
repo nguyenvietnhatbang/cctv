@@ -121,9 +121,11 @@ type OpsScreenSwitcherProps = {
   appMode: boolean;
   data: AppData;
   filters: Filters;
+  ordersPage: number;
   reportLoading: boolean;
   pendingAction: PendingAction;
   onFilter: (filters: Filters) => void;
+  onOrdersPageChange: (page: number) => void;
   onCreateOrder: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onCreateCustomer: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onCreateUser: (event: FormEvent<HTMLFormElement>) => Promise<void>;
@@ -156,9 +158,11 @@ export function OpsScreenSwitcher({
   appMode,
   data,
   filters,
+  ordersPage,
   reportLoading,
   pendingAction,
   onFilter,
+  onOrdersPageChange,
   onCreateOrder,
   onCreateCustomer,
   onCreateUser,
@@ -195,10 +199,13 @@ export function OpsScreenSwitcher({
         customers={data.customers}
         technicians={data.technicians}
         orders={data.orders}
+        total={data.ordersTotal}
+        page={ordersPage}
         role={role}
         canCreate={isOpsManagerRole(role)}
         isCreating={pendingAction === "create-order"}
         onFilter={onFilter}
+        onPageChange={onOrdersPageChange}
         onCreate={onCreateOrder}
         onView={onOpenOrder}
         onEdit={onEditOrder}

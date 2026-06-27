@@ -57,6 +57,7 @@ export const tabIcons: Record<TabId, LucideIcon> = {
 export const emptyData: AppData = {
   metrics: null,
   orders: [],
+  ordersTotal: 0,
   customers: [],
   technicians: [],
   users: [],

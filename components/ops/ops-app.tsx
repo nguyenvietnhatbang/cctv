@@ -32,6 +32,7 @@ import { OpsScreenSwitcher, preloadOpsScreen } from "@/components/ops/ops-screen
 import { OpsShell } from "@/components/ops/ops-shell";
 import { isAppRoute, routePath, stripAppRoutePrefix } from "@/components/ops/routing";
 import { LoadingScreen } from "@/components/ops/ui";
+import { TABLE_PAGE_SIZE } from "@/components/ops/ui";
 import { usePwaPush } from "@/components/ops/use-pwa-push";
 import { BACK_OFFICE_ROLES, isOpsManagerRole } from "@/lib/types";
 
@@ -64,6 +65,7 @@ export function OpsApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(() => filtersFromSearchParams(searchParams));
+  const [ordersPage, setOrdersPage] = useState(1);
   const [data, setData] = useState<AppData>(emptyData);
   const [modal, setModal] = useState<ModalState>(null);
   const [detail, setDetail] = useState<WorkOrderDetail | null>(null);
@@ -126,16 +128,20 @@ export function OpsApp() {
     return params.toString();
   }, [filters.customerId, filters.dateFrom, filters.dateTo, filters.q, filters.scope, filters.status, filters.technicianId, filters.type]);
 
-  const workOrderListRequest = useCallback((targetSection = section) => {
+  const workOrderListRequest = useCallback((targetSection = section, page = ordersPage) => {
     const params = new URLSearchParams(targetSection === "dispatch" ? "" : workOrderQueryString());
     if (targetSection === "technician") params.set("view", "technician");
+    if (targetSection === "orders") {
+      params.set("page", String(page));
+      params.set("pageSize", String(TABLE_PAGE_SIZE));
+    }
     const queryString = params.toString();
 
     return {
       key: targetSection === "dispatch" ? "__dispatch_all__" : queryString,
       url: queryString ? `/api/work-orders?${queryString}` : "/api/work-orders",
     };
-  }, [section, workOrderQueryString]);
+  }, [ordersPage, section, workOrderQueryString]);
 
   const loadDetail = useCallback(async (id: string) => {
     const cached = detailsCacheRef.current[id];
@@ -167,13 +173,13 @@ export function OpsApp() {
     return payload.metrics;
   }, []);
 
-  const refreshOrders = useCallback(async (targetSection = section) => {
-    const request = workOrderListRequest(targetSection);
-    const payload = await apiFetch<{ workOrders: AppData["orders"] }>(request.url);
-    setData((current) => ({ ...current, orders: payload.workOrders }));
+  const refreshOrders = useCallback(async (targetSection = section, page = ordersPage) => {
+    const request = workOrderListRequest(targetSection, page);
+    const payload = await apiFetch<{ workOrders: AppData["orders"]; total?: number }>(request.url);
+    setData((current) => ({ ...current, orders: payload.workOrders, ordersTotal: payload.total ?? payload.workOrders.length }));
     ordersCacheRef.current[request.key] = payload.workOrders;
     return payload.workOrders;
-  }, [section, workOrderListRequest]);
+  }, [ordersPage, section, workOrderListRequest]);
 
   const refreshNotifications = useCallback(async () => {
     const latestCreatedAt = data.notifications[0]?.created_at;
@@ -297,7 +303,7 @@ export function OpsApp() {
 
     const [dashboard, orders, notifications, technicians, customers, users, routedDetail] = await Promise.all([
       shouldLoadDashboard ? apiFetch<{ metrics: AppData["metrics"] }>("/api/dashboard") : Promise.resolve(null),
-      shouldLoadOrders ? apiFetch<{ workOrders: AppData["orders"] }>(ordersRequest.url) : Promise.resolve(null),
+      shouldLoadOrders ? apiFetch<{ workOrders: AppData["orders"]; total?: number }>(ordersRequest.url) : Promise.resolve(null),
       apiFetch<{ notifications: AppData["notifications"]; snapshotAt: string }>("/api/notifications"),
       shouldLoadTechnicians ? apiFetch<{ technicians: Technician[] }>("/api/technicians") : Promise.resolve(null),
       shouldLoadCustomers ? apiFetch<{ customers: Customer[] }>("/api/customers") : Promise.resolve(null),
@@ -308,6 +314,7 @@ export function OpsApp() {
     setData({
       metrics: dashboard?.metrics ?? emptyData.metrics,
       orders: orders?.workOrders ?? [],
+      ordersTotal: orders?.total ?? orders?.workOrders.length ?? 0,
       notifications: notifications.notifications,
       technicians: technicians?.technicians ?? [],
       customers: customers?.customers ?? [],
@@ -440,7 +447,7 @@ export function OpsApp() {
         });
       }
     }
-  }, [filters, loading, section, user, loadDataForUser, refreshOrders, workOrderListRequest]);
+  }, [filters, loading, ordersPage, section, user, loadDataForUser, refreshOrders, workOrderListRequest]);
 
   useEffect(() => {
     if (loading || !user || !initialLoadedRef.current) return;
@@ -893,6 +900,7 @@ export function OpsApp() {
         orders: orderMatchesFilters(payload.workOrder, filters)
           ? prependById(current.orders, payload.workOrder)
           : current.orders,
+        ordersTotal: orderMatchesFilters(payload.workOrder, filters) ? current.ordersTotal + 1 : current.ordersTotal,
         customers: payload.customer ? prependById(current.customers, payload.customer) : current.customers,
       }));
       form.reset();
@@ -984,6 +992,7 @@ export function OpsApp() {
   }
 
   function updateOrderFilters(nextFilters: Filters) {
+    setOrdersPage(1);
     const params = new URLSearchParams();
     if (nextFilters.q) params.set("q", nextFilters.q);
     if (nextFilters.scope !== "open") params.set("scope", nextFilters.scope);
@@ -1143,9 +1152,11 @@ export function OpsApp() {
         appMode={appMode}
         data={data}
         filters={filters}
+        ordersPage={ordersPage}
         reportLoading={reportLoading}
         pendingAction={pendingAction}
         onFilter={updateOrderFilters}
+        onOrdersPageChange={setOrdersPage}
         onCreateOrder={handleCreateOrder}
         onCreateCustomer={handleCreateCustomer}
         onCreateUser={handleCreateUser}
