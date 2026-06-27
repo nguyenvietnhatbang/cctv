@@ -142,16 +142,22 @@ export function usePwaPush({
     setSupported(canPush);
     setPermission(canPush ? Notification.permission : "unsupported");
     if (!canPush || !enabled) return;
+    const appMode = detectStandalone();
 
     const registration = await navigator.serviceWorker.register("/sw.js", {
       scope: "/",
       updateViaCache: "none",
     });
-    const currentSubscription = await registration.pushManager.getSubscription();
-    setSubscription(currentSubscription);
 
     const status = await apiFetch<PushStatusResponse>("/api/push-subscriptions");
     setConfigured(status.configured);
+    if (!appMode) {
+      setSubscription(null);
+      return;
+    }
+
+    const currentSubscription = await registration.pushManager.getSubscription();
+    setSubscription(currentSubscription);
 
     let activeSubscription = currentSubscription;
     if (!activeSubscription && Notification.permission === "granted" && status.configured) {
@@ -198,8 +204,8 @@ export function usePwaPush({
     try {
       if (!supported) throw new Error("Thiết bị này không hỗ trợ Web Push");
       if (!configured) throw new Error("Máy chủ chưa được cấu hình VAPID");
-      if (isIOS && !isStandalone) {
-        throw new Error("Trên iPhone/iPad, hãy thêm ứng dụng vào Màn hình chính rồi mở lại từ biểu tượng.");
+      if (!detectStandalone()) {
+        throw new Error("Hãy mở từ biểu tượng ứng dụng đã cài để bật thông báo. Tab Chrome không quản lý Push.");
       }
 
       const nextPermission = await Notification.requestPermission();
@@ -236,12 +242,15 @@ export function usePwaPush({
     } finally {
       setBusy(false);
     }
-  }, [configured, isIOS, isStandalone, supported]);
+  }, [configured, supported]);
 
   const unsubscribe = useCallback(async () => {
     setBusy(true);
     setFeedback(null);
     try {
+      if (!detectStandalone()) {
+        throw new Error("Hãy mở từ biểu tượng ứng dụng đã cài để tắt thông báo. Tab Chrome không quản lý Push.");
+      }
       const current = subscription ?? await (await navigator.serviceWorker.ready).pushManager.getSubscription();
       if (current) {
         try {

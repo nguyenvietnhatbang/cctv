@@ -4,7 +4,10 @@ import { Bell, BellOff, CheckCircle2, Download, Smartphone } from "lucide-react"
 import type { PwaPushController } from "@/components/ops/use-pwa-push";
 
 export function PwaPushSettings({ push }: { push: PwaPushController }) {
-  const status = push.subscribed
+  const isBrowserMode = push.supported && !push.isStandalone;
+  const status = isBrowserMode
+    ? "Thông báo chỉ bật trong ứng dụng đã cài"
+    : push.subscribed
     ? "Thiết bị đã đăng ký nhận thông báo"
     : push.permission === "denied"
       ? "Trình duyệt đang chặn thông báo"
@@ -24,15 +27,15 @@ export function PwaPushSettings({ push }: { push: PwaPushController }) {
               Cài ứng dụng và thông báo
             </h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Cài lên màn hình chính để mở nhanh và nhận cập nhật công việc khi không mở web.
+              Cài lên màn hình chính và mở từ biểu tượng app để nhận thông báo riêng, không lẫn với tab Chrome.
             </p>
             <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
               {push.subscribed ? <CheckCircle2 size={14} className="text-emerald-600" /> : <Bell size={14} />}
               {status}
             </p>
-            {push.isIOS && !push.isStandalone ? (
+            {push.supported && !push.isStandalone ? (
               <p className="mt-2 text-xs text-amber-700">
-                iPhone/iPad: bấm Chia sẻ → Thêm vào Màn hình chính, sau đó mở ứng dụng từ biểu tượng.
+                Hãy mở từ biểu tượng ứng dụng đã cài để bật hoặc tắt thông báo. Tab Chrome chỉ dùng để thao tác web.
               </p>
             ) : null}
             {!push.configured && push.supported ? (
@@ -48,7 +51,7 @@ export function PwaPushSettings({ push }: { push: PwaPushController }) {
               <Download size={14} /> Cài ứng dụng
             </button>
           ) : null}
-          {push.subscribed ? (
+          {!push.isStandalone ? null : push.subscribed ? (
             <button className="btn-secondary h-9 text-xs" type="button" onClick={push.unsubscribe} disabled={push.busy}>
               <BellOff size={14} /> Tắt thông báo
             </button>

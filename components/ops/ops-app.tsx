@@ -795,7 +795,7 @@ export function OpsApp() {
   async function handleLogout() {
     setError(null);
     try {
-      if (pwaPush.subscription?.endpoint) {
+      if (pwaPush.isStandalone && pwaPush.subscription?.endpoint) {
         try {
           await apiFetch("/api/push-subscriptions", {
             method: "DELETE",
