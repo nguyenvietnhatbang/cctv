@@ -90,7 +90,7 @@ self.addEventListener("push", (event) => {
   const options = {
     body: data.body,
     icon: data.icon || "/pwa/icon-192.png",
-    badge: data.badge || "/pwa/icon-192.png",
+    badge: data.badge || "/pwa/badge-96.png",
     lang: "vi",
     tag: data.tag,
     renotify: Boolean(data.renotify),

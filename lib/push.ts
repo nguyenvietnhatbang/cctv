@@ -59,7 +59,7 @@ function pushPayload(job: PushJob) {
     title: job.title,
     body: job.body,
     icon: "/pwa/icon-192.png",
-    badge: "/pwa/icon-192.png",
+    badge: "/pwa/badge-96.png",
     tag: notificationTag,
     notificationId: job.notification_id,
     workOrderId: job.work_order_id,
