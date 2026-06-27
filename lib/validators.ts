@@ -177,6 +177,7 @@ export const pushSubscriptionSchema = z.object({
     auth: z.string().min(1).max(512),
   }),
   deviceName: z.string().trim().max(120).optional().nullable(),
+  displayMode: z.enum(["browser", "standalone"]).optional().default("browser"),
 });
 
 export const pushUnsubscribeSchema = z.object({

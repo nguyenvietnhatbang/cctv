@@ -39,6 +39,10 @@ const CUSTOMER_BACKED_SECTIONS = new Set<TabId>(["orders", "customers", "dispatc
 const TECHNICIAN_BACKED_SECTIONS = new Set<TabId>(["orders", "dispatch", "technicians"]);
 const REPORT_SECTIONS = new Set<TabId>(["reports"]);
 
+function isSafeInternalPath(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") && !value.includes("\\");
+}
+
 function needsCustomers(section: TabId, role: Role) {
   return BACK_OFFICE_ROLES.includes(role) && CUSTOMER_BACKED_SECTIONS.has(section);
 }
@@ -211,9 +215,15 @@ export function OpsApp() {
   const pwaPush = usePwaPush({
     enabled: Boolean(user),
     onPushReceived: () => {
+      preloadOpsScreen("notifications");
       refreshNotifications().catch((reason) => {
         setError(reason instanceof Error ? reason.message : "Không tải được thông báo mới");
       });
+    },
+    onNotificationOpen: (url) => {
+      if (!isSafeInternalPath(url)) return;
+      preloadOpsScreen("notifications");
+      router.push(url);
     },
   });
 

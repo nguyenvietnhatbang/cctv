@@ -255,6 +255,8 @@ create table push_subscriptions (
   auth text not null,
   device_name text,
   user_agent text,
+  display_mode text not null default 'browser'
+    check (display_mode in ('browser', 'standalone')),
   last_seen_at timestamptz not null default now(),
   disabled_at timestamptz,
   created_at timestamptz not null default now(),

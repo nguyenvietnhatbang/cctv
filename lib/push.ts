@@ -58,6 +58,7 @@ function pushPayload(job: PushJob) {
     tag: notificationTag,
     notificationId: job.notification_id,
     workOrderId: job.work_order_id,
+    url: job.work_order_id ? `/notifications?order=${encodeURIComponent(job.work_order_id)}` : "/notifications",
     timestamp: new Date(job.created_at).getTime(),
     unreadCount: job.unread_count,
     renotify: job.priority !== "normal",

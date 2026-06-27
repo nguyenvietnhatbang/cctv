@@ -1,9 +1,10 @@
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 import { Pool } from "pg";
 
-const adminEmail = process.env.E2E_ADMIN_EMAIL;
-const technicianEmail = process.env.E2E_TECHNICIAN_EMAIL;
-const sharedPassword = process.env.E2E_SHARED_PASSWORD;
+const adminEmail = process.env.E2E_ADMIN_EMAIL || "cctvdragon@gmail.com";
+const adminPassword = process.env.E2E_ADMIN_PASSWORD || "cctv1234";
+const technicianEmail = process.env.E2E_TECHNICIAN_EMAIL || "e2etechplaywright@gmail.com";
+const technicianPassword = process.env.E2E_TECHNICIAN_PASSWORD || "techpassword123";
 const databaseUrl = process.env.DATABASE_URL;
 
 type WorkOrderDetailResponse = {
@@ -158,8 +159,8 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
 
   test.beforeAll(async ({ browser }) => {
     test.skip(
-      !adminEmail || !technicianEmail || !sharedPassword || !databaseUrl,
-      "Thiếu E2E_ADMIN_EMAIL, E2E_TECHNICIAN_EMAIL, E2E_SHARED_PASSWORD hoặc DATABASE_URL",
+      !adminEmail || !technicianEmail || !adminPassword || !technicianPassword || !databaseUrl,
+      "Thiếu biến cấu hình E2E hoặc DATABASE_URL",
     );
     adminContext = await browser.newContext();
     technicianContext = await browser.newContext();
@@ -175,7 +176,7 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
 
   test("chốt chi phí trước, bổ sung vật liệu sau không đổi tổng tiền và khóa sau nghiệm thu", async () => {
     adminPage = await adminContext.newPage();
-    await login(adminPage, adminEmail!, sharedPassword!, "Admin");
+    await login(adminPage, adminEmail!, adminPassword!, "Admin");
     fixture = await createFixture(adminPage.request);
 
     await adminPage.goto(`/orders/${fixture.orderId}?mode=edit`);
@@ -199,7 +200,7 @@ test.describe.serial("Chi phí vật liệu cố định", () => {
     expect(Number(costDetail.workOrder.total_amount)).toBe(700_000);
 
     const technicianPage = await technicianContext.newPage();
-    await login(technicianPage, technicianEmail!, sharedPassword!, "Kỹ thuật");
+    await login(technicianPage, technicianEmail!, technicianPassword!, "Kỹ thuật");
 
     for (const status of ["accepted", "traveling"]) {
       const response = await technicianPage.request.post(`/api/work-orders/${fixture.orderId}/status`, {

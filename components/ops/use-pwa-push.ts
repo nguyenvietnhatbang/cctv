@@ -13,6 +13,7 @@ type PushStatusResponse = {
   subscriptions: Array<{
     endpoint: string;
     device_name: string | null;
+    display_mode: "browser" | "standalone" | null;
     last_seen_at: string;
     created_at: string;
   }>;
@@ -36,21 +37,29 @@ function detectStandalone() {
 }
 
 function deviceName() {
-  if (detectIOS()) return "iPhone/iPad";
-  if (/Android/i.test(navigator.userAgent)) return "Android";
-  if (/Windows/i.test(navigator.userAgent)) return "Windows";
-  if (/Macintosh|Mac OS X/i.test(navigator.userAgent)) return "macOS";
-  return "Trình duyệt web";
+  const suffix = detectStandalone() ? " app" : " browser";
+  if (detectIOS()) return `iPhone/iPad${suffix}`;
+  if (/Android/i.test(navigator.userAgent)) return `Android${suffix}`;
+  if (/Windows/i.test(navigator.userAgent)) return `Windows${suffix}`;
+  if (/Macintosh|Mac OS X/i.test(navigator.userAgent)) return `macOS${suffix}`;
+  return `Trình duyệt web${suffix}`;
+}
+
+function displayMode() {
+  return detectStandalone() ? "standalone" : "browser";
 }
 
 export function usePwaPush({
   enabled,
   onPushReceived,
+  onNotificationOpen,
 }: {
   enabled: boolean;
   onPushReceived: () => void;
+  onNotificationOpen?: (url: string) => void;
 }) {
   const onPushReceivedRef = useRef(onPushReceived);
+  const onNotificationOpenRef = useRef(onNotificationOpen);
   const [supported, setSupported] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("unsupported");
@@ -64,6 +73,10 @@ export function usePwaPush({
   useEffect(() => {
     onPushReceivedRef.current = onPushReceived;
   }, [onPushReceived]);
+
+  useEffect(() => {
+    onNotificationOpenRef.current = onNotificationOpen;
+  }, [onNotificationOpen]);
 
   useEffect(() => {
     const handleInstallPrompt = (event: Event) => {
@@ -91,11 +104,38 @@ export function usePwaPush({
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "PUSH_NOTIFICATION_RECEIVED") {
         onPushReceivedRef.current();
+      } else if (event.data?.type === "OPEN_NOTIFICATION_TARGET" && typeof event.data.url === "string") {
+        onNotificationOpenRef.current?.(event.data.url);
       }
     };
     navigator.serviceWorker.addEventListener("message", handleMessage);
     return () => navigator.serviceWorker.removeEventListener("message", handleMessage);
   }, []);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !enabled) return;
+
+    const syncClientState = () => {
+      navigator.serviceWorker.ready
+        .then((registration) => {
+          registration.active?.postMessage({
+            type: "APP_CLIENT_STATE",
+            isStandalone: detectStandalone(),
+            visibilityState: document.visibilityState,
+          });
+        })
+        .catch(() => undefined);
+    };
+
+    syncClientState();
+    window.addEventListener("focus", syncClientState);
+    document.addEventListener("visibilitychange", syncClientState);
+
+    return () => {
+      window.removeEventListener("focus", syncClientState);
+      document.removeEventListener("visibilitychange", syncClientState);
+    };
+  }, [enabled, isStandalone]);
 
   const initialize = useCallback(async () => {
     const canPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -139,6 +179,7 @@ export function usePwaPush({
             endpoint: serialized.endpoint,
             keys: serialized.keys,
             deviceName: deviceName(),
+            displayMode: displayMode(),
           }),
         });
       }
@@ -185,6 +226,7 @@ export function usePwaPush({
           endpoint: serialized.endpoint,
           keys: serialized.keys,
           deviceName: deviceName(),
+          displayMode: displayMode(),
         }),
       });
       setSubscription(nextSubscription);
