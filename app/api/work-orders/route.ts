@@ -4,7 +4,7 @@ import { todayInVietnam, vietnamDayRangeUtc, vietnamMonthRangeUtc } from "@/lib/
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonCreated, jsonOk } from "@/lib/http";
 import { createNotifications, schedulePushProcessing } from "@/lib/notifications";
-import { OPS_MANAGER_ROLES } from "@/lib/types";
+import { LEGACY_WORK_ORDER_TYPES, OPS_MANAGER_ROLES, WORK_ORDER_STATUSES, WORK_ORDER_TYPES } from "@/lib/types";
 import { createWorkOrderSchema } from "@/lib/validators";
 import { changeWorkOrderStatus, makeWorkOrderCode, requireTechnicianIdForUser } from "@/lib/work-orders";
 
@@ -61,6 +61,10 @@ const assignmentLateralJoin = `
   ) assn on true
 `;
 
+const scopeSchema = z.enum(["open", "today", "this_month", "all"]);
+const workOrderTypeFilterSchema = z.enum([...WORK_ORDER_TYPES, ...LEGACY_WORK_ORDER_TYPES]);
+const workOrderStatusFilterSchema = z.enum(WORK_ORDER_STATUSES);
+
 function uniqueIds(ids: Array<string | null | undefined>) {
   return [...new Set(ids.filter((id): id is string => Boolean(id)))];
 }
@@ -77,7 +81,7 @@ export async function GET(request: Request) {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
     const paymentFilter = searchParams.get("paymentFilter");
-    const scope = searchParams.get("scope") ?? "open";
+    const scope = scopeSchema.parse(searchParams.get("scope") ?? "open");
     const view = searchParams.get("view");
     const q = searchParams.get("q")?.trim();
     const pageParam = searchParams.get("page");
@@ -132,7 +136,11 @@ export async function GET(request: Request) {
       } else if (status === "closed") {
         filters.push(`wo.status = 'paid'`);
       } else {
-        params.push(status);
+        const parsedStatus = workOrderStatusFilterSchema.safeParse(status);
+        if (!parsedStatus.success) {
+          throw new HttpError(422, "Trạng thái công việc không hợp lệ");
+        }
+        params.push(parsedStatus.data);
         filters.push(`wo.status = $${params.length}`);
       }
     }
@@ -152,7 +160,11 @@ export async function GET(request: Request) {
     }
 
     if (type) {
-      params.push(type);
+      const parsedType = workOrderTypeFilterSchema.safeParse(type);
+      if (!parsedType.success) {
+        throw new HttpError(422, "Loại công việc không hợp lệ");
+      }
+      params.push(parsedType.data);
       filters.push(`wo.type = $${params.length}`);
     }
 
@@ -166,7 +178,11 @@ export async function GET(request: Request) {
     }
 
     if (technicianId && user.role !== "technician") {
-      params.push(technicianId);
+      const parsedTechnicianId = z.string().uuid().safeParse(technicianId);
+      if (!parsedTechnicianId.success) {
+        throw new HttpError(422, "Bộ lọc kỹ thuật viên không hợp lệ");
+      }
+      params.push(parsedTechnicianId.data);
       filters.push(
         `exists (
           select 1
@@ -240,7 +256,8 @@ export async function GET(request: Request) {
        left join work_order_assignments own_woa
          on own_woa.work_order_id = wo.id
         and own_woa.technician_id = ${ownTechnicianId ? `$${params.length}` : "null::uuid"}
-        and own_woa.unassigned_at is null`
+        and own_woa.unassigned_at is null
+       left join payments p on p.work_order_id = wo.id`
       : `from work_orders wo
        join customers c on c.id = wo.customer_id
        ${assignmentLateralJoin}
@@ -248,7 +265,8 @@ export async function GET(request: Request) {
 
     const countFromSql = technicianView
       ? `from work_orders wo
-       join customers c on c.id = wo.customer_id`
+       join customers c on c.id = wo.customer_id
+       left join payments p on p.work_order_id = wo.id`
       : fromSql;
 
     const selectSql = technicianView

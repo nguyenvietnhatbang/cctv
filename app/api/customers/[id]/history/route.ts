@@ -1,7 +1,8 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
-import { handleRouteError, jsonOk } from "@/lib/http";
+import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import { createSignedFileUrl } from "@/lib/storage";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 
@@ -17,10 +18,35 @@ type HistoryFile = {
   purpose: string;
 };
 
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
   try {
     await requireUser();
     const { id } = await context.params;
+    const parsedCustomerId = z.string().uuid().safeParse(id);
+    if (!parsedCustomerId.success) {
+      throw new HttpError(422, "Khách hàng không hợp lệ");
+    }
+
+    const { searchParams } = new URL(request.url);
+    const pageParam = searchParams.get("page");
+    const pageSizeParam = searchParams.get("pageSize");
+    const limitParam = searchParams.get("limit");
+    const page = pageParam ? Number(pageParam) : 1;
+    const limit = pageSizeParam ? Number(pageSizeParam) : limitParam ? Number(limitParam) : 80;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      throw new HttpError(422, "Giới hạn lịch sử khách hàng không hợp lệ");
+    }
+    if (!Number.isInteger(page) || page < 1) {
+      throw new HttpError(422, "Trang lịch sử khách hàng không hợp lệ");
+    }
+    const offset = pageSizeParam || pageParam ? (page - 1) * limit : 0;
+
+    const countResult = await query<{ total: string }>(
+      `select count(*)::text as total
+       from work_orders wo
+       where wo.customer_id = $1`,
+      [parsedCustomerId.data],
+    );
 
     const result = await query<{ files: HistoryFile[] }>(
       `select wo.id, wo.code, wo.type, wo.status, wo.description, 
@@ -64,8 +90,9 @@ export async function GET(_request: Request, context: Context) {
          where woa.work_order_id = wo.id and woa.unassigned_at is null
        ) assn on true
        where wo.customer_id = $1
-       order by wo.appointment_at desc nulls last, wo.created_at desc`,
-      [id],
+       order by wo.appointment_at desc nulls last, wo.created_at desc
+       limit $2 offset $3`,
+      [parsedCustomerId.data, limit, offset],
     );
 
     const history = await Promise.all(
@@ -98,7 +125,14 @@ export async function GET(_request: Request, context: Context) {
       })
     );
 
-    return jsonOk({ history });
+    const total = Number(countResult.rows[0]?.total ?? 0);
+    return jsonOk({
+      history,
+      total,
+      page,
+      pageSize: limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
   } catch (error) {
     return handleRouteError(error);
   }

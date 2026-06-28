@@ -1,9 +1,12 @@
 import { requireUser } from "@/lib/auth";
 import { todayInVietnam, vietnamDateRangeUtc } from "@/lib/date-ranges";
 import { query } from "@/lib/db";
-import { handleRouteError, jsonOk } from "@/lib/http";
+import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 
 export const runtime = "nodejs";
+
+const MAX_REPORT_RANGE_DAYS = 366;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export async function GET(request: Request) {
   try {
@@ -13,6 +16,10 @@ export async function GET(request: Request) {
     const from = searchParams.get("from") || today;
     const to = searchParams.get("to") || today;
     const range = vietnamDateRangeUtc(from, to);
+    const rangeDays = Math.round((range.end.getTime() - range.start.getTime()) / MS_PER_DAY);
+    if (rangeDays > MAX_REPORT_RANGE_DAYS) {
+      throw new HttpError(422, `Khoảng ngày báo cáo không được vượt quá ${MAX_REPORT_RANGE_DAYS} ngày`);
+    }
     const rangeParams = [range.start, range.end];
     const dailyParams = [from, to, range.start, range.end];
 
