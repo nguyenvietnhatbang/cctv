@@ -1,8 +1,8 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { createSignedFileUrl } from "@/lib/storage";
-import { z } from "zod";
 
 export const runtime = "nodejs";
 
@@ -21,11 +21,8 @@ type HistoryFile = {
 export async function GET(request: Request, context: Context) {
   try {
     await requireUser();
-    const { id } = await context.params;
-    const parsedCustomerId = z.string().uuid().safeParse(id);
-    if (!parsedCustomerId.success) {
-      throw new HttpError(422, "Khách hàng không hợp lệ");
-    }
+    const { id: rawId } = await context.params;
+    const customerId = parseUuidParam(rawId, "Khách hàng không hợp lệ");
 
     const { searchParams } = new URL(request.url);
     const pageParam = searchParams.get("page");
@@ -45,7 +42,7 @@ export async function GET(request: Request, context: Context) {
       `select count(*)::text as total
        from work_orders wo
        where wo.customer_id = $1`,
-      [parsedCustomerId.data],
+      [customerId],
     );
 
     const result = await query<{ files: HistoryFile[] }>(
@@ -92,7 +89,7 @@ export async function GET(request: Request, context: Context) {
        where wo.customer_id = $1
        order by wo.appointment_at desc nulls last, wo.created_at desc
        limit $2 offset $3`,
-      [parsedCustomerId.data, limit, offset],
+      [customerId, limit, offset],
     );
 
     const history = await Promise.all(

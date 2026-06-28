@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
 import { createNotifications, schedulePushProcessing } from "@/lib/notifications";
+import { parseUuidParam } from "@/lib/route-params";
 import { createSignedFileUrl, deleteWorkOrderFile } from "@/lib/storage";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateWorkOrderSchema } from "@/lib/validators";
@@ -46,7 +47,8 @@ const assignmentLateralJoin = `
 export async function GET(_request: Request, context: Context) {
   try {
     const user = await requireUser();
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
 
     await assertCanReadWorkOrder(user, id);
 
@@ -141,7 +143,8 @@ export async function GET(_request: Request, context: Context) {
 export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
 
     await assertCanReadWorkOrder(user, id);
     const body = updateWorkOrderSchema.parse(await request.json());
@@ -264,7 +267,8 @@ export async function PATCH(request: Request, context: Context) {
 export async function DELETE(_request: Request, context: Context) {
   try {
     await requireUser(["admin"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
 
     const filePaths = await withTransaction(async (client) => {
       const deletableResult = await client.query<{

@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createCustomerSchema } from "@/lib/validators";
 
@@ -34,7 +35,8 @@ const customerSelect = `
 export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireUser(OPS_MANAGER_ROLES);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Khách hàng không hợp lệ");
     const body = createCustomerSchema.partial().parse(await request.json());
 
     const hasLocationFields = body.lat !== undefined || body.lng !== undefined;
@@ -96,7 +98,8 @@ export async function PATCH(request: Request, context: Context) {
 export async function DELETE(_request: Request, context: Context) {
   try {
     await requireUser(OPS_MANAGER_ROLES);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Khách hàng không hợp lệ");
 
     const result = await query("delete from customers where id = $1 returning id", [id]);
 

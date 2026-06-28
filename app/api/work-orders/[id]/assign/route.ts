@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import { createNotifications, schedulePushProcessing } from "@/lib/notifications";
+import { parseUuidParam } from "@/lib/route-params";
 import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { assignWorkOrderSchema } from "@/lib/validators";
 import { changeWorkOrderStatus, syncTechnicianStatuses } from "@/lib/work-orders";
@@ -19,7 +20,8 @@ function uniqueIds(ids: Array<string | null | undefined>) {
 export async function POST(request: Request, context: Context) {
   try {
     const user = await requireUser(OPS_MANAGER_ROLES);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
     const body = assignWorkOrderSchema.parse(await request.json());
     const nextTechnicianIds = uniqueIds([...(body.technicianIds ?? []), body.technicianId]);
 

@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError } from "@/lib/http";
 import { dateTime, escapeHtml, money, printDocumentResponse } from "@/lib/print-documents";
+import { parseUuidParam } from "@/lib/route-params";
 import { WORK_ORDER_STATUS_LABELS } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -13,7 +14,8 @@ type Context = {
 export async function GET(_request: Request, context: Context) {
   try {
     await requireUser(["admin", "dispatcher", "team_lead", "accountant"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Khách hàng không hợp lệ");
 
     const [customerResult, debtResult] = await Promise.all([
       query(

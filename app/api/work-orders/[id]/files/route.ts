@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonCreated } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { getMaxUploadBytes, uploadWorkOrderFile } from "@/lib/storage";
 import { isPaymentManagerRole, OPS_MANAGER_ROLES } from "@/lib/types";
 import { uploadPurposeSchema } from "@/lib/validators";
@@ -21,7 +22,8 @@ function getExtension(name: string) {
 export async function POST(request: Request, context: Context) {
   try {
     const user = await requireUser([...OPS_MANAGER_ROLES, "technician", "accountant"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
 
     const formData = await request.formData();
     const file = formData.get("file");

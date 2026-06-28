@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, jsonOk } from "@/lib/http";
 import { schedulePushProcessing } from "@/lib/notifications";
+import { parseUuidParam } from "@/lib/route-params";
 import { updatePaymentSchema } from "@/lib/validators";
 import { assertCanReadWorkOrder, recordWorkOrderPayment } from "@/lib/work-orders";
 
@@ -14,7 +15,8 @@ type Context = {
 export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireUser(["admin", "dispatcher", "accountant", "technician"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
     const body = updatePaymentSchema.parse(await request.json());
 
     await assertCanReadWorkOrder(user, id);

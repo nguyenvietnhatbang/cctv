@@ -3,8 +3,9 @@ import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import { schedulePushProcessing } from "@/lib/notifications";
-import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
+import { parseUuidParam } from "@/lib/route-params";
 import { uploadWorkOrderBytes } from "@/lib/storage";
+import { OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { acceptanceSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork, changeWorkOrderPaymentStatus, changeWorkOrderStatus, recordWorkOrderPayment } from "@/lib/work-orders";
 
@@ -17,7 +18,8 @@ type Context = {
 export async function POST(request: Request, context: Context) {
   try {
     const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
     const body = acceptanceSchema.parse(await request.json());
 
     await assertCanMutateFieldWork(user, id);

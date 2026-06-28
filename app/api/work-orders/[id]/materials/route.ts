@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, jsonCreated, jsonOk } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { createMaterialSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanMutateFieldWork, assertCanReadWorkOrder } from "@/lib/work-orders";
@@ -14,7 +15,8 @@ type Context = {
 export async function GET(_request: Request, context: Context) {
   try {
     const user = await requireUser();
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
     await assertCanReadWorkOrder(user, id);
 
     const result = await query(
@@ -34,7 +36,8 @@ export async function GET(_request: Request, context: Context) {
 export async function POST(request: Request, context: Context) {
   try {
     const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
     const body = createMaterialSchema.parse(await request.json());
 
     await assertCanMutateFieldWork(user, id);

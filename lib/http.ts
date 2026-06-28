@@ -61,6 +61,13 @@ export function handleRouteError(error: unknown) {
     );
   }
 
+  if (pgError?.code === "22P02") {
+    return Response.json(
+      { error: "Dữ liệu không hợp lệ." },
+      { status: 422 },
+    );
+  }
+
   console.error(error);
   return Response.json({ error: "Lỗi hệ thống" }, { status: 500 });
 }

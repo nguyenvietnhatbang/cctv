@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateMaterialSchema } from "@/lib/validators";
 import { assertCanEditFinancials, assertCanMutateFieldWork } from "@/lib/work-orders";
@@ -14,7 +15,9 @@ type Context = {
 export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
-    const { id, materialId } = await context.params;
+    const { id: rawId, materialId: rawMaterialId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
+    const materialId = parseUuidParam(rawMaterialId, "Vật tư không hợp lệ");
     const body = updateMaterialSchema.parse(await request.json());
 
     await assertCanMutateFieldWork(user, id);
@@ -47,7 +50,9 @@ export async function PATCH(request: Request, context: Context) {
 export async function DELETE(_request: Request, context: Context) {
   try {
     const user = await requireUser([...OPS_MANAGER_ROLES, "technician"]);
-    const { id, materialId } = await context.params;
+    const { id: rawId, materialId: rawMaterialId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
+    const materialId = parseUuidParam(rawMaterialId, "Vật tư không hợp lệ");
 
     await assertCanMutateFieldWork(user, id);
     await assertCanEditFinancials(user, id);

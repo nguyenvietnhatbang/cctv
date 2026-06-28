@@ -1,6 +1,7 @@
 import { hashPassword, requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { adminResetPasswordSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -12,7 +13,8 @@ type Context = {
 export async function PATCH(request: Request, context: Context) {
   try {
     await requireUser(["admin"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Nhân viên không hợp lệ");
     const body = adminResetPasswordSchema.parse(await request.json());
     const passwordHash = await hashPassword(body.newPassword);
 

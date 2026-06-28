@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
 import { updateTechnicianSchema } from "@/lib/validators";
 
@@ -13,7 +14,8 @@ type Context = {
 export async function PATCH(request: Request, context: Context) {
   try {
     await requireUser(OPS_MANAGER_ROLES);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Kỹ thuật viên không hợp lệ");
     const body = updateTechnicianSchema.parse(await request.json());
 
     const updateResult = await query(
@@ -55,7 +57,8 @@ export async function PATCH(request: Request, context: Context) {
 export async function DELETE(_request: Request, context: Context) {
   try {
     await requireUser(["admin"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Kỹ thuật viên không hợp lệ");
 
     const activeAssignments = await query(
       "select id from work_order_assignments where technician_id = $1 and unassigned_at is null limit 1",

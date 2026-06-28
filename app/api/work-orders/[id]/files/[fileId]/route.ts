@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { deleteWorkOrderFile } from "@/lib/storage";
 import { isPaymentManagerRole, OPS_MANAGER_ROLES, type WorkOrderStatus } from "@/lib/types";
 import { assertCanMutateFieldWork } from "@/lib/work-orders";
@@ -16,7 +17,9 @@ const LOCKED_FILE_STATUSES = new Set<WorkOrderStatus>(["completed", "paid", "deb
 export async function DELETE(_request: Request, context: Context) {
   try {
     const user = await requireUser([...OPS_MANAGER_ROLES, "technician", "accountant"]);
-    const { id, fileId } = await context.params;
+    const { id: rawId, fileId: rawFileId } = await context.params;
+    const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
+    const fileId = parseUuidParam(rawFileId, "File không hợp lệ");
 
     const result = await query<{
       path: string;

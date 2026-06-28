@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
+import { parseUuidParam } from "@/lib/route-params";
 import { updateUserSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -12,7 +13,8 @@ type Context = {
 export async function PATCH(request: Request, context: Context) {
   try {
     await requireUser(["admin"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Nhân viên không hợp lệ");
     const body = updateUserSchema.parse(await request.json());
 
     const updateResult = await withTransaction(async (client) => {
@@ -64,7 +66,8 @@ export async function PATCH(request: Request, context: Context) {
 export async function DELETE(_request: Request, context: Context) {
   try {
     await requireUser(["admin"]);
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = parseUuidParam(rawId, "Nhân viên không hợp lệ");
 
     const result = await query(
       "update users set status = 'inactive' where id = $1 returning id",
