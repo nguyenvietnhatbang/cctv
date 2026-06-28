@@ -4,6 +4,7 @@ import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction
 import dynamic from "next/dynamic";
 import { apiFetch } from "@/components/ops/api";
 import { customerContactsFromFormData, removeById, replaceById } from "@/components/ops/app-utils";
+import { fetchAllAssignmentHistory } from "@/components/ops/assignment-history-api";
 import type { AppData, AppUser, AssignmentHistoryItem, Customer, ModalState, Role, Technician, WorkOrderDetail } from "@/components/ops/types";
 import { AssignmentHistoryList } from "@/components/ops/assignment-history-list";
 import { ConfirmModal, Modal, PendingButton, ValidatedForm } from "@/components/ops/ui";
@@ -237,9 +238,9 @@ export function OpsModalLayer({
     let cancelled = false;
     setAssignmentHistoryLoading(true);
     setAssignmentHistory([]);
-    apiFetch<{ assignmentHistory: AssignmentHistoryItem[] }>(`/api/assignment-history?technicianId=${modal.item.technician_id}`)
-      .then((payload) => {
-        if (!cancelled) setAssignmentHistory(payload.assignmentHistory);
+    fetchAllAssignmentHistory(modal.item.technician_id)
+      .then((assignmentHistory) => {
+        if (!cancelled) setAssignmentHistory(assignmentHistory);
       })
       .catch((reason) => {
         if (!cancelled) setError(reason instanceof Error ? reason.message : "Không tải được lịch sử phân công");

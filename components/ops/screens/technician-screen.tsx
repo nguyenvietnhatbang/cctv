@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   CalendarClock,
@@ -587,6 +587,16 @@ type HistoryWorkOrder = {
   files: WorkFile[];
 };
 
+type CustomerHistoryResponse = {
+  history: HistoryWorkOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+const CUSTOMER_HISTORY_PAGE_SIZE = 80;
+
 function CustomerHistoryModal({
   customerId,
   customerName,
@@ -599,32 +609,57 @@ function CustomerHistoryModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [historyList, setHistoryList] = useState<HistoryWorkOrder[]>([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyTotalPages, setHistoryTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const mountedRef = useRef(false);
+  const requestIdRef = useRef(0);
 
-  useEffect(() => {
-    let active = true;
-    async function loadHistory() {
+  const loadHistoryPage = useCallback(async (page: number, append = false) => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+    if (append) {
+      setLoadingMore(true);
+    } else {
       setLoading(true);
-      setError(null);
-      try {
-        const data = await apiFetch<{ history: HistoryWorkOrder[] }>(`/api/customers/${customerId}/history`);
-        if (active) {
-          setHistoryList(data.history);
-        }
-      } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err.message : "Không tải được lịch sử khách hàng");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+      setHistoryList([]);
+    }
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(CUSTOMER_HISTORY_PAGE_SIZE),
+      });
+      const data = await apiFetch<CustomerHistoryResponse>(`/api/customers/${customerId}/history?${params.toString()}`);
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      setHistoryList((current) => append ? [...current, ...data.history] : data.history);
+      setHistoryPage(data.page);
+      setHistoryTotal(data.total);
+      setHistoryTotalPages(data.totalPages);
+    } catch (err) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      setError(err instanceof Error ? err.message : "Không tải được lịch sử khách hàng");
+    } finally {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      if (append) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
       }
     }
-    loadHistory();
-    return () => {
-      active = false;
-    };
   }, [customerId]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void loadHistoryPage(1);
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadHistoryPage]);
+
+  const hasMoreHistory = historyPage < historyTotalPages;
 
   return (
     <Modal title={`Lịch sử kỹ thuật - ${customerName}`} onClose={onClose} size="lg">
@@ -642,6 +677,19 @@ function CustomerHistoryModal({
         </div>
       ) : (
         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+          <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 bg-white/95 py-2 text-xs font-semibold text-zinc-500 backdrop-blur">
+            <span>Đã hiển thị {historyList.length} / {historyTotal} phiếu</span>
+            {hasMoreHistory ? (
+              <button
+                className="btn-secondary h-8 px-2.5 text-xs"
+                type="button"
+                disabled={loadingMore}
+                onClick={() => void loadHistoryPage(historyPage + 1, true)}
+              >
+                {loadingMore ? "Đang tải..." : "Tải thêm"}
+              </button>
+            ) : null}
+          </div>
           {historyList.map((item) => (
             <div key={item.id} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm transition hover:shadow-md">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2">
@@ -759,6 +807,18 @@ function CustomerHistoryModal({
               </div>
             </div>
           ))}
+          {hasMoreHistory ? (
+            <div className="flex justify-center pb-2">
+              <button
+                className="btn-secondary h-9 px-3 text-xs"
+                type="button"
+                disabled={loadingMore}
+                onClick={() => void loadHistoryPage(historyPage + 1, true)}
+              >
+                {loadingMore ? "Đang tải thêm..." : `Tải thêm (${historyList.length}/${historyTotal})`}
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
     </Modal>

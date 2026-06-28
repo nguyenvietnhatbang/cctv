@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { History } from "lucide-react";
-import { apiFetch } from "@/components/ops/api";
+import { fetchAllAssignmentHistory } from "@/components/ops/assignment-history-api";
 import { AssignmentHistoryList } from "@/components/ops/assignment-history-list";
 import type { AssignmentHistoryItem } from "@/components/ops/types";
 
@@ -13,9 +13,9 @@ export function AssignmentHistoryScreen() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    apiFetch<{ assignmentHistory: AssignmentHistoryItem[] }>("/api/assignment-history")
-      .then((payload) => {
-        if (!cancelled) setItems(payload.assignmentHistory);
+    fetchAllAssignmentHistory()
+      .then((assignmentHistory) => {
+        if (!cancelled) setItems(assignmentHistory);
       })
       .catch(() => {
         if (!cancelled) setItems([]);
