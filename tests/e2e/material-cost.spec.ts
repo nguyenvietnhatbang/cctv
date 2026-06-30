@@ -1,10 +1,10 @@
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 import { Pool } from "pg";
 
-const adminEmail = process.env.E2E_ADMIN_EMAIL || "cctvdragon@gmail.com";
-const adminPassword = process.env.E2E_ADMIN_PASSWORD || "cctv1234";
-const technicianEmail = process.env.E2E_TECHNICIAN_EMAIL || "e2etechplaywright@gmail.com";
-const technicianPassword = process.env.E2E_TECHNICIAN_PASSWORD || "techpassword123";
+const adminEmail = process.env.E2E_ADMIN_EMAIL;
+const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+const technicianEmail = process.env.E2E_TECHNICIAN_EMAIL;
+const technicianPassword = process.env.E2E_TECHNICIAN_PASSWORD;
 const databaseUrl = process.env.DATABASE_URL;
 
 type WorkOrderDetailResponse = {

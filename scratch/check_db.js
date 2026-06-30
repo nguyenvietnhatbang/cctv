@@ -1,6 +1,10 @@
 const { Pool } = require("pg");
 
-const databaseUrl = "postgresql://postgres.exxtypsnzdabogxndfpz:OXv3wlohXwR5iIL3@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres";
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("Missing DATABASE_URL");
+}
 
 async function main() {
   const pool = new Pool({

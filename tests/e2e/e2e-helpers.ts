@@ -1,8 +1,8 @@
 import { expect, type APIRequestContext, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { Pool } from "pg";
 
-export const adminEmail = process.env.E2E_ADMIN_EMAIL || "cctvdragon@gmail.com";
-export const adminPassword = process.env.E2E_ADMIN_PASSWORD || "cctv1234";
+export const adminEmail = process.env.E2E_ADMIN_EMAIL || "";
+export const adminPassword = process.env.E2E_ADMIN_PASSWORD || "";
 export const e2ePassword = process.env.E2E_GENERATED_PASSWORD || "E2ePassword123!";
 export const databaseUrl = process.env.DATABASE_URL;
 
