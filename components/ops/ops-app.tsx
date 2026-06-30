@@ -1162,6 +1162,7 @@ export function OpsApp() {
         onCreateUser={handleCreateUser}
         onOpenOrder={(id) => openOrder(id, user.role === "technician" ? "technician-job" : "order-detail")}
         onEditOrder={(id) => openOrder(id, user.role === "technician" ? "technician-job" : "order-edit")}
+        onOpenTechnicianJob={(id) => openOrder(id, "technician-job")}
         onTechnicianStatus={updateTechnicianStatus}
         onCancelOrder={(item) => setModal({ type: "order-cancel", item })}
         onViewCustomer={(item) => setModal({ type: "customer-detail", item })}

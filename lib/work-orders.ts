@@ -594,6 +594,9 @@ export async function recordWorkOrderPayment(
 
   const isFieldPayment = FIELD_PAYMENT_STATUSES.has(payment.current_status);
   const isSettlementPayment = PAYMENT_SETTLEMENT_STATUSES.has(payment.current_status);
+  if (user.role === "team_lead" && !isFieldPayment) {
+    throw new HttpError(403, "Trưởng nhóm chỉ được ghi nhận thanh toán tại hiện trường");
+  }
   if (!isFieldPayment && !isSettlementPayment) {
     throw new HttpError(
       422,

@@ -41,7 +41,7 @@ export async function POST(request: Request, context: Context) {
       }
 
       if (body.payment) {
-        if (!["admin", "dispatcher", "accountant", "technician"].includes(user.role)) {
+        if (!["admin", "dispatcher", "accountant", "technician", "team_lead"].includes(user.role)) {
           throw new HttpError(403, "Tài khoản hiện tại không có quyền ghi nhận thanh toán");
         }
         await recordWorkOrderPayment(client, id, body.payment, user);

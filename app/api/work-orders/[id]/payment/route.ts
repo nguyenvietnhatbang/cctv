@@ -14,7 +14,7 @@ type Context = {
 
 export async function PATCH(request: Request, context: Context) {
   try {
-    const user = await requireUser(["admin", "dispatcher", "accountant", "technician"]);
+    const user = await requireUser(["admin", "dispatcher", "accountant", "technician", "team_lead"]);
     const { id: rawId } = await context.params;
     const id = parseUuidParam(rawId, "Phiếu không hợp lệ");
     const body = updatePaymentSchema.parse(await request.json());

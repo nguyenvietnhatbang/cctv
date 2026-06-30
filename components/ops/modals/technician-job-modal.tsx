@@ -280,7 +280,7 @@ export function TechnicianJobModal({
   const canMoveNext = Boolean(nextFieldTransition);
   const canCheckout = Boolean(checkoutTransition);
   const canResume = Boolean(resumeTransition);
-  const canQuickCheckIn = status === "assigned" || status === "accepted";
+  const canQuickCheckIn = status === "assigned" || status === "accepted" || (status === "working" && !detail.workOrder.own_assignment_check_in_at);
   const nextStatus = nextFieldTransition?.status ?? null;
   const NextIcon = nextStatus ? ACTION_ICONS[nextStatus] ?? Play : ClipboardCheck;
 
