@@ -35,6 +35,9 @@ function mobileTabIdsForRole(role: SessionUser["role"]): readonly TabId[] {
   if (role === "technician") {
     return ["technician", "assignment-history", "notifications"];
   }
+  if (role === "team_lead") {
+    return ["dashboard", "orders", "dispatch", "technician", "assignment-history", "notifications"];
+  }
   if (role === "accountant") {
     return ["dashboard", "orders", "payments", "reports", "notifications"];
   }

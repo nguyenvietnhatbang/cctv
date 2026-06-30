@@ -181,6 +181,8 @@ export function WorkOrderEditModal({
   const canAssign = isOpsManagerRole(role)
     && ["pending_assignment", "assigned", "accepted", "traveling", "working", "awaiting_acceptance", "paused"].includes(detail.workOrder.status);
   const canPay = isPaymentManagerRole(role);
+  const canRecordFieldPayment = isFieldRole(role) && ["working", "awaiting_acceptance"].includes(detail.workOrder.status);
+  const canUpdatePayment = canPay || canRecordFieldPayment;
   const allowedTransitions = getAllowedWorkOrderTransitions(detail.workOrder.status, role);
   const pauseTransition = allowedTransitions.find((transition) => transition.intent === "pause");
   const resumeTransition = detail.workOrder.status === "paused"
@@ -472,7 +474,7 @@ export function WorkOrderEditModal({
           {activeTab === "acceptance" ? (
             <section className="grid gap-4">
               {detail.workOrder.status === "awaiting_acceptance" ? (
-                <SignatureAcceptanceForm detail={detail} allowPayment={canPay} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
+                <SignatureAcceptanceForm detail={detail} allowPayment={canUpdatePayment} onAcceptance={onAcceptance} isSubmitting={pendingAction === "acceptance"} />
               ) : detail.workOrder.accepted_at ? (
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                   <p className="font-semibold">Đã nghiệm thu: {dateTime(detail.workOrder.accepted_at)}</p>
@@ -488,8 +490,8 @@ export function WorkOrderEditModal({
 
           {activeTab === "payment" ? (
             <section className="grid gap-4">
-              {canPay ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} /> : null}
-              {!canPay ? (
+              {canUpdatePayment ? <PaymentForm detail={detail} onSubmit={onPayment} isSubmitting={pendingAction === "payment"} allowFieldPayment={canRecordFieldPayment} /> : null}
+              {!canUpdatePayment ? (
                 <div className="modal-section text-sm text-zinc-600">
                   Tài khoản hiện tại không có quyền cập nhật thanh toán.
                 </div>

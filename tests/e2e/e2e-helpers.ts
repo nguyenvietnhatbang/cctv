@@ -17,7 +17,7 @@ export const roleLabels = {
 export const roleTabs = {
   admin: ["Tổng quan", "Công việc", "Khách hàng", "Phân công", "DS kỹ thuật", "Thanh toán", "Báo cáo", "Thông báo", "Nhân viên"],
   dispatcher: ["Tổng quan", "Công việc", "Khách hàng", "Phân công", "Kỹ thuật", "DS kỹ thuật", "Thanh toán", "Báo cáo", "Thông báo"],
-  team_lead: ["Tổng quan", "Công việc", "Khách hàng", "Phân công", "Kỹ thuật", "DS kỹ thuật", "Thông báo"],
+  team_lead: ["Tổng quan", "Công việc", "Khách hàng", "Phân công", "Kỹ thuật", "Lịch sử", "DS kỹ thuật", "Thông báo"],
   technician: ["Kỹ thuật", "Lịch sử", "Thông báo"],
   accountant: ["Tổng quan", "Công việc", "Khách hàng", "Thanh toán", "Báo cáo", "Thông báo"],
 } as const;

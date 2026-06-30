@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    const user = await requireUser(["admin", "technician"]);
+    const user = await requireUser(["admin", "technician", "team_lead"]);
     const { searchParams } = new URL(request.url);
     const requestedTechnicianId = searchParams.get("technicianId");
     const pageParam = searchParams.get("page");
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
     let technicianId = requestedTechnicianId;
 
-    if (user.role === "technician") {
+    if (user.role === "technician" || (user.role === "team_lead" && !technicianId)) {
       const technicianResult = await query<{ id: string }>(
         "select id from technicians where user_id = $1 limit 1",
         [user.id],
