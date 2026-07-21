@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { BarChart3, CalendarDays, Edit, Eye, Search, Trash2 } from "lucide-react";
+import { BarChart3, CalendarDays, Download, Edit, Eye, Search, Trash2 } from "lucide-react";
 import { apiFetch } from "@/components/ops/api";
+import { createExcelSection, exportWorkbookToExcel } from "@/components/ops/export-excel";
 import { monthStartInVietnam, money, todayInVietnam } from "@/components/ops/format";
 import { EmptyState, Modal, StatusBadge, TablePagination, TableShell, Toolbar, clampTablePage, getPageItems } from "@/components/ops/ui";
-import { TECHNICIAN_STATUS_LABELS, type WorkOrderStatus } from "@/lib/types";
+import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_STATUS_LABELS, type WorkOrderStatus } from "@/lib/types";
 import type { Technician } from "@/components/ops/types";
 
 type TechnicianPerformance = Technician & {
@@ -109,6 +110,70 @@ export function TechniciansScreen({
     }
   }
 
+  async function exportOverview() {
+    await exportWorkbookToExcel({
+      title: "Hiệu suất kỹ thuật viên",
+      subtitle: `Kỳ báo cáo: ${from} đến ${to}`,
+      filename: `hieu-suat-ky-thuat-vien-${from}-den-${to}`,
+      sheets: [createExcelSection({
+        title: "Tổng hợp",
+        rows: filtered,
+        emptyText: "Không có kỹ thuật viên phù hợp.",
+        columns: [
+          { header: "Kỹ thuật viên", value: (item) => item.full_name },
+          { header: "Khu vực", value: (item) => item.service_area ?? "" },
+          { header: "Trạng thái", value: (item) => TECHNICIAN_STATUS_LABELS[item.status] },
+          { header: "Tổng việc", value: (item) => item.order_count, align: "right" },
+          { header: "Hoàn thành", value: (item) => item.completed_count, align: "right" },
+          { header: "Đang làm", value: (item) => item.doing_count, align: "right" },
+          { header: "Tạm dừng", value: (item) => item.paused_count, align: "right" },
+          { header: "Đã thu", value: (item) => money(item.paid_revenue), align: "right" },
+          { header: "Nhân công", value: (item) => money(item.labor_amount), align: "right" },
+          { header: "Vật tư", value: (item) => money(item.material_amount), align: "right" },
+          { header: "Thời gian công trình", value: (item) => duration(totalMinutes(item)), align: "right" },
+        ],
+      })],
+    });
+  }
+
+  async function exportTechnicianDetails() {
+    if (!selected) return;
+    await exportWorkbookToExcel({
+      title: `Hiệu suất ${selected.full_name}`,
+      subtitle: `Kỳ báo cáo: ${from} đến ${to}`,
+      filename: `hieu-suat-${selected.full_name}-${from}-den-${to}`,
+      sheets: [
+        createExcelSection({
+          title: "Tổng quan",
+          rows: [selected],
+          columns: [
+            { header: "Kỹ thuật viên", value: (item) => item.full_name },
+            { header: "Tổng việc", value: (item) => item.order_count, align: "right" },
+            { header: "Hoàn thành", value: (item) => item.completed_count, align: "right" },
+            { header: "Đang làm", value: (item) => item.doing_count, align: "right" },
+            { header: "Tạm dừng", value: (item) => item.paused_count, align: "right" },
+            { header: "Đã thu", value: (item) => money(item.paid_revenue), align: "right" },
+            { header: "Nhân công", value: (item) => money(item.labor_amount), align: "right" },
+            { header: "Vật tư", value: (item) => money(item.material_amount), align: "right" },
+            { header: "Thời gian công trình", value: (item) => duration(totalMinutes(item)), align: "right" },
+          ],
+        }),
+        createExcelSection({
+          title: "Chi tiết phiếu",
+          rows: details,
+          emptyText: "Không có phiếu trong kỳ.",
+          columns: [
+            { header: "Mã phiếu", value: (item) => item.code },
+            { header: "Khách hàng", value: (item) => item.customer_name },
+            { header: "Trạng thái", value: (item) => WORK_ORDER_STATUS_LABELS[item.status] },
+            { header: "Thời gian", value: (item) => duration(Number(item.recorded_minutes) + Number(item.estimated_minutes)), align: "right" },
+            { header: "Nguồn thời gian", value: (item) => Number(item.recorded_minutes) > 0 ? "Phiên tác nghiệp" : "Ước tính từ check-in" },
+          ],
+        }),
+      ],
+    });
+  }
+
   return (
     <>
       <Toolbar title="Kỹ thuật viên" subtitle="Theo dõi hiệu suất, doanh thu và thời gian tác nghiệp tại công trình">
@@ -120,6 +185,7 @@ export function TechniciansScreen({
             <input aria-label="Đến ngày" type="date" value={to} min={from} max={today} onChange={(event) => setTo(event.target.value)} />
           </div>
           <button className="btn-primary h-10" type="submit" disabled={loading}><BarChart3 size={15} />Xem hiệu suất</button>
+          <button className="btn-secondary h-10" type="button" disabled={loading || filtered.length === 0} onClick={() => void exportOverview()}><Download size={15} />Xuất bảng tổng</button>
         </form>
       </Toolbar>
 
@@ -152,7 +218,7 @@ export function TechniciansScreen({
         <TablePagination page={safePage} total={filtered.length} onPageChange={setPage} />
       </TableShell>
 
-      {selected ? <Modal title={`Hiệu suất ${selected.full_name}`} size="xl" onClose={() => setSelected(null)}><section className="grid gap-3 sm:grid-cols-4"><div><p className="text-xs text-zinc-500">Hoàn thành</p><strong>{selected.completed_count}</strong></div><div><p className="text-xs text-zinc-500">Nhân công</p><strong>{money(selected.labor_amount)}</strong></div><div><p className="text-xs text-zinc-500">Vật tư</p><strong>{money(selected.material_amount)}</strong></div><div><p className="text-xs text-zinc-500">Thời gian</p><strong>{duration(totalMinutes(selected))}</strong></div></section><p className="mt-4 text-xs text-zinc-500">Thời gian có nhãn “ước tính” được suy ra từ check-in đến lần hoàn tất/tạm dừng đầu tiên của phiếu cũ.</p><div className="mt-4 overflow-x-auto"><table className="data-table min-w-[700px]"><thead><tr><th>Phiếu</th><th>Khách hàng</th><th>Trạng thái</th><th>Thời gian</th><th>Nguồn</th></tr></thead><tbody>{detailsLoading ? <tr><td colSpan={5}>Đang tải chi tiết...</td></tr> : details.map((order) => <tr key={order.work_order_id}><td>{order.code}</td><td>{order.customer_name}</td><td><StatusBadge status={order.status} /></td><td>{duration(Number(order.recorded_minutes) + Number(order.estimated_minutes))}</td><td>{Number(order.recorded_minutes) > 0 ? "Phiên tác nghiệp" : "Ước tính từ check-in"}</td></tr>)}</tbody></table></div></Modal> : null}
+      {selected ? <Modal title={`Hiệu suất ${selected.full_name}`} size="xl" onClose={() => setSelected(null)}><div className="flex justify-end"><button className="btn-secondary h-9" type="button" disabled={detailsLoading} onClick={() => void exportTechnicianDetails()}><Download size={14} />Xuất Excel</button></div><section className="mt-4 grid gap-3 sm:grid-cols-4"><div><p className="text-xs text-zinc-500">Hoàn thành</p><strong>{selected.completed_count}</strong></div><div><p className="text-xs text-zinc-500">Nhân công</p><strong>{money(selected.labor_amount)}</strong></div><div><p className="text-xs text-zinc-500">Vật tư</p><strong>{money(selected.material_amount)}</strong></div><div><p className="text-xs text-zinc-500">Thời gian</p><strong>{duration(totalMinutes(selected))}</strong></div></section><p className="mt-4 text-xs text-zinc-500">Thời gian có nhãn “ước tính” được suy ra từ check-in đến lần hoàn tất/tạm dừng đầu tiên của phiếu cũ.</p><div className="mt-4 overflow-x-auto"><table className="data-table min-w-[700px]"><thead><tr><th>Phiếu</th><th>Khách hàng</th><th>Trạng thái</th><th>Thời gian</th><th>Nguồn</th></tr></thead><tbody>{detailsLoading ? <tr><td colSpan={5}>Đang tải chi tiết...</td></tr> : details.map((order) => <tr key={order.work_order_id}><td>{order.code}</td><td>{order.customer_name}</td><td><StatusBadge status={order.status} /></td><td>{duration(Number(order.recorded_minutes) + Number(order.estimated_minutes))}</td><td>{Number(order.recorded_minutes) > 0 ? "Phiên tác nghiệp" : "Ước tính từ check-in"}</td></tr>)}</tbody></table></div></Modal> : null}
     </>
   );
 }
