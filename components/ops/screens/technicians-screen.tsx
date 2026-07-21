@@ -6,7 +6,7 @@ import { BarChart3, CalendarDays, Download, Edit, Eye, Search, Trash2 } from "lu
 import { apiFetch } from "@/components/ops/api";
 import { createExcelSection, exportWorkbookToExcel } from "@/components/ops/export-excel";
 import { monthStartInVietnam, money, todayInVietnam } from "@/components/ops/format";
-import { EmptyState, Modal, StatusBadge, TablePagination, TableShell, Toolbar, clampTablePage, getPageItems } from "@/components/ops/ui";
+import { EmptyState, Modal, StatusBadge, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import { TECHNICIAN_STATUS_LABELS, WORK_ORDER_STATUS_LABELS, type WorkOrderStatus } from "@/lib/types";
 import type { Technician } from "@/components/ops/types";
 
@@ -176,8 +176,13 @@ export function TechniciansScreen({
 
   return (
     <>
-      <Toolbar title="Kỹ thuật viên" subtitle="Theo dõi hiệu suất, doanh thu và thời gian tác nghiệp tại công trình">
-        <form className="mt-4 flex flex-wrap justify-end gap-2" onSubmit={(event) => { event.preventDefault(); void loadPerformance(); }}>
+      <section className="panel">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2>Kỹ thuật viên</h2>
+            <p className="mt-1 text-sm text-zinc-500">Theo dõi hiệu suất, doanh thu và thời gian tác nghiệp tại công trình</p>
+          </div>
+          <form className="flex flex-wrap items-center justify-end gap-2" onSubmit={(event) => { event.preventDefault(); void loadPerformance(); }}>
           <div className="date-range-control">
             <CalendarDays size={14} className="text-zinc-400" />
             <input aria-label="Từ ngày" type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} />
@@ -186,8 +191,9 @@ export function TechniciansScreen({
           </div>
           <button className="btn-primary h-10" type="submit" disabled={loading}><BarChart3 size={15} />Xem hiệu suất</button>
           <button className="btn-secondary h-10" type="button" disabled={loading || filtered.length === 0} onClick={() => void exportOverview()}><Download size={15} />Xuất bảng tổng</button>
-        </form>
-      </Toolbar>
+          </form>
+        </div>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
         {[{ label: "Hoàn thành", value: totals.completed }, { label: "Đang làm", value: totals.doing }, { label: "Tổng giờ công trình", value: duration(totals.minutes) }].map((item) => (
