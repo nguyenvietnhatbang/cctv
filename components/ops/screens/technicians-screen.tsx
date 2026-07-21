@@ -88,7 +88,13 @@ export function TechniciansScreen({
   });
   const safePage = clampTablePage(page, filtered.length);
   const visible = getPageItems(filtered, safePage);
-  const chartData = useMemo(() => performance.slice(0, 8).map((item) => ({ name: item.full_name, hoàn_thành: Number(item.completed_count), giờ: Math.round(totalMinutes(item) / 60 * 10) / 10 })), [performance]);
+  const chartData = useMemo(() => performance.slice(0, 8).map((item) => ({
+    name: item.full_name,
+    hoàn_thành: Number(item.completed_count),
+    giờ: Math.round(totalMinutes(item) / 60 * 10) / 10,
+    nhân_công: Number(item.labor_amount),
+    vật_tư: Number(item.material_amount),
+  })), [performance]);
   const totals = useMemo(() => performance.reduce((result, item) => ({ completed: result.completed + Number(item.completed_count), doing: result.doing + Number(item.doing_count), minutes: result.minutes + totalMinutes(item) }), { completed: 0, doing: 0, minutes: 0 }), [performance]);
 
   async function openDetails(item: TechnicianPerformance) {
@@ -123,9 +129,15 @@ export function TechniciansScreen({
         ))}
       </section>
 
-      <section className="panel mt-6">
-        <div className="panel-heading"><div><h2>Hiệu suất nổi bật</h2><p className="mt-1 text-sm text-zinc-500">So sánh số việc hoàn thành và tổng giờ tác nghiệp.</p></div></div>
-        <div className="h-[280px] min-w-0"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} /><YAxis yAxisId="jobs" allowDecimals={false} /><YAxis yAxisId="hours" orientation="right" /><Tooltip /><Legend /><Bar yAxisId="jobs" dataKey="hoàn_thành" name="Hoàn thành" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar yAxisId="hours" dataKey="giờ" name="Giờ công trình" fill="#2563eb" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+      <section className="mt-6 grid gap-6 xl:grid-cols-2">
+        <div className="panel min-w-0">
+          <div className="panel-heading"><div><h2>Khối lượng và giờ tác nghiệp</h2><p className="mt-1 text-sm text-zinc-500">So sánh hiệu suất giữa các kỹ thuật viên.</p></div></div>
+          <div className="h-[240px] min-h-[240px] min-w-0"><ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} /><YAxis yAxisId="jobs" allowDecimals={false} /><YAxis yAxisId="hours" orientation="right" /><Tooltip /><Legend /><Bar yAxisId="jobs" dataKey="hoàn_thành" name="Hoàn thành" fill="#10b981" radius={[4, 4, 0, 0]} /><Bar yAxisId="hours" dataKey="giờ" name="Giờ công trình" fill="#2563eb" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+        </div>
+        <div className="panel min-w-0">
+          <div className="panel-heading"><div><h2>Doanh thu theo kỹ thuật viên</h2><p className="mt-1 text-sm text-zinc-500">So sánh doanh thu nhân công và vật tư được phân bổ.</p></div></div>
+          <div className="h-[240px] min-h-[240px] min-w-0"><ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}><BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} /><YAxis tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} /><Tooltip formatter={(value) => money(Number(value))} /><Legend /><Bar dataKey="nhân_công" name="Nhân công" fill="#7c3aed" radius={[4, 4, 0, 0]} /><Bar dataKey="vật_tư" name="Vật tư" fill="#d97706" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+        </div>
       </section>
 
       <TableShell>

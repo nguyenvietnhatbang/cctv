@@ -89,7 +89,7 @@ export async function GET(request: Request) {
        left join scoped_assignments assignment on assignment.technician_id = technician.id
        left join recorded_time on recorded_time.assignment_id = assignment.assignment_id
        left join estimated_time on estimated_time.assignment_id = assignment.assignment_id
-       group by technician.id, user_account.id
+       group by technician.id, technician.user_id, technician.service_area, technician.status, technician.jobs_today, user_account.id
        order by completed_count desc, order_count desc, user_account.full_name`,
       params,
     );
