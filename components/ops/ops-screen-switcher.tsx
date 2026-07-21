@@ -38,7 +38,6 @@ type DispatchScreenProps = {
 };
 
 type TechniciansScreenProps = {
-  technicians: Technician[];
   onEdit: (item: Technician) => void;
   onDelete: (item: Technician) => void;
 };
@@ -247,7 +246,7 @@ export function OpsScreenSwitcher({
   if (section === "assignment-history") return <AssignmentHistoryScreen />;
 
   if (section === "technicians") {
-    return <TechniciansScreen technicians={data.technicians} onEdit={onEditTechnician} onDelete={onDeleteTechnician} />;
+    return <TechniciansScreen onEdit={onEditTechnician} onDelete={onDeleteTechnician} />;
   }
 
   if (section === "payments") {

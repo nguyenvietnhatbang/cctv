@@ -219,17 +219,7 @@ export type ReportData = {
     open_debt: string;
   }>;
   byStatus: Array<{ status: WorkOrderStatus; count: string }>;
-  byTechnician: Array<{
-    technician_name: string;
-    order_count: string;
-    completed_count: string;
-    doing_count: string;
-    paused_count: string;
-    paid_revenue: string;
-    labor_amount: string;
-    material_amount: string;
-    field_minutes: string;
-  }>;
+  byTechnician: Array<{ technician_name: string; order_count: string; paid_revenue: string }>;
   materials: Array<{ name: string; quantity: string; total_amount: string }>;
 };
 
