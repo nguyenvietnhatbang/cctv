@@ -153,6 +153,28 @@ create index work_order_assignments_field_status_active_idx
   on work_order_assignments(technician_id, field_status)
   where unassigned_at is null;
 
+create table work_order_field_sessions (
+  id uuid primary key default gen_random_uuid(),
+  work_order_id uuid not null references work_orders(id) on delete cascade,
+  assignment_id uuid not null references work_order_assignments(id) on delete cascade,
+  technician_id uuid not null references technicians(id),
+  check_in_at timestamptz not null default now(),
+  check_out_at timestamptz,
+  ended_by_status work_order_status,
+  created_at timestamptz not null default now(),
+  constraint work_order_field_sessions_time_check check (check_out_at is null or check_out_at >= check_in_at)
+);
+
+create unique index work_order_field_sessions_one_open_idx
+  on work_order_field_sessions(assignment_id)
+  where check_out_at is null;
+
+create index work_order_field_sessions_technician_time_idx
+  on work_order_field_sessions(technician_id, check_in_at desc);
+
+create index work_order_field_sessions_order_time_idx
+  on work_order_field_sessions(work_order_id, check_in_at desc);
+
 create table work_order_status_history (
   id uuid primary key default gen_random_uuid(),
   work_order_id uuid not null references work_orders(id) on delete cascade,

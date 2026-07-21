@@ -41,6 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .agents
+scratch/
 scratch/inspect_accepted.js
 scratch/db_check.js
 scratch/debug_options.js

@@ -42,6 +42,13 @@ function shortDate(value: string) {
   return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(new Date(value));
 }
 
+function duration(value: string | number) {
+  const minutes = Math.max(0, Math.round(asNumber(value)));
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return hours > 0 ? `${hours} giờ ${remainingMinutes} phút` : `${remainingMinutes} phút`;
+}
+
 export function ReportsScreen({
   report,
   loading,
@@ -82,7 +89,16 @@ export function ReportsScreen({
   const filteredTechnicians = report?.byTechnician.filter((item) => {
     const q = technicianQuery.trim().toLowerCase();
     if (!q) return true;
-    return [item.technician_name, String(item.order_count), money(item.paid_revenue)]
+    return [
+      item.technician_name,
+      String(item.order_count),
+      String(item.completed_count),
+      String(item.doing_count),
+      String(item.paused_count),
+      money(item.paid_revenue),
+      money(item.labor_amount),
+      money(item.material_amount),
+    ]
       .some((value) => value.toLowerCase().includes(q));
   }) ?? [];
   const safeTechnicianPage = clampTablePage(technicianPage, filteredTechnicians.length, 8);
@@ -166,7 +182,13 @@ export function ReportsScreen({
           columns: [
             { header: "Kỹ thuật viên", value: (row) => row.technician_name },
             { header: "Số công việc", value: (row) => row.order_count, align: "right" },
+            { header: "Hoàn thành", value: (row) => row.completed_count, align: "right" },
+            { header: "Đang làm", value: (row) => row.doing_count, align: "right" },
+            { header: "Tạm dừng", value: (row) => row.paused_count, align: "right" },
             { header: "Doanh thu đã thu", value: (row) => money(row.paid_revenue), align: "right" },
+            { header: "Nhân công", value: (row) => money(row.labor_amount), align: "right" },
+            { header: "Vật tư", value: (row) => money(row.material_amount), align: "right" },
+            { header: "Thời gian hiện trường", value: (row) => duration(row.field_minutes), align: "right" },
           ],
         }),
         createExcelSection({
@@ -387,7 +409,7 @@ export function ReportsScreen({
                   <h2 className="inline-flex items-center gap-2">
                     <Users2 size={16} />Theo kỹ thuật viên
                   </h2>
-                  <p className="mt-1 text-sm text-zinc-500">Số việc và doanh thu đã thu theo người phụ trách.</p>
+                  <p className="mt-1 text-sm text-zinc-500">Khối lượng, trạng thái, doanh thu phân bổ và thời gian tại công trình.</p>
                 </div>
               </div>
               <div className="mb-3">
@@ -400,20 +422,42 @@ export function ReportsScreen({
                       setTechnicianPage(1);
                     }}
                     className="input search-field-input h-9 py-1 text-xs"
-                    placeholder="Tìm kỹ thuật viên, doanh thu..."
+                    placeholder="Tìm kỹ thuật viên, trạng thái, doanh thu..."
                   />
                 </div>
               </div>
-              <div className="grid gap-2">
-                {visibleTechnicians.map((item) => (
-                  <div key={item.technician_name} className="compact-row">
-                    <div>
-                      <p className="font-bold text-sm text-zinc-900 leading-snug">{item.technician_name}</p>
-                      <p className="text-xs text-zinc-500 mt-1">{item.order_count} công việc</p>
-                    </div>
-                    <strong className="text-sm text-zinc-900">{money(item.paid_revenue)}</strong>
-                  </div>
-                ))}
+              <p className="mb-3 text-xs leading-5 text-zinc-500">Nhân công, vật tư và doanh thu đã thu được chia đều giữa các kỹ thuật viên còn được phân công trên cùng phiếu.</p>
+              <div className="overflow-x-auto">
+                <table className="min-w-[900px] text-left text-xs">
+                  <thead className="border-b border-zinc-200 text-zinc-500">
+                    <tr>
+                      <th className="px-2 py-2 font-bold">Kỹ thuật viên</th>
+                      <th className="px-2 py-2 text-right font-bold">Tổng việc</th>
+                      <th className="px-2 py-2 text-right font-bold">Hoàn thành</th>
+                      <th className="px-2 py-2 text-right font-bold">Đang làm</th>
+                      <th className="px-2 py-2 text-right font-bold">Tạm dừng</th>
+                      <th className="px-2 py-2 text-right font-bold">Đã thu</th>
+                      <th className="px-2 py-2 text-right font-bold">Nhân công</th>
+                      <th className="px-2 py-2 text-right font-bold">Vật tư</th>
+                      <th className="px-2 py-2 text-right font-bold">Tại công trình</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleTechnicians.map((item) => (
+                      <tr key={item.technician_name} className="border-b border-zinc-100 last:border-0">
+                        <td className="px-2 py-3 font-bold text-zinc-900">{item.technician_name}</td>
+                        <td className="px-2 py-3 text-right">{item.order_count}</td>
+                        <td className="px-2 py-3 text-right text-emerald-700">{item.completed_count}</td>
+                        <td className="px-2 py-3 text-right text-blue-700">{item.doing_count}</td>
+                        <td className="px-2 py-3 text-right text-slate-600">{item.paused_count}</td>
+                        <td className="px-2 py-3 text-right">{money(item.paid_revenue)}</td>
+                        <td className="px-2 py-3 text-right">{money(item.labor_amount)}</td>
+                        <td className="px-2 py-3 text-right">{money(item.material_amount)}</td>
+                        <td className="px-2 py-3 text-right whitespace-nowrap">{duration(item.field_minutes)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
               <TablePagination page={safeTechnicianPage} total={filteredTechnicians.length} pageSize={8} onPageChange={setTechnicianPage} />
             </section>

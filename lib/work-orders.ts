@@ -20,6 +20,7 @@ const FINANCIAL_LOCKED_STATUSES = new Set<WorkOrderStatus>(["completed", "awaiti
 const CHECK_IN_RADIUS_METERS = 300;
 const FIELD_PROGRESS_STATUSES: WorkOrderStatus[] = ["assigned", "accepted", "traveling", "working"];
 const ASSIGNMENT_FIELD_STATUSES = new Set<WorkOrderStatus>(["assigned", "accepted", "traveling", "working", "paused", "awaiting_acceptance"]);
+const FIELD_SESSION_END_STATUSES = new Set<WorkOrderStatus>(["awaiting_acceptance", "paused", "cancelled"]);
 
 function distanceInMeters(left: { lat: number; lng: number }, right: { lat: number; lng: number }) {
   const toRadians = (degrees: number) => degrees * Math.PI / 180;
@@ -194,10 +195,11 @@ async function updateAssignmentFieldProgress(
   if (!technicianId || !ASSIGNMENT_FIELD_STATUSES.has(nextStatus)) return null;
 
   const assignmentResult = await client.query<{
+    id: string;
     field_status: WorkOrderStatus;
     check_in_at: string | null;
   }>(
-    `select field_status, check_in_at
+    `select id, field_status, check_in_at
      from work_order_assignments
      where work_order_id = $1
        and technician_id = $2
@@ -235,12 +237,32 @@ async function updateAssignmentFieldProgress(
     ],
   );
 
+  if (nextStatus === "working" && assignment.field_status !== "working") {
+    await client.query(
+      `insert into work_order_field_sessions (work_order_id, assignment_id, technician_id)
+       values ($1, $2, $3)
+       on conflict (assignment_id) where check_out_at is null do nothing`,
+      [workOrderId, assignment.id, technicianId],
+    );
+  }
+
   return {
     previousStatus: assignment.field_status,
     firstCheckIn,
     changed: assignment.field_status !== nextStatus || firstCheckIn,
     changedBy: user.id,
   };
+}
+
+async function closeOpenFieldSessions(client: PoolClient, workOrderId: string, endedByStatus: WorkOrderStatus) {
+  if (!FIELD_SESSION_END_STATUSES.has(endedByStatus)) return;
+
+  await client.query(
+    `update work_order_field_sessions
+     set check_out_at = now(), ended_by_status = $2
+     where work_order_id = $1 and check_out_at is null`,
+    [workOrderId, endedByStatus],
+  );
 }
 
 export async function changeWorkOrderStatus(
@@ -360,6 +382,8 @@ export async function changeWorkOrderStatus(
   }
 
   await updateAssignmentFieldProgress(client, workOrderId, assignedTechnicianId, nextStatus, user, checkIn);
+
+  await closeOpenFieldSessions(client, workOrderId, nextStatus);
 
   await client.query(
     `update work_orders

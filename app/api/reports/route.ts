@@ -163,17 +163,59 @@ export async function GET(request: Request) {
         rangeParams,
       ),
       query(
-        `select coalesce(u.full_name, 'Chưa phân công') as technician_name,
-                count(wo.id) as order_count,
-                coalesce(sum(p.paid_amount), 0) as paid_revenue
-         from work_orders wo
-         left join work_order_assignments woa on woa.work_order_id = wo.id and woa.unassigned_at is null
-         left join technicians t on t.id = woa.technician_id
-         left join users u on u.id = t.user_id
-         left join payments p on p.work_order_id = wo.id
-         where wo.created_at >= $1 and wo.created_at < $2
+        `with scoped_assignments as (
+           select woa.id as assignment_id,
+                  woa.technician_id,
+                  wo.id as work_order_id,
+                  wo.status,
+                  p.paid_amount,
+                  p.labor_amount,
+                  p.material_amount,
+                  active_assignments.assignment_count
+           from work_orders wo
+           join work_order_assignments woa
+             on woa.work_order_id = wo.id and woa.unassigned_at is null
+           join (
+             select work_order_id, count(*)::numeric as assignment_count
+             from work_order_assignments
+             where unassigned_at is null
+             group by work_order_id
+           ) active_assignments on active_assignments.work_order_id = wo.id
+           left join payments p on p.work_order_id = wo.id
+           where wo.created_at >= $1 and wo.created_at < $2
+         ),
+         field_time as (
+           select session.technician_id,
+                  coalesce(sum(
+                    greatest(
+                      0,
+                      extract(epoch from (
+                        least(coalesce(session.check_out_at, $2::timestamptz), $2::timestamptz)
+                        - greatest(session.check_in_at, $1::timestamptz)
+                      )) / 60
+                    )
+                  ), 0) as field_minutes
+           from work_order_field_sessions session
+           join scoped_assignments assignment on assignment.assignment_id = session.assignment_id
+           where session.check_in_at < $2
+             and coalesce(session.check_out_at, $2::timestamptz) > $1
+           group by session.technician_id
+         )
+         select u.full_name as technician_name,
+                count(assignment.work_order_id) as order_count,
+                count(*) filter (where assignment.status in ('awaiting_acceptance', 'completed', 'awaiting_payment', 'paid', 'debt')) as completed_count,
+                count(*) filter (where assignment.status = 'working') as doing_count,
+                count(*) filter (where assignment.status = 'paused') as paused_count,
+                coalesce(sum(coalesce(assignment.paid_amount, 0) / assignment.assignment_count), 0) as paid_revenue,
+                coalesce(sum(coalesce(assignment.labor_amount, 0) / assignment.assignment_count), 0) as labor_amount,
+                coalesce(sum(coalesce(assignment.material_amount, 0) / assignment.assignment_count), 0) as material_amount,
+                coalesce(max(field_time.field_minutes), 0) as field_minutes
+         from scoped_assignments assignment
+         join technicians technician on technician.id = assignment.technician_id
+         join users u on u.id = technician.user_id
+         left join field_time on field_time.technician_id = assignment.technician_id
          group by u.full_name
-         order by order_count desc`,
+         order by completed_count desc, order_count desc, u.full_name`,
         rangeParams,
       ),
       query(

@@ -29,6 +29,7 @@ Với database đã tồn tại, chạy thêm migration:
 
 - `database/add-web-push-notifications.sql`
 - `database/add-notification-unread-index.sql`
+- `database/add-field-work-sessions.sql`
 
 4. Chạy dev server:
 
