@@ -26,21 +26,47 @@ export async function GET(request: Request) {
     const [summary, byDisplayStatus, daily, byStatus, byTechnician, materials] = await Promise.all([
       query(
         `select
-           count(*) as order_count,
-           coalesce(sum(p.paid_amount), 0) as paid_revenue,
-           coalesce(sum(p.debt_amount), 0) as open_debt,
-           coalesce(sum(p.labor_amount), 0) as labor_amount,
-           coalesce(sum(p.material_amount), 0) as material_amount,
-           coalesce(sum(p.vat_amount), 0) as vat_amount,
-           coalesce(sum(p.total_amount), 0) as gross_amount,
+           (
+             select count(*)
+             from work_orders wo
+             where wo.created_at >= $1 and wo.created_at < $2
+           ) as order_count,
            (
              select coalesce(sum(pt.amount), 0)
              from payment_transactions pt
              where pt.collected_at >= $1 and pt.collected_at < $2
-           ) as collected_amount
-         from work_orders wo
-         left join payments p on p.work_order_id = wo.id
-         where wo.created_at >= $1 and wo.created_at < $2`,
+           ) as paid_revenue,
+           (
+             select coalesce(sum(p.debt_amount), 0)
+             from payments p
+             where p.confirmed_at >= $1 and p.confirmed_at < $2
+               and p.debt_amount > 0
+           ) as open_debt,
+           (
+             select coalesce(sum(p.labor_amount), 0)
+             from payments p
+             where p.confirmed_at >= $1 and p.confirmed_at < $2
+           ) as labor_amount,
+           (
+             select coalesce(sum(p.material_amount), 0)
+             from payments p
+             where p.confirmed_at >= $1 and p.confirmed_at < $2
+           ) as material_amount,
+           (
+             select coalesce(sum(p.vat_amount), 0)
+             from payments p
+             where p.confirmed_at >= $1 and p.confirmed_at < $2
+           ) as vat_amount,
+           (
+             select coalesce(sum(p.total_amount), 0)
+             from payments p
+             where p.confirmed_at >= $1 and p.confirmed_at < $2
+           ) as gross_amount,
+           (
+             select coalesce(sum(pt.amount), 0)
+             from payment_transactions pt
+             where pt.collected_at >= $1 and pt.collected_at < $2
+           ) as collected_amount`,
         rangeParams,
       ),
       query(
@@ -118,11 +144,11 @@ export async function GET(request: Request) {
            group by 1
          ),
          completed_orders as (
-           select (wo.updated_at at time zone 'Asia/Ho_Chi_Minh')::date as day,
+           select (coalesce(wo.accepted_at, wo.updated_at) at time zone 'Asia/Ho_Chi_Minh')::date as day,
                   count(*) as completed_count
            from work_orders wo
            where wo.status in ('completed', 'awaiting_payment', 'paid', 'debt')
-             and wo.updated_at >= $3 and wo.updated_at < $4
+             and coalesce(wo.accepted_at, wo.updated_at) >= $3 and coalesce(wo.accepted_at, wo.updated_at) < $4
            group by 1
          ),
          paid as (
@@ -163,24 +189,64 @@ export async function GET(request: Request) {
         rangeParams,
       ),
       query(
-        `select coalesce(u.full_name, 'Chưa phân công') as technician_name,
-                count(wo.id) as order_count,
-                coalesce(sum(p.paid_amount), 0) as paid_revenue
-         from work_orders wo
-         left join work_order_assignments woa on woa.work_order_id = wo.id and woa.unassigned_at is null
-         left join technicians t on t.id = woa.technician_id
-         left join users u on u.id = t.user_id
-         left join payments p on p.work_order_id = wo.id
-         where wo.created_at >= $1 and wo.created_at < $2
-         group by u.full_name
-         order by order_count desc`,
+        `with active_counts as (
+           select work_order_id, count(*)::numeric as count
+           from work_order_assignments
+           where unassigned_at is null
+           group by work_order_id
+         ),
+         tech_collected as (
+           select
+             coalesce(u.full_name, 'Chưa phân công') as technician_name,
+             woa.work_order_id,
+             pt.amount / coalesce(ac.count, 1) as allocated_amount
+           from payment_transactions pt
+           left join work_order_assignments woa on woa.work_order_id = pt.work_order_id and woa.unassigned_at is null
+           left join active_counts ac on ac.work_order_id = pt.work_order_id
+           left join technicians t on t.id = woa.technician_id
+           left join users u on u.id = t.user_id
+           where pt.collected_at >= $1 and pt.collected_at < $2
+         ),
+         tech_orders as (
+           select
+             coalesce(u.full_name, 'Chưa phân công') as technician_name,
+             woa.work_order_id
+           from work_order_assignments woa
+           join work_orders wo on wo.id = woa.work_order_id
+           left join technicians t on t.id = woa.technician_id
+           left join users u on u.id = t.user_id
+           where woa.unassigned_at is null
+             and (
+               (wo.created_at >= $1 and wo.created_at < $2)
+               or (coalesce(wo.accepted_at, wo.updated_at) >= $1 and coalesce(wo.accepted_at, wo.updated_at) < $2 and wo.status in ('completed', 'awaiting_payment', 'paid', 'debt'))
+               or exists (select 1 from payment_transactions pt where pt.work_order_id = wo.id and pt.collected_at >= $1 and pt.collected_at < $2)
+             )
+         ),
+         combined as (
+           select
+             coalesce(tc.technician_name, to_list.technician_name) as technician_name,
+             coalesce(to_list.work_order_id, tc.work_order_id) as work_order_id,
+             tc.allocated_amount
+           from tech_collected tc
+           full outer join tech_orders to_list
+             on to_list.technician_name = tc.technician_name
+            and to_list.work_order_id = tc.work_order_id
+         )
+         select
+           technician_name,
+           count(distinct work_order_id) as order_count,
+           coalesce(sum(allocated_amount), 0) as paid_revenue
+         from combined
+         group by technician_name
+         order by paid_revenue desc, order_count desc`,
         rangeParams,
       ),
       query(
         `select wom.name, sum(wom.quantity) as quantity, sum(wom.line_total) as total_amount
          from work_order_materials wom
          join work_orders wo on wo.id = wom.work_order_id
-         where wo.created_at >= $1 and wo.created_at < $2
+         join payments p on p.work_order_id = wo.id
+         where p.confirmed_at >= $1 and p.confirmed_at < $2
          group by wom.name
          order by total_amount desc
          limit 50`,
