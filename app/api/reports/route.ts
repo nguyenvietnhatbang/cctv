@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { todayInVietnam, vietnamDateRangeUtc } from "@/lib/date-ranges";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
+import { hasPermission } from "@/lib/permissions";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export async function GET(request: Request) {
   try {
-    await requireUser(["admin", "dispatcher", "accountant"]);
+    const user = await requireUser(["admin", "dispatcher", "accountant"]);
+    if (!await hasPermission(user.role, "reports.view")) {
+      throw new HttpError(403, "Bạn không có quyền xem báo cáo hệ thống");
+    }
     const { searchParams } = new URL(request.url);
     const today = todayInVietnam();
     const from = searchParams.get("from") || today;

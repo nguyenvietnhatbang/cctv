@@ -46,10 +46,12 @@ export function ReportsScreen({
   report,
   loading,
   onSubmit,
+  canExport = false,
 }: {
   report: ReportData | null;
   loading: boolean;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void | Promise<void>;
+  canExport?: boolean;
 }) {
   const today = todayInVietnam();
   const monthStart = monthStartInVietnam();
@@ -190,7 +192,7 @@ export function ReportsScreen({
           <h2>Báo cáo hệ thống</h2>
           <p>Tổng hợp công việc, tiến độ, doanh thu, công nợ, kỹ thuật viên và vật tư.</p>
         </div>
-        {report ? (
+        {report && canExport ? (
           <button className="btn-secondary" onClick={exportReport} type="button">
             <Download size={16} />
             Xuất Excel

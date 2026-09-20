@@ -14,6 +14,10 @@ export function CustomersScreen({
   onEdit,
   onDelete,
   onTriggerCreate,
+  canExport = false,
+  canCreate = true,
+  canEdit = true,
+  canDelete = false,
 }: {
   customers: Customer[];
   isCreating: boolean;
@@ -22,6 +26,10 @@ export function CustomersScreen({
   onEdit: (item: Customer) => void;
   onDelete: (item: Customer) => void;
   onTriggerCreate: () => void;
+  canExport?: boolean;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [serverCustomers, setServerCustomers] = useState(customers);
@@ -93,14 +101,18 @@ export function CustomersScreen({
           <p>Quản lý danh sách, liên hệ và địa điểm lắp đặt</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={exportCustomers} className="btn-secondary" type="button">
-            <Download size={16} />
-            Xuất Excel
-          </button>
-          <button onClick={onTriggerCreate} className="btn-primary" type="button">
-            <Plus size={16} />
-            Thêm khách hàng
-          </button>
+          {canExport && (
+            <button onClick={exportCustomers} className="btn-secondary" type="button">
+              <Download size={16} />
+              Xuất Excel
+            </button>
+          )}
+          {canCreate && (
+            <button onClick={onTriggerCreate} className="btn-primary" type="button">
+              <Plus size={16} />
+              Thêm khách hàng
+            </button>
+          )}
         </div>
       </div>
 
@@ -201,22 +213,26 @@ export function CustomersScreen({
                         >
                           <Eye size={15} />
                         </button>
-                        <button
-                          className="icon-button"
-                          onClick={() => onEdit(customer)}
-                          type="button"
-                          aria-label="Sửa"
-                        >
-                          <Edit size={15} />
-                        </button>
-                        <button
-                          className="icon-button hover:text-red-600 hover:border-red-200"
-                          onClick={() => onDelete(customer)}
-                          type="button"
-                          aria-label="Xóa"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {canEdit && (
+                          <button
+                            className="icon-button"
+                            onClick={() => onEdit(customer)}
+                            type="button"
+                            aria-label="Sửa"
+                          >
+                            <Edit size={15} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            className="icon-button hover:text-red-600 hover:border-red-200"
+                            onClick={() => onDelete(customer)}
+                            type="button"
+                            aria-label="Xóa"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

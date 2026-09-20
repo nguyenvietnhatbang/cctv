@@ -61,10 +61,12 @@ export function PaymentsScreen({
   orders,
   onView,
   onPayment,
+  canExport = false,
 }: {
   orders: WorkOrderListItem[];
   onView: (id: string) => void;
   onPayment: (id: string) => void;
+  canExport?: boolean;
 }) {
   const [viewMode, setViewMode] = useState<PaymentViewMode>("orders");
   const [filter, setFilter] = useState<"all" | "awaiting" | "paid" | "debt">("awaiting");
@@ -204,10 +206,12 @@ export function PaymentsScreen({
           <h2>Thanh toán & Công nợ</h2>
           <p>Xác nhận thanh toán, theo dõi công nợ khách hàng và doanh thu điều phối</p>
         </div>
-        <button className="btn-secondary" onClick={exportPayments} type="button">
-          <Download size={16} />
-          Xuất Excel
-        </button>
+        {canExport && (
+          <button className="btn-secondary" onClick={exportPayments} type="button">
+            <Download size={16} />
+            Xuất Excel
+          </button>
+        )}
       </div>
 
       {/* Table Shell with Tabs Header */}

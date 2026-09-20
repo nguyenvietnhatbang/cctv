@@ -3,6 +3,7 @@ import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonNoContent, jsonOk } from "@/lib/http";
 import { parseUuidParam } from "@/lib/route-params";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
+import { hasPermission } from "@/lib/permissions";
 import { createCustomerSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -35,6 +36,9 @@ const customerSelect = `
 export async function PATCH(request: Request, context: Context) {
   try {
     const user = await requireUser(OPS_MANAGER_ROLES);
+    if (!await hasPermission(user.role, "customers.edit")) {
+      throw new HttpError(403, "Bạn không có quyền sửa thông tin khách hàng");
+    }
     const { id: rawId } = await context.params;
     const id = parseUuidParam(rawId, "Khách hàng không hợp lệ");
     const body = createCustomerSchema.partial().parse(await request.json());
@@ -97,7 +101,10 @@ export async function PATCH(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    await requireUser(OPS_MANAGER_ROLES);
+    const user = await requireUser(OPS_MANAGER_ROLES);
+    if (!await hasPermission(user.role, "customers.delete")) {
+      throw new HttpError(403, "Bạn không có quyền xóa khách hàng");
+    }
     const { id: rawId } = await context.params;
     const id = parseUuidParam(rawId, "Khách hàng không hợp lệ");
 

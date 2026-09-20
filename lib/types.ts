@@ -52,6 +52,7 @@ export type SessionUser = {
   email: string | null;
   phone: string | null;
   role: Role;
+  permissions?: string[];
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

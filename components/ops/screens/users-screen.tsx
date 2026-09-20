@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Edit, History, KeyRound, Trash2, Plus, Search, UserCheck, Filter } from "lucide-react";
+import { Download, Edit, History, KeyRound, Trash2, Plus, Search, UserCheck, Filter, ShieldCheck } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/types";
 import { EmptyState, TablePagination, TableShell, clampTablePage, getPageItems } from "@/components/ops/ui";
 import type { AppUser } from "@/components/ops/types";
 import { exportTableToExcel } from "@/components/ops/export-excel";
+import { RolePermissionsTab } from "@/components/ops/screens/role-permissions-tab";
 
 export function UsersScreen({
   users,
@@ -14,6 +15,7 @@ export function UsersScreen({
   onViewAssignmentHistory,
   onResetPassword,
   onTriggerCreate,
+  canExport = true,
 }: {
   users: AppUser[];
   isCreating: boolean;
@@ -23,7 +25,9 @@ export function UsersScreen({
   onViewAssignmentHistory: (item: AppUser) => void;
   onResetPassword: (item: AppUser) => void;
   onTriggerCreate: () => void;
+  canExport?: boolean;
 }) {
+  const [activeTab, setActiveTab] = useState<"list" | "permissions">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [page, setPage] = useState(1);
@@ -67,19 +71,54 @@ export function UsersScreen({
           <h2>Nhân viên</h2>
           <p>Quản lý tài khoản nội bộ và phân quyền hệ thống</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={exportUsers} className="btn-secondary" type="button">
-            <Download size={16} />
-            Xuất Excel
-          </button>
-          <button onClick={onTriggerCreate} className="btn-primary" type="button">
-            <Plus size={16} />
-            Thêm nhân viên
-          </button>
-        </div>
+        {activeTab === "list" && (
+          <div className="flex flex-wrap items-center gap-2">
+            {canExport && (
+              <button onClick={exportUsers} className="btn-secondary" type="button">
+                <Download size={16} />
+                Xuất Excel
+              </button>
+            )}
+            <button onClick={onTriggerCreate} className="btn-primary" type="button">
+              <Plus size={16} />
+              Thêm nhân viên
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Users Table Shell with Compact Filter Header */}
+      {/* Sub-tab Navigation */}
+      <div className="flex border-b border-zinc-200">
+        <button
+          type="button"
+          onClick={() => setActiveTab("list")}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            activeTab === "list"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <UserCheck size={16} />
+          Danh sách nhân viên ({users.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("permissions")}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            activeTab === "permissions"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-zinc-500 hover:text-zinc-800"
+          }`}
+        >
+          <ShieldCheck size={16} />
+          Ma trận phân quyền động
+        </button>
+      </div>
+
+      {activeTab === "permissions" ? (
+        <RolePermissionsTab />
+      ) : (
+      /* Users Table Shell with Compact Filter Header */
       <TableShell>
         <div className="table-toolbar">
           <div className="table-filter-row">
@@ -228,6 +267,7 @@ export function UsersScreen({
         )}
         <TablePagination page={safePage} total={filteredUsers.length} onPageChange={setPage} />
       </TableShell>
+      )}
     </div>
   );
 }

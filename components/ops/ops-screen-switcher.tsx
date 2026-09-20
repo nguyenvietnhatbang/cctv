@@ -8,7 +8,8 @@ import { DashboardScreen } from "@/components/ops/screens/dashboard-screen";
 import { NotificationsScreen } from "@/components/ops/screens/notifications-screen";
 import { OrdersScreen } from "@/components/ops/screens/orders-screen";
 import { TechnicianScreen } from "@/components/ops/screens/technician-screen";
-import { isOpsManagerRole } from "@/lib/types";
+import { isOpsManagerRole, type SessionUser } from "@/lib/types";
+import { hasUserPermission } from "@/components/ops/app-utils";
 import type { PwaPushController } from "@/components/ops/use-pwa-push";
 
 function ScreenLoading({ label = "Đang tải màn hình..." }: { label?: string }) {
@@ -27,6 +28,10 @@ type CustomersScreenProps = {
   onEdit: (item: Customer) => void;
   onDelete: (item: Customer) => void;
   onTriggerCreate: () => void;
+  canExport?: boolean;
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 type DispatchScreenProps = {
@@ -35,17 +40,21 @@ type DispatchScreenProps = {
   technicians: Technician[];
   onView: (id: string) => void;
   onAssign: (id: string) => void;
+  canExport?: boolean;
 };
 
 type TechniciansScreenProps = {
   onEdit: (item: Technician) => void;
   onDelete: (item: Technician) => void;
+  canExport?: boolean;
+  canEdit?: boolean;
 };
 
 type PaymentsScreenProps = {
   orders: WorkOrderListItem[];
   onView: (id: string) => void;
   onPayment: (id: string) => void;
+  canExport?: boolean;
 };
 
 type UsersScreenProps = {
@@ -57,6 +66,7 @@ type UsersScreenProps = {
   onViewAssignmentHistory: (item: AppData["users"][number]) => void;
   onResetPassword: (item: AppData["users"][number]) => void;
   onTriggerCreate: () => void;
+  canExport?: boolean;
 };
 
 const loadCustomersScreen = () => import("@/components/ops/screens/customers-screen").then((mod) => mod.CustomersScreen);
@@ -96,6 +106,7 @@ type ReportsScreenProps = {
   report: ReportData | null;
   loading: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  canExport?: boolean;
 };
 
 const ReportsScreen = dynamic<ReportsScreenProps>(
@@ -117,6 +128,7 @@ export function preloadOpsScreen(section: TabId) {
 type OpsScreenSwitcherProps = {
   section: TabId;
   role: Role;
+  user?: SessionUser | null;
   appMode: boolean;
   data: AppData;
   filters: Filters;
@@ -155,6 +167,7 @@ type OpsScreenSwitcherProps = {
 export function OpsScreenSwitcher({
   section,
   role,
+  user,
   appMode,
   data,
   filters,
@@ -204,6 +217,7 @@ export function OpsScreenSwitcher({
         page={ordersPage}
         role={role}
         canCreate={isOpsManagerRole(role)}
+        canExport={hasUserPermission(user, "orders.export")}
         isCreating={pendingAction === "create-order"}
         onFilter={onFilter}
         onPageChange={onOrdersPageChange}
@@ -225,6 +239,10 @@ export function OpsScreenSwitcher({
         onEdit={onEditCustomer}
         onDelete={onDeleteCustomer}
         onTriggerCreate={() => onOpenCreateModal("customer")}
+        canExport={hasUserPermission(user, "customers.export")}
+        canCreate={hasUserPermission(user, "customers.create")}
+        canEdit={hasUserPermission(user, "customers.edit")}
+        canDelete={hasUserPermission(user, "customers.delete")}
       />
     );
   }
@@ -237,6 +255,7 @@ export function OpsScreenSwitcher({
         technicians={data.technicians}
         onView={onOpenDispatch}
         onAssign={onAssignDispatch}
+        canExport={hasUserPermission(user, "dispatch.export")}
       />
     );
   }
@@ -246,14 +265,37 @@ export function OpsScreenSwitcher({
   if (section === "assignment-history") return <AssignmentHistoryScreen />;
 
   if (section === "technicians") {
-    return <TechniciansScreen onEdit={onEditTechnician} onDelete={onDeleteTechnician} />;
+    return (
+      <TechniciansScreen
+        onEdit={onEditTechnician}
+        onDelete={onDeleteTechnician}
+        canExport={hasUserPermission(user, "technicians.export")}
+        canEdit={hasUserPermission(user, "technicians.edit")}
+      />
+    );
   }
 
   if (section === "payments") {
-    return <PaymentsScreen orders={data.orders} onView={onOpenPayment} onPayment={onPaymentAction} />;
+    return (
+      <PaymentsScreen
+        orders={data.orders}
+        onView={onOpenPayment}
+        onPayment={onPaymentAction}
+        canExport={hasUserPermission(user, "payments.export")}
+      />
+    );
   }
 
-  if (section === "reports") return <ReportsScreen report={data.report as ReportData | null} loading={reportLoading} onSubmit={onReportSubmit} />;
+  if (section === "reports") {
+    return (
+      <ReportsScreen
+        report={data.report as ReportData | null}
+        loading={reportLoading}
+        onSubmit={onReportSubmit}
+        canExport={hasUserPermission(user, "reports.export")}
+      />
+    );
+  }
 
   if (section === "notifications") {
     return (
@@ -276,6 +318,7 @@ export function OpsScreenSwitcher({
         onViewAssignmentHistory={onViewUserAssignmentHistory}
         onResetPassword={onResetUserPassword}
         onTriggerCreate={() => onOpenCreateModal("user")}
+        canExport={hasUserPermission(user, "users.export")}
       />
     );
   }

@@ -119,5 +119,13 @@ export function sameSessionUser(left: SessionUser | null, right: SessionUser | n
     && left?.fullName === right?.fullName
     && left?.email === right?.email
     && left?.phone === right?.phone
-    && left?.role === right?.role;
+    && left?.role === right?.role
+    && JSON.stringify(left?.permissions ?? []) === JSON.stringify(right?.permissions ?? []);
 }
+
+export function hasUserPermission(user: SessionUser | null | undefined, permissionCode: string): boolean {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  return Boolean(user.permissions?.includes(permissionCode));
+}
+

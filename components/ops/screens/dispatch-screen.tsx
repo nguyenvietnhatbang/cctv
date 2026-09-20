@@ -31,12 +31,14 @@ export function DispatchScreen({
   technicians,
   onView,
   onAssign,
+  canExport = false,
 }: {
   orders: WorkOrderListItem[];
   customers: Customer[];
   technicians: Technician[];
   onView: (id: string) => void;
   onAssign: (id: string) => void;
+  canExport?: boolean;
 }) {
   const [orderQuery, setOrderQuery] = useState("");
   const [orderScope, setOrderScope] = useState<"active" | "unassigned" | "assigned">("active");
@@ -134,12 +136,14 @@ export function DispatchScreen({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
       <section className="grid gap-4">
         <Toolbar title="Điều phối công việc" subtitle="Theo dõi phiếu chưa gán, phiếu đã gán và tải việc kỹ thuật viên">
-          <div className="mt-4 flex justify-end">
-            <button className="btn-secondary" onClick={exportDispatch} type="button">
-              <Download size={16} />
-              Xuất Excel
-            </button>
-          </div>
+          {canExport && (
+            <div className="mt-4 flex justify-end">
+              <button className="btn-secondary" onClick={exportDispatch} type="button">
+                <Download size={16} />
+                Xuất Excel
+              </button>
+            </div>
+          )}
         </Toolbar>
         <TableShell>
           <div className="table-toolbar dispatch-toolbar">

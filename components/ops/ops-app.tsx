@@ -109,9 +109,12 @@ export function OpsApp() {
   const userRole = user?.role;
 
   const loadMe = useCallback(async () => {
-    const payload = await apiFetch<{ user: SessionUser | null }>("/api/auth/me");
-    setUser((current) => sameSessionUser(current, payload.user) ? current : payload.user);
-    return payload.user;
+    const payload = await apiFetch<{ user: SessionUser | null; permissions?: string[] }>("/api/auth/me");
+    const nextUser = payload.user
+      ? { ...payload.user, permissions: payload.permissions ?? payload.user.permissions ?? [] }
+      : null;
+    setUser((current) => sameSessionUser(current, nextUser) ? current : nextUser);
+    return nextUser;
   }, []);
 
   const workOrderQueryString = useCallback(() => {
@@ -1149,6 +1152,7 @@ export function OpsApp() {
       <OpsScreenSwitcher
         section={section}
         role={user.role}
+        user={user}
         appMode={appMode}
         data={data}
         filters={filters}

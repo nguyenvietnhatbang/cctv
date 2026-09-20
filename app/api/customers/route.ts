@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
 import { handleRouteError, HttpError, jsonCreated, jsonOk } from "@/lib/http";
 import { BACK_OFFICE_ROLES, OPS_MANAGER_ROLES } from "@/lib/types";
+import { hasPermission } from "@/lib/permissions";
 import { createCustomerSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -101,6 +102,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireUser(OPS_MANAGER_ROLES);
+    if (!await hasPermission(user.role, "customers.create")) {
+      throw new HttpError(403, "Bạn không có quyền tạo khách hàng mới");
+    }
     const body = createCustomerSchema.parse(await request.json());
 
     const customer = await withTransaction(async (client) => {

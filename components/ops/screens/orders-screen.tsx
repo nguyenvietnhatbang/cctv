@@ -189,6 +189,7 @@ export function OrdersScreen({
   onView,
   onEdit,
   onCancel,
+  canExport = false,
 }: {
   filters: Filters;
   customers: Customer[];
@@ -199,6 +200,7 @@ export function OrdersScreen({
   role: Role;
   canCreate: boolean;
   isCreating: boolean;
+  canExport?: boolean;
   onFilter: (filters: Filters) => void;
   onPageChange: (page: number) => void;
   onCreate: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -325,10 +327,12 @@ export function OrdersScreen({
           <p>Lập kế hoạch, theo dõi tiến độ thi công và xử lý sự cố kỹ thuật</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button className="btn-secondary" onClick={exportOrders} type="button">
-            <Download size={16} />
-            Xuất Excel
-          </button>
+          {canExport && (
+            <button className="btn-secondary" onClick={exportOrders} type="button">
+              <Download size={16} />
+              Xuất Excel
+            </button>
+          )}
           {canCreate ? (
             <button className="btn-primary" onClick={() => setCreating(true)} type="button">
               <Plus size={16} />

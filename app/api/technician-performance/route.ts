@@ -3,6 +3,7 @@ import { todayInVietnam, vietnamDateRangeUtc } from "@/lib/date-ranges";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonOk } from "@/lib/http";
 import { OPS_MANAGER_ROLES } from "@/lib/types";
+import { hasPermission } from "@/lib/permissions";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -13,7 +14,10 @@ const technicianIdSchema = z.string().uuid();
 
 export async function GET(request: Request) {
   try {
-    await requireUser(OPS_MANAGER_ROLES);
+    const user = await requireUser(OPS_MANAGER_ROLES);
+    if (!await hasPermission(user.role, "technicians.view_performance")) {
+      throw new HttpError(403, "Bạn không có quyền xem hiệu suất kỹ thuật viên");
+    }
     const { searchParams } = new URL(request.url);
     const today = todayInVietnam();
     const from = searchParams.get("from") || today;
