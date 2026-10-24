@@ -14,6 +14,7 @@ export async function GET() {
               t.id as technician_id, t.service_area, t.status as technician_status
        from users u
        left join technicians t on t.user_id = u.id
+       where lower(coalesce(u.email, '')) not in ('dev@test.com')
        order by u.created_at desc`,
     );
 
