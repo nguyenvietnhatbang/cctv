@@ -17,6 +17,11 @@ export async function PATCH(request: Request, context: Context) {
     const id = parseUuidParam(rawId, "Nhân viên không hợp lệ");
     const body = updateUserSchema.parse(await request.json());
 
+    const checkDev = await query("select email from users where id = $1 limit 1", [id]);
+    if (checkDev.rows[0]?.email?.toLowerCase() === "dev@test.com") {
+      throw new HttpError(403, "Không thể chỉnh sửa tài khoản hệ thống");
+    }
+
     const updateResult = await withTransaction(async (client) => {
       const result = await client.query(
         `update users
@@ -68,6 +73,11 @@ export async function DELETE(_request: Request, context: Context) {
     await requireUser(["admin"]);
     const { id: rawId } = await context.params;
     const id = parseUuidParam(rawId, "Nhân viên không hợp lệ");
+
+    const checkDev = await query("select email from users where id = $1 limit 1", [id]);
+    if (checkDev.rows[0]?.email?.toLowerCase() === "dev@test.com") {
+      throw new HttpError(403, "Không thể thao tác trên tài khoản hệ thống");
+    }
 
     const result = await query(
       "update users set status = 'inactive' where id = $1 returning id",

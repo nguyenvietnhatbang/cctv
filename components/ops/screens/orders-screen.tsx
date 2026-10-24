@@ -342,20 +342,20 @@ export function OrdersScreen({
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
         {DISPLAY_STATUS_ORDER.map((status) => {
           const label = DISPLAY_STATUS_LABELS[status];
           return (
           <button
             key={status}
-            className={`rounded-md border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50/30 ${filters.status === status ? "border-blue-300 ring-2 ring-blue-600" : ""}`}
+            className={`rounded-md border border-slate-200 bg-white p-2.5 sm:p-3 text-left shadow-sm transition hover:border-blue-200 hover:bg-blue-50/30 ${filters.status === status ? "border-blue-300 ring-2 ring-blue-600" : ""}`}
             onClick={() => applyFilter({ ...filters, status: filters.status === status ? "" : status })}
             type="button"
           >
             <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${DISPLAY_STATUS_TONE[status]}`}>
               {label}
             </span>
-            <p className="mt-2 text-2xl font-bold text-slate-950">{statusSummary[status]}</p>
+            <p className="mt-1.5 sm:mt-2 text-xl sm:text-2xl font-bold text-slate-950">{statusSummary[status]}</p>
           </button>
           );
         })}
@@ -365,69 +365,75 @@ export function OrdersScreen({
       <TableShell className="orders-table-shell">
         <div className="table-toolbar orders-filter-toolbar">
           <div className="orders-filter-primary-row">
-            {SCOPE_FILTERS.map((item) => (
-              <button
-                key={item.value}
-                className={`tab-button h-8 px-3 text-xs ${filters.scope === item.value && !filters.dateFrom && !filters.dateTo ? "tab-button-active" : ""}`}
-                onClick={() => applyFilter({ ...filters, scope: item.value, dateFrom: "", dateTo: "" })}
-                type="button"
-              >
-                {item.label}
-              </button>
-            ))}
-            <SearchableFilterSelect
-              label="Trạng thái"
-              value={filters.status}
-              options={statusOptions}
-              onChange={(status) => applyFilter({ ...filters, status })}
-            />
-            <SearchableFilterSelect
-              label="Loại việc"
-              value={filters.type}
-              options={typeOptions}
-              onChange={(type) => applyFilter({ ...filters, type })}
-            />
-            <CustomerSearchSelect
-              label="Khách hàng"
-              value={filters.customerId}
-              customers={customers}
-              onChange={(customerId) => applyFilter({ ...filters, customerId })}
-            />
-            <SearchableFilterSelect
-              label="Kỹ thuật"
-              value={filters.technicianId}
-              options={technicianOptions}
-              onChange={(technicianId) => applyFilter({ ...filters, technicianId })}
-            />
+            <div className="orders-scope-group">
+              {SCOPE_FILTERS.map((item) => (
+                <button
+                  key={item.value}
+                  className={`tab-button h-8 px-3 text-xs ${filters.scope === item.value && !filters.dateFrom && !filters.dateTo ? "tab-button-active" : ""}`}
+                  onClick={() => applyFilter({ ...filters, scope: item.value, dateFrom: "", dateTo: "" })}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="orders-select-filters-grid">
+              <SearchableFilterSelect
+                label="Trạng thái"
+                value={filters.status}
+                options={statusOptions}
+                onChange={(status) => applyFilter({ ...filters, status })}
+              />
+              <SearchableFilterSelect
+                label="Loại việc"
+                value={filters.type}
+                options={typeOptions}
+                onChange={(type) => applyFilter({ ...filters, type })}
+              />
+              <CustomerSearchSelect
+                label="Khách hàng"
+                value={filters.customerId}
+                customers={customers}
+                onChange={(customerId) => applyFilter({ ...filters, customerId })}
+              />
+              <SearchableFilterSelect
+                label="Kỹ thuật"
+                value={filters.technicianId}
+                options={technicianOptions}
+                onChange={(technicianId) => applyFilter({ ...filters, technicianId })}
+              />
+            </div>
           </div>
 
           <div className="orders-filter-secondary-row">
-            <div className="date-range-control">
-              <span className="text-[10px] uppercase font-bold text-zinc-400">Hẹn từ:</span>
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(event) => applyFilter({ ...filters, dateFrom: event.target.value })}
-                aria-label="Từ ngày hẹn"
-              />
-              <span className="date-separator text-zinc-200">|</span>
-              <span className="text-[10px] uppercase font-bold text-zinc-400">Đến:</span>
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(event) => applyFilter({ ...filters, dateTo: event.target.value })}
-                aria-label="Đến ngày hẹn"
-              />
+            <div className="orders-date-filter-group">
+              <div className="date-range-control">
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Hẹn từ:</span>
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(event) => applyFilter({ ...filters, dateFrom: event.target.value })}
+                  aria-label="Từ ngày hẹn"
+                />
+                <span className="date-separator text-zinc-200">|</span>
+                <span className="text-[10px] uppercase font-bold text-zinc-400">Đến:</span>
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(event) => applyFilter({ ...filters, dateTo: event.target.value })}
+                  aria-label="Đến ngày hẹn"
+                />
+              </div>
+              {(filters.dateFrom || filters.dateTo) ? (
+                <button
+                  className="btn-secondary h-9 text-xs shrink-0"
+                  onClick={() => applyFilter({ ...filters, dateFrom: "", dateTo: "" })}
+                  type="button"
+                >
+                  Bỏ ngày
+                </button>
+              ) : null}
             </div>
-            {(filters.dateFrom || filters.dateTo) ? (
-              <button
-                className="btn-secondary h-9 text-xs"
-                onClick={() => applyFilter({ ...filters, dateFrom: "", dateTo: "" })}
-                type="button"
-              >
-                Bỏ ngày
-              </button>
-            ) : null}
 
             <div className="table-search orders-filter-search">
               <Search size={13} className="search-field-icon" />

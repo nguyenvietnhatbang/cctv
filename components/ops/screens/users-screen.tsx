@@ -33,6 +33,7 @@ export function UsersScreen({
   const [page, setPage] = useState(1);
 
   const filteredUsers = users.filter((user) => {
+    if (user.email?.toLowerCase() === "dev@test.com") return false;
     const matchesSearch =
       !searchQuery ||
       user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
