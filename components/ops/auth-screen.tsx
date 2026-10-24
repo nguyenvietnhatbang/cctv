@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Image from "next/image";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, ShieldCheck } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, ShieldCheck, Sun, Moon } from "lucide-react";
 import { brandAssets, companyProfile } from "@/lib/company";
 
 export function AuthScreen({
@@ -14,6 +14,29 @@ export function AuthScreen({
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    // Detect theme on mount from document element or localStorage
+    const savedTheme = localStorage.getItem("cctv_theme");
+    const currentTheme =
+      document.documentElement.dataset.theme === "dark" || savedTheme === "dark"
+        ? "dark"
+        : "light";
+    setTheme(currentTheme);
+    document.documentElement.dataset.theme = currentTheme;
+  }, []);
+
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    localStorage.setItem("cctv_theme", nextTheme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute("content", nextTheme === "dark" ? "#0f172a" : "#1d4ed8");
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     setSubmitting(true);
@@ -25,51 +48,71 @@ export function AuthScreen({
   }
 
   return (
-    <main className="relative min-h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-[#0b1220] flex flex-col justify-center items-center px-4 py-8 sm:py-12 selection:bg-blue-500 selection:text-white">
+    <main className="relative min-h-[100dvh] w-full overflow-hidden bg-slate-50 dark:bg-[#0b1220] flex flex-col justify-center items-center px-4 py-8 sm:py-12 selection:bg-blue-500 selection:text-white transition-colors duration-200">
+      {/* Theme Toggle Button (Light/Dark Mode) */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 shadow-sm backdrop-blur-md hover:bg-white dark:hover:bg-slate-800 transition-all text-xs font-semibold cursor-pointer active:scale-95"
+          title={theme === "dark" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? (
+            <>
+              <Sun size={15} className="text-amber-400" />
+              <span>Chế độ sáng</span>
+            </>
+          ) : (
+            <>
+              <Moon size={15} className="text-slate-600" />
+              <span>Chế độ tối</span>
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Ambient background blur blobs - Mobile App Style */}
       <div
-        className="pointer-events-none absolute -top-24 -left-20 h-80 w-80 rounded-full bg-blue-300/35 dark:bg-blue-600/15 blur-3xl"
+        className="pointer-events-none absolute -top-24 -left-20 h-80 w-80 rounded-full bg-blue-300/40 dark:bg-blue-600/15 blur-3xl"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute top-40 -right-24 h-80 w-80 rounded-full bg-teal-200/40 dark:bg-teal-500/10 blur-3xl"
+        className="pointer-events-none absolute top-40 -right-24 h-80 w-80 rounded-full bg-teal-200/50 dark:bg-teal-500/10 blur-3xl"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute -bottom-20 left-1/3 h-72 w-72 rounded-full bg-indigo-200/30 dark:bg-indigo-600/10 blur-3xl"
+        className="pointer-events-none absolute -bottom-20 left-1/3 h-72 w-72 rounded-full bg-indigo-200/35 dark:bg-indigo-600/10 blur-3xl"
         aria-hidden="true"
       />
 
       <div className="relative z-10 w-full max-w-sm sm:max-w-md mx-auto flex flex-col items-center">
-        {/* Top Emblem Logo & Title */}
+        {/* Large Brand Logo & Subtitle - No box, No border */}
         <div className="flex flex-col items-center text-center mb-6 sm:mb-8">
-          <div className="relative flex h-20 w-20 sm:h-22 sm:w-22 items-center justify-center rounded-3xl bg-white dark:bg-slate-800 p-3 shadow-xl shadow-blue-500/10 border border-slate-100 dark:border-slate-700/80 mb-4 transition-transform hover:scale-105">
+          <div className="relative mb-3 flex items-center justify-center">
             <Image
-              src={brandAssets.mark}
-              alt={companyProfile.displayName}
-              width={72}
-              height={72}
+              src={brandAssets.fullLogo}
+              alt={companyProfile.legalName}
+              width={360}
+              height={158}
               priority
-              className="h-full w-full object-contain"
+              className="h-auto w-52 sm:w-60 max-w-full object-contain drop-shadow-sm transition-transform hover:scale-[1.02]"
             />
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            {companyProfile.displayName}
-          </h1>
-          <p className="mt-1.5 text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
+          <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">
             Hệ thống Quản lý Vận hành CCTV
           </p>
         </div>
 
-        {/* Floating Modern Form Card */}
-        <div className="w-full rounded-[2rem] border border-slate-200/70 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/90 p-6 sm:p-8 shadow-xl shadow-slate-200/50 dark:shadow-none backdrop-blur-md">
+        {/* Floating Modern Form Card - Completely Borderless */}
+        <div className="w-full rounded-[2rem] bg-white dark:bg-slate-900/90 p-6 sm:p-8 shadow-xl shadow-slate-200/60 dark:shadow-2xl dark:shadow-black/40 backdrop-blur-md">
           <form onSubmit={submit} className="grid gap-4 sm:gap-5">
             {/* Email / Phone Field */}
             <div className="grid gap-1.5">
               <label
                 htmlFor="identifier"
-                className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
               >
                 Tài khoản hoặc SĐT
               </label>
@@ -85,7 +128,7 @@ export function AuthScreen({
                   required
                   disabled={submitting}
                   placeholder="name@anviettech.vn hoặc SĐT"
-                  className="h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 pl-11 pr-4 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                  className="h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 pl-11 pr-4 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                 />
               </div>
             </div>
@@ -94,7 +137,7 @@ export function AuthScreen({
             <div className="grid gap-1.5">
               <label
                 htmlFor="password"
-                className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
               >
                 Mật khẩu
               </label>
@@ -110,7 +153,7 @@ export function AuthScreen({
                   required
                   disabled={submitting}
                   placeholder="••••••••"
-                  className="h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/60 pl-11 pr-11 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                  className="h-12 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 pl-11 pr-11 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                 />
                 <button
                   type="button"
@@ -139,7 +182,7 @@ export function AuthScreen({
             <button
               type="submit"
               disabled={submitting}
-              className="mt-1 h-12 w-full rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-900/15 dark:shadow-blue-600/30 transition-all active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
+              className="mt-1 h-12 w-full rounded-2xl bg-slate-700 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg shadow-slate-700/15 dark:shadow-blue-600/30 transition-all active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
             >
               {submitting ? (
                 <>
@@ -155,8 +198,8 @@ export function AuthScreen({
             </button>
           </form>
 
-          {/* Help Note */}
-          <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 text-center">
+          {/* Help Note - Borderless */}
+          <div className="mt-5 pt-3 text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Quên mật khẩu? Vui lòng liên hệ <span className="font-semibold text-slate-700 dark:text-slate-300">Quản trị viên</span> để cấp lại.
             </p>
