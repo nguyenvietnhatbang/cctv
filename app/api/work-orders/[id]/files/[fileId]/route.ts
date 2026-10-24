@@ -23,10 +23,11 @@ export async function DELETE(_request: Request, context: Context) {
 
     const result = await query<{
       path: string;
+      bucket: string;
       purpose: string;
       status: WorkOrderStatus;
     }>(
-      `select f.path, f.purpose, wo.status
+      `select f.path, f.bucket, f.purpose, wo.status
        from work_order_files f
        join work_orders wo on wo.id = f.work_order_id
        where f.work_order_id = $1 and f.id = $2
@@ -51,7 +52,7 @@ export async function DELETE(_request: Request, context: Context) {
       throw new HttpError(403, "File đã khóa sau nghiệm thu/thanh toán");
     }
 
-    await deleteWorkOrderFile(file.path);
+    await deleteWorkOrderFile(file.path, file.bucket);
     await query("delete from work_order_files where work_order_id = $1 and id = $2", [id, fileId]);
 
     return jsonNoContent();

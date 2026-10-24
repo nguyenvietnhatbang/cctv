@@ -121,7 +121,7 @@ export async function GET(_request: Request, context: Context) {
     const files = await Promise.all(
       filesResult.rows.map(async (file) => {
         try {
-          return { ...file, signed_url: await createSignedFileUrl(file.path) };
+          return { ...file, signed_url: await createSignedFileUrl(file.path, file.bucket) };
         } catch {
           return { ...file, signed_url: null };
         }
@@ -302,8 +302,8 @@ export async function DELETE(_request: Request, context: Context) {
         throw new HttpError(422, "Không thể xóa phiếu đã phát sinh xử lý, nghiệm thu hoặc giao dịch tài chính");
       }
 
-      const filesResult = await client.query<{ path: string }>(
-        "select path from work_order_files where work_order_id = $1",
+      const filesResult = await client.query<{ path: string; bucket: string }>(
+        "select path, bucket from work_order_files where work_order_id = $1",
         [id],
       );
 
@@ -320,14 +320,14 @@ export async function DELETE(_request: Request, context: Context) {
         throw new HttpError(404, "Không tìm thấy phiếu");
       }
 
-      return filesResult.rows.map((file) => file.path);
+      return filesResult.rows.map((file) => ({ path: file.path, bucket: file.bucket }));
     });
 
-    for (const path of filePaths) {
+    for (const file of filePaths) {
       try {
-        await deleteWorkOrderFile(path);
+        await deleteWorkOrderFile(file.path, file.bucket);
       } catch (error) {
-        console.error("Không xóa được file trong storage", { path, error });
+        console.error("Không xóa được file trong storage", { path: file.path, error });
       }
     }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { compressImageFile } from "@/lib/client-image-compression";
+
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from "react";
 import dynamic from "next/dynamic";
 import { apiFetch } from "@/components/ops/api";
@@ -389,7 +391,7 @@ export function OpsModalLayer({
           onMaterialCreate={(event) => runMaterialMutation({ type: "create" }, async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials`, { method: "POST", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); form.reset(); await afterMutation(); })}
           onMaterialUpdate={(material, event) => runMaterialMutation({ type: "update", id: material.id }, async () => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "PATCH", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); await afterMutation(); })}
           onMaterialDelete={(material) => runMaterialMutation({ type: "delete", id: material.id }, async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "DELETE" }); await afterMutation(); })}
-          onUpload={(event) => runMutation("upload", async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, { method: "POST", body: formData }); form.reset(); await afterMutation(); })}
+          onUpload={(event) => runMutation("upload", async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); const file = formData.get("file"); if (file instanceof File && file.size > 0) { const compressed = await compressImageFile(file); formData.set("file", compressed); } await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, { method: "POST", body: formData }); form.reset(); await afterMutation(); })}
           onFileDelete={(file) => {
             setDeletingFileId(file.id);
             return runMutation("file-delete", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/files/${file.id}`, { method: "DELETE" }); await afterMutation(); }).finally(() => setDeletingFileId(null));
@@ -411,7 +413,7 @@ export function OpsModalLayer({
           onMaterialCreate={(event) => runMaterialMutation({ type: "create" }, async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials`, { method: "POST", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); form.reset(); await afterMutation(); })}
           onMaterialUpdate={(material, event) => runMaterialMutation({ type: "update", id: material.id }, async () => { event.preventDefault(); const formData = new FormData(event.currentTarget); await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "PATCH", body: JSON.stringify({ name: formData.get("name"), quantity: formData.get("quantity"), unitPrice: formData.get("unitPrice") }) }); await afterMutation(); })}
           onMaterialDelete={(material) => runMaterialMutation({ type: "delete", id: material.id }, async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/materials/${material.id}`, { method: "DELETE" }); await afterMutation(); })}
-          onUpload={(event) => runMutation("upload", async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, { method: "POST", body: formData }); form.reset(); await afterMutation(); })}
+          onUpload={(event) => runMutation("upload", async () => { event.preventDefault(); const form = event.currentTarget; const formData = new FormData(form); const file = formData.get("file"); if (file instanceof File && file.size > 0) { const compressed = await compressImageFile(file); formData.set("file", compressed); } await apiFetch(`/api/work-orders/${detail.workOrder.id}/files`, { method: "POST", body: formData }); form.reset(); await afterMutation(); })}
           onFileDelete={(file) => {
             setDeletingFileId(file.id);
             return runMutation("file-delete", async () => { await apiFetch(`/api/work-orders/${detail.workOrder.id}/files/${file.id}`, { method: "DELETE" }); await afterMutation(); }).finally(() => setDeletingFileId(null));

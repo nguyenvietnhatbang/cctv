@@ -1,5 +1,7 @@
 "use client";
 
+import { compressImageFile } from "@/lib/client-image-compression";
+
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/components/ops/api";

@@ -184,7 +184,7 @@ function FieldDocumentUploadForm({
           name="file"
           type="file"
           className="input"
-          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+          accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
           required
           disabled={locked || isUploading}
           aria-label="biên bản hoặc phiếu bàn giao"

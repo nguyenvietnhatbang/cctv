@@ -322,7 +322,7 @@ export function WorkOrderCreateModal({
               type="file"
               multiple
               className="input"
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+              accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
             />
           </div>
           <input name="internalNote" className="input" placeholder="Ghi chú nội bộ" />

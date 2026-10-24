@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleRouteError, HttpError, jsonCreated } from "@/lib/http";
 import { parseUuidParam } from "@/lib/route-params";
-import { getMaxUploadBytes, uploadWorkOrderFile } from "@/lib/storage";
+import { assertAllowedImage, getMaxUploadBytes, uploadWorkOrderFile } from "@/lib/storage";
 import { isPaymentManagerRole, OPS_MANAGER_ROLES } from "@/lib/types";
 import { uploadPurposeSchema } from "@/lib/validators";
 import { assertCanMutateFieldWork, assertCanReadWorkOrder } from "@/lib/work-orders";
@@ -33,6 +33,8 @@ export async function POST(request: Request, context: Context) {
       return Response.json({ error: "Cần chọn file" }, { status: 422 });
     }
 
+    assertAllowedImage(file.type, file.name);
+
     if (purpose === "bill") {
       if (!isPaymentManagerRole(user.role) && user.role !== "technician" && user.role !== "team_lead") {
         throw new HttpError(403, "Bạn không có quyền upload bill thanh toán");
@@ -60,7 +62,7 @@ export async function POST(request: Request, context: Context) {
         uploaded.path,
         file.name,
         file.type || "application/octet-stream",
-        file.size,
+        uploaded.size ?? file.size,
         purpose,
         user.id,
       ],

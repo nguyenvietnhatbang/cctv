@@ -7,6 +7,8 @@ type ImageUploadFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   previewLabel?: string;
 };
 
+export const ALLOWED_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif";
+
 export function ImageUploadField({ previewLabel = "Xem trước ảnh", onChange, className = "input", ...props }: ImageUploadFieldProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function ImageUploadField({ previewLabel = "Xem trước ảnh", onChange
         ref={inputRef}
         type="file"
         className={className}
-        accept={props.accept ?? "image/*"}
+        accept={props.accept ?? ALLOWED_IMAGE_ACCEPT}
         onChange={(event) => {
           const file = event.currentTarget.files?.[0] ?? null;
           setPreviewUrl((current) => {

@@ -12,6 +12,7 @@ type Context = {
 
 type HistoryFile = {
   id: string;
+  bucket?: string;
   path: string;
   original_name: string;
   mime_type: string;
@@ -67,6 +68,7 @@ export async function GET(request: Request, context: Context) {
                 (select jsonb_agg(
                   jsonb_build_object(
                     'id', id,
+                    'bucket', bucket,
                     'path', path,
                     'original_name', original_name,
                     'mime_type', mime_type,
@@ -102,7 +104,7 @@ export async function GET(request: Request, context: Context) {
                 original_name: file.original_name,
                 purpose: file.purpose,
                 mime_type: file.mime_type,
-                signed_url: await createSignedFileUrl(file.path),
+                signed_url: await createSignedFileUrl(file.path, file.bucket),
               };
             } catch {
               return {
