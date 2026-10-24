@@ -76,12 +76,12 @@ export function NotificationsScreen({
           <p>Mở trang này sẽ tự đánh dấu các thông báo hiện có của bạn là đã đọc</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-100 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/60">
             {unreadCount} chưa đọc
           </span>
           <button
             onClick={() => setShowFeedbackModal(true)}
-            className="btn-primary h-9 text-xs inline-flex items-center gap-1.5"
+            className="btn-primary h-9 text-xs inline-flex items-center gap-1.5 cursor-pointer"
             type="button"
           >
             <MessageSquarePlus size={14} />
@@ -90,7 +90,7 @@ export function NotificationsScreen({
           {userRole === "admin" ? (
             <button
               onClick={() => setShowAnnouncementModal(true)}
-              className="btn-secondary h-9 text-xs inline-flex items-center gap-1.5"
+              className="btn-secondary h-9 text-xs inline-flex items-center gap-1.5 cursor-pointer"
               type="button"
             >
               <Megaphone size={14} />
@@ -101,7 +101,7 @@ export function NotificationsScreen({
       </div>
 
       {successMessage ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
+        <div className="rounded-md border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300" role="status">
           {successMessage}
         </div>
       ) : null}
@@ -111,7 +111,7 @@ export function NotificationsScreen({
       <TableShell>
         <div className="table-toolbar">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-zinc-500">
+            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
               Tổng số: {filteredNotifications.length} thông báo
             </span>
           </div>
@@ -155,44 +155,44 @@ export function NotificationsScreen({
                 return (
                   <tr
                     key={item.id}
-                    className={isUnread ? "bg-zinc-50/50 hover:bg-zinc-50/70" : "hover:bg-zinc-50/30"}
+                    className={isUnread ? "bg-zinc-50/50 dark:bg-zinc-800/30 hover:bg-zinc-50/70" : "hover:bg-zinc-50/30"}
                   >
                     <td data-label="Nội dung">
                       <div className="flex items-start gap-2.5">
                         <div
                           className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
                             isAnnouncement
-                              ? "bg-violet-50 text-violet-600"
+                              ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
                               : isFeedback
-                              ? "bg-amber-50 text-amber-600"
+                              ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
                               : isUnread
-                              ? "bg-blue-50 text-blue-600"
-                              : "bg-zinc-100 text-zinc-400"
+                              ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400"
+                              : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500"
                           }`}
                         >
                           {isAnnouncement ? <Megaphone size={12} /> : isFeedback ? <MessageSquare size={12} /> : <Bell size={12} />}
                         </div>
                         <div>
-                          <p className={`text-sm ${isUnread ? "font-semibold text-zinc-900" : "text-zinc-700"}`}>
+                          <p className={`text-sm ${isUnread ? "font-semibold text-zinc-900 dark:text-zinc-100" : "text-zinc-700 dark:text-zinc-300"}`}>
                             {item.title}
                           </p>
-                          <p className="text-xs text-zinc-500 mt-1 leading-relaxed line-clamp-2">{item.body}</p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed line-clamp-2">{item.body}</p>
                         </div>
                       </div>
                     </td>
                     <td data-label="Phân loại">
                       {isAnnouncement ? (
-                        <span className="inline-flex items-center gap-1 rounded border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                        <span className="inline-flex items-center gap-1 rounded border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-zinc-800 dark:text-zinc-200">
                           <Megaphone size={10} />
                           Hệ thống
                         </span>
                       ) : isFeedback ? (
-                        <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        <span className="inline-flex items-center gap-1 rounded border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
                           <MessageSquare size={10} />
                           Góp ý Dev
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                        <span className="inline-flex items-center gap-1 rounded border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:text-blue-300">
                           <ClipboardList size={10} />
                           Công việc
                         </span>
@@ -202,7 +202,7 @@ export function NotificationsScreen({
                       {item.work_order_id ? (
                         <button
                           onClick={() => onOpen(item.work_order_id!)}
-                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                           type="button"
                         >
                           <Eye size={11} />
@@ -211,7 +211,7 @@ export function NotificationsScreen({
                       ) : (
                         <button
                           onClick={() => setSelectedNotification(item)}
-                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 text-zinc-800 hover:bg-zinc-200 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
                           type="button"
                         >
                           <Info size={11} />
@@ -220,17 +220,17 @@ export function NotificationsScreen({
                       )}
                     </td>
                     <td data-label="Thời gian">
-                      <p className="text-xs font-medium text-zinc-700">{timeAgo(item.created_at)}</p>
+                      <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{timeAgo(item.created_at)}</p>
                       <p className="text-[10px] text-zinc-400 mt-0.5">{dateTime(item.created_at)}</p>
                     </td>
                     <td data-label="Trạng thái">
                       {isUnread ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                           <Mail size={10} />
                           Chưa đọc
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-50 text-zinc-500 border border-zinc-200">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-50 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">
                           <MailOpen size={10} />
                           Đã đọc
                         </span>

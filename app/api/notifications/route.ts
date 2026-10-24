@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { query, withTransaction } from "@/lib/db";
 import { HttpError, handleRouteError, jsonOk } from "@/lib/http";
+import { createNotifications, schedulePushProcessing } from "@/lib/notifications";
 import { notificationCursorSchema, notificationReadSchema } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser();
     const data = await request.json();
-    const { type, title, body, priority = "normal", targetUserId, broadcast } = data;
+    const { type, title, body, priority = "normal", targetUserId, targetUserIds, broadcast } = data;
 
     if (!title || typeof title !== "string" || !title.trim()) {
       throw new HttpError(400, "Tiêu đề thông báo không được để trống");
@@ -77,11 +78,19 @@ export async function POST(request: Request) {
       const formattedTitle = `[Góp ý Dev] ${title.trim()}`;
       const formattedBody = `Người gửi: ${user.fullName} (${user.email} - Vai trò: ${user.role})\n\nNội dung:\n${body.trim()}`;
 
-      await query(
-        `insert into notifications (user_id, type, priority, title, body)
-         values ($1, 'feedback', $2, $3, $4)`,
-        [devUserId, priority === "urgent" || priority === "high" ? priority : "normal", formattedTitle, formattedBody],
-      );
+      await withTransaction(async (client) => {
+        await createNotifications(client, [
+          {
+            userId: devUserId,
+            type: "feedback",
+            priority: priority === "urgent" || priority === "high" ? priority : "normal",
+            title: formattedTitle,
+            body: formattedBody,
+          },
+        ]);
+      });
+
+      schedulePushProcessing();
 
       return jsonOk({ ok: true, message: "Đã gửi phản hồi tới Dev thành công" });
     }
@@ -95,30 +104,53 @@ export async function POST(request: Request) {
       const formattedTitle = `[Thông báo hệ thống] ${title.trim()}`;
       const formattedBody = `Người phát: ${user.fullName} (Admin)\n\nNội dung:\n${body.trim()}`;
 
+      let recipientIds: string[] = [];
+
       if (broadcast) {
-        // Gửi cho toàn bộ người dùng trong hệ thống
-        const usersResult = await query<{ id: string }>(`select id from users`);
-        for (const target of usersResult.rows) {
-          await query(
-            `insert into notifications (user_id, type, priority, title, body)
-             values ($1, 'announcement', $2, $3, $4)`,
-            [target.id, priority, formattedTitle, formattedBody],
-          );
-        }
-
-        return jsonOk({ ok: true, count: usersResult.rows.length, message: "Đã phát thông báo toàn hệ thống" });
-      } else if (targetUserId) {
-        // Gửi cho người dùng cụ thể
-        await query(
-          `insert into notifications (user_id, type, priority, title, body)
-           values ($1, 'announcement', $2, $3, $4)`,
-          [targetUserId, priority, formattedTitle, formattedBody],
+        // Gửi cho toàn bộ người dùng active trong hệ thống
+        const usersResult = await query<{ id: string }>(
+          `select id from users where status = 'active'`,
         );
-
-        return jsonOk({ ok: true, message: "Đã gửi thông báo tới người dùng thành công" });
+        recipientIds = usersResult.rows.map((r) => r.id);
       } else {
-        throw new HttpError(400, "Vui lòng chọn người nhận hoặc chọn phát thông báo toàn hệ thống");
+        // Gửi cho danh sách người dùng cụ thể (hỗ trợ chọn nhiều người)
+        if (Array.isArray(targetUserIds) && targetUserIds.length > 0) {
+          recipientIds = targetUserIds.filter(
+            (id) => typeof id === "string" && id.trim().length > 0,
+          );
+        } else if (targetUserId && typeof targetUserId === "string") {
+          recipientIds = [targetUserId.trim()];
+        }
       }
+
+      if (recipientIds.length === 0) {
+        throw new HttpError(400, "Vui lòng chọn ít nhất một người nhận thông báo");
+      }
+
+      // Loại bỏ trùng lặp ID
+      const uniqueRecipientIds = Array.from(new Set(recipientIds));
+
+      await withTransaction(async (client) => {
+        const notifInputs = uniqueRecipientIds.map((targetId) => ({
+          userId: targetId,
+          type: "announcement",
+          priority: (priority === "urgent" || priority === "high" ? priority : "normal") as "normal" | "high" | "urgent",
+          title: formattedTitle,
+          body: formattedBody,
+        }));
+
+        await createNotifications(client, notifInputs);
+      });
+
+      schedulePushProcessing();
+
+      return jsonOk({
+        ok: true,
+        count: uniqueRecipientIds.length,
+        message: broadcast
+          ? "Đã phát thông báo toàn hệ thống thành công"
+          : `Đã gửi thông báo tới ${uniqueRecipientIds.length} nhân sự thành công`,
+      });
     }
 
     throw new HttpError(400, "Loại thông báo không hợp lệ");

@@ -57,7 +57,7 @@ function needsTechnicians(section: TabId, role: Role) {
 }
 
 function needsUsers(section: TabId, role: Role) {
-  return role === "admin" && section === "users";
+  return role === "admin" && (section === "users" || section === "notifications");
 }
 
 export function OpsApp() {
