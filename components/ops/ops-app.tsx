@@ -34,6 +34,7 @@ import { OpsScreenSwitcher, preloadOpsScreen } from "@/components/ops/ops-screen
 import { OpsShell } from "@/components/ops/ops-shell";
 import { isAppRoute, routePath, stripAppRoutePrefix } from "@/components/ops/routing";
 import { LoadingScreen } from "@/components/ops/ui";
+import { NotificationDetailModal } from "@/components/ops/modals/notification-detail-modal";
 import { TABLE_PAGE_SIZE } from "@/components/ops/ui";
 import { usePwaPush } from "@/components/ops/use-pwa-push";
 import { BACK_OFFICE_ROLES, isOpsManagerRole } from "@/lib/types";
@@ -73,6 +74,8 @@ export function OpsApp() {
   const [detail, setDetail] = useState<WorkOrderDetail | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [oneTimeAnnouncement, setOneTimeAnnouncement] = useState<AppData["notifications"][number] | null>(null);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const detailsCacheRef = useRef<Record<string, WorkOrderDetail>>({});
   const detailRequestsRef = useRef<Record<string, Promise<WorkOrderDetail>>>({});
@@ -179,11 +182,16 @@ export function OpsApp() {
   }, []);
 
   const refreshOrders = useCallback(async (targetSection = section, page = ordersPage) => {
-    const request = workOrderListRequest(targetSection, page);
-    const payload = await apiFetch<{ workOrders: AppData["orders"]; total?: number }>(request.url);
-    setData((current) => ({ ...current, orders: payload.workOrders, ordersTotal: payload.total ?? payload.workOrders.length }));
-    ordersCacheRef.current[request.key] = payload.workOrders;
-    return payload.workOrders;
+    setOrdersLoading(true);
+    try {
+      const request = workOrderListRequest(targetSection, page);
+      const payload = await apiFetch<{ workOrders: AppData["orders"]; total?: number }>(request.url);
+      setData((current) => ({ ...current, orders: payload.workOrders, ordersTotal: payload.total ?? payload.workOrders.length }));
+      ordersCacheRef.current[request.key] = payload.workOrders;
+      return payload.workOrders;
+    } finally {
+      setOrdersLoading(false);
+    }
   }, [ordersPage, section, workOrderListRequest]);
 
   const refreshNotifications = useCallback(async () => {
@@ -509,6 +517,44 @@ export function OpsApp() {
       setError(reason instanceof Error ? reason.message : "Không thể đánh dấu thông báo đã đọc");
     });
   }, [data.notifications, markNotificationsRead, section, user]);
+
+  useEffect(() => {
+    if (!user || data.notifications.length === 0) return;
+    const unreadAnnouncement = data.notifications.find(
+      (item) => item.type === "announcement" && !item.read_at
+    );
+    if (unreadAnnouncement) {
+      const seenKey = `cctv_announcement_seen_${user.id}_${unreadAnnouncement.id}`;
+      const alreadySeen = typeof window !== "undefined" && localStorage.getItem(seenKey);
+      if (!alreadySeen) {
+        setOneTimeAnnouncement(unreadAnnouncement);
+      }
+    }
+  }, [data.notifications, user]);
+
+  const handleCloseOneTimeAnnouncement = useCallback(async () => {
+    if (!oneTimeAnnouncement || !user) return;
+    const targetId = oneTimeAnnouncement.id;
+    const seenKey = `cctv_announcement_seen_${user.id}_${targetId}`;
+    setOneTimeAnnouncement(null);
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(seenKey, "true");
+      }
+      await apiFetch("/api/notifications", {
+        method: "PATCH",
+        body: JSON.stringify({ id: targetId }),
+      });
+      setData((current) => ({
+        ...current,
+        notifications: current.notifications.map((n) =>
+          n.id === targetId ? { ...n, read_at: new Date().toISOString() } : n
+        ),
+      }));
+    } catch {
+      // Silently handle
+    }
+  }, [oneTimeAnnouncement, user]);
 
   useEffect(() => {
     if (section !== "notifications" || loading || !user || !initialLoadedRef.current) return;
@@ -1193,6 +1239,8 @@ export function OpsApp() {
             setReportLoading(false);
           }
         }}
+        ordersLoading={ordersLoading}
+        onRefreshNotifications={refreshNotifications}
         onOpenNotification={(id) => router.push(`${hrefFor("notifications")}?order=${encodeURIComponent(id)}`)}
         pwaPush={pwaPush}
         onEditUser={(item) => setModal({ type: "user-edit", item })}
@@ -1201,6 +1249,13 @@ export function OpsApp() {
         onResetUserPassword={(item) => setModal({ type: "user-reset-password", item })}
         onOpenCreateModal={(type) => setModal({ type: type === "user" ? "user-create" : "customer-create" })}
       />
+      {oneTimeAnnouncement ? (
+        <NotificationDetailModal
+          notification={oneTimeAnnouncement}
+          onClose={handleCloseOneTimeAnnouncement}
+          isOneTimePopup={true}
+        />
+      ) : null}
     </OpsShell>
   );
 }

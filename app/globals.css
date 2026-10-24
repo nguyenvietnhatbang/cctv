@@ -2242,6 +2242,11 @@ html[data-theme="dark"] .text-slate-900 {
   color: #f1f5f9 !important;
 }
 
+html[data-theme="dark"] .text-slate-800,
+html[data-theme="dark"] .text-zinc-800 {
+  color: #e2e8f0 !important;
+}
+
 html[data-theme="dark"] .text-slate-700,
 html[data-theme="dark"] .text-zinc-700,
 html[data-theme="dark"] .text-zinc-600,
@@ -2256,16 +2261,257 @@ html[data-theme="dark"] .text-zinc-400 {
   color: #94a3b8 !important;
 }
 
+/* Modal text, headers and detail cards in dark mode */
+html[data-theme="dark"] .detail-value {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .detail-label {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .section-title {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] strong,
+html[data-theme="dark"] b {
+  color: #f1f5f9;
+}
+
+html[data-theme="dark"] .modal-tabbar {
+  border-color: #273449 !important;
+}
+
+/* High-contrast readable colors for alert / tone / status text in dark mode */
+html[data-theme="dark"] .text-amber-950,
+html[data-theme="dark"] .text-amber-900,
+html[data-theme="dark"] .text-amber-800 {
+  color: #fcd34d !important;
+}
+
+html[data-theme="dark"] .text-amber-700 {
+  color: #fde68a !important;
+}
+
+html[data-theme="dark"] .text-blue-950,
+html[data-theme="dark"] .text-blue-900,
+html[data-theme="dark"] .text-blue-800,
+html[data-theme="dark"] .text-blue-700 {
+  color: #93c5fd !important;
+}
+
+html[data-theme="dark"] .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+html[data-theme="dark"] .text-teal-950,
+html[data-theme="dark"] .text-teal-900,
+html[data-theme="dark"] .text-teal-800,
+html[data-theme="dark"] .text-teal-700 {
+  color: #5eead4 !important;
+}
+
+html[data-theme="dark"] .text-cyan-950,
+html[data-theme="dark"] .text-cyan-900,
+html[data-theme="dark"] .text-cyan-800,
+html[data-theme="dark"] .text-cyan-700 {
+  color: #67e8f9 !important;
+}
+
+html[data-theme="dark"] .text-violet-950,
+html[data-theme="dark"] .text-violet-900,
+html[data-theme="dark"] .text-violet-800,
+html[data-theme="dark"] .text-violet-700 {
+  color: #c4b5fd !important;
+}
+
+html[data-theme="dark"] .text-rose-950,
+html[data-theme="dark"] .text-rose-900,
+html[data-theme="dark"] .text-rose-800 {
+  color: #fda4af !important;
+}
+
+html[data-theme="dark"] .text-rose-700 {
+  color: #fb7185 !important;
+}
+
+html[data-theme="dark"] .text-red-950,
+html[data-theme="dark"] .text-red-900,
+html[data-theme="dark"] .text-red-800,
+html[data-theme="dark"] .text-red-700 {
+  color: #fca5a5 !important;
+}
+
+html[data-theme="dark"] .text-orange-950,
+html[data-theme="dark"] .text-orange-900,
+html[data-theme="dark"] .text-orange-800,
+html[data-theme="dark"] .text-orange-700 {
+  color: #fdba74 !important;
+}
+
+html[data-theme="dark"] .text-emerald-950,
+html[data-theme="dark"] .text-emerald-900,
+html[data-theme="dark"] .text-emerald-800 {
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .text-emerald-700 {
+  color: #34d399 !important;
+}
+
+/* Alert & tone container backgrounds */
 html[data-theme="dark"] .bg-white,
 html[data-theme="dark"] .bg-zinc-50,
 html[data-theme="dark"] .bg-slate-50 {
   background-color: #111c2e !important;
 }
 
+html[data-theme="dark"] .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-blue-50,
+html[data-theme="dark"] .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-teal-50 {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-cyan-50 {
+  background-color: rgba(6, 182, 212, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-violet-50 {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+html[data-theme="dark"] .bg-zinc-100,
+html[data-theme="dark"] .bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: #cbd5e1 !important;
+}
+
+/* Borders for alerts and cards */
 html[data-theme="dark"] .border-slate-200,
 html[data-theme="dark"] .border-zinc-200,
-html[data-theme="dark"] .border-blue-100 {
+html[data-theme="dark"] .border-blue-100,
+html[data-theme="dark"] .border-zinc-100,
+html[data-theme="dark"] .border-zinc-300 {
   border-color: #273449 !important;
+}
+
+html[data-theme="dark"] .border-amber-200 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-blue-200,
+html[data-theme="dark"] .border-blue-300 {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-teal-200 {
+  border-color: rgba(20, 184, 166, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-cyan-200 {
+  border-color: rgba(6, 182, 212, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-violet-200 {
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-rose-200 {
+  border-color: rgba(244, 63, 94, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-red-200 {
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-orange-200 {
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+html[data-theme="dark"] .border-emerald-200 {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Badge rings in dark mode */
+html[data-theme="dark"] .ring-amber-200 {
+  --tw-ring-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-blue-200,
+html[data-theme="dark"] .ring-blue-300 {
+  --tw-ring-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-teal-200 {
+  --tw-ring-color: rgba(20, 184, 166, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-cyan-200 {
+  --tw-ring-color: rgba(6, 182, 212, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-violet-200 {
+  --tw-ring-color: rgba(139, 92, 246, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-emerald-200 {
+  --tw-ring-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-red-200 {
+  --tw-ring-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-orange-200 {
+  --tw-ring-color: rgba(249, 115, 22, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-rose-200 {
+  --tw-ring-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+html[data-theme="dark"] .ring-slate-200,
+html[data-theme="dark"] .ring-slate-300,
+html[data-theme="dark"] .ring-zinc-200 {
+  --tw-ring-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+/* Modal action banner button */
+html[data-theme="dark"] .btn-secondary.bg-white\/80,
+html[data-theme="dark"] button.bg-white\/80 {
+  background-color: #0f1929 !important;
+  border-color: #334155 !important;
+  color: #e5edf8 !important;
+}
+
+/* Signature canvas stays pure white so signature ink is clearly visible */
+html[data-theme="dark"] canvas.touch-none,
+html[data-theme="dark"] canvas[width] {
+  background-color: #ffffff !important;
 }
 
 html[data-theme="dark"] .app-modal-header {
@@ -2349,5 +2595,49 @@ html[data-theme="dark"] .native-app-eyebrow {
   .content-surface,
   .app-modal-sheet {
     animation: none;
+  }
+}
+
+/* Skeleton Shimmer Loading */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #e2e8f0;
+  border-radius: 0.375rem;
+}
+
+.skeleton-shimmer::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+  content: '';
+}
+
+html[data-theme="dark"] .skeleton-shimmer {
+  background-color: #1e293b;
+}
+
+html[data-theme="dark"] .skeleton-shimmer::after {
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }

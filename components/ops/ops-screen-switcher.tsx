@@ -162,6 +162,8 @@ type OpsScreenSwitcherProps = {
   onViewUserAssignmentHistory: (item: AppData["users"][number]) => void;
   onResetUserPassword: (item: AppData["users"][number]) => void;
   onOpenCreateModal: (type: "user" | "customer") => void;
+  ordersLoading?: boolean;
+  onRefreshNotifications?: () => void | Promise<unknown>;
 };
 
 export function OpsScreenSwitcher({
@@ -201,6 +203,8 @@ export function OpsScreenSwitcher({
   onViewUserAssignmentHistory,
   onResetUserPassword,
   onOpenCreateModal,
+  ordersLoading = false,
+  onRefreshNotifications,
 }: OpsScreenSwitcherProps) {
   if (section === "dashboard") {
     return <DashboardScreen appMode={appMode} metrics={data.metrics} orders={data.orders} onOpenOrders={(status) => onFilter({ ...defaultFilters, status })} />;
@@ -219,6 +223,7 @@ export function OpsScreenSwitcher({
         canCreate={isOpsManagerRole(role)}
         canExport={hasUserPermission(user, "orders.export")}
         isCreating={pendingAction === "create-order"}
+        loading={ordersLoading}
         onFilter={onFilter}
         onPageChange={onOrdersPageChange}
         onCreate={onCreateOrder}
@@ -303,6 +308,9 @@ export function OpsScreenSwitcher({
         notifications={data.notifications}
         onOpen={onOpenNotification}
         pwaPush={pwaPush}
+        userRole={role}
+        users={data.users}
+        onRefresh={onRefreshNotifications}
       />
     );
   }

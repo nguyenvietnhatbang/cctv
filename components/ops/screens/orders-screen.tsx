@@ -21,6 +21,7 @@ import { dateTime, money } from "@/components/ops/format";
 import { exportTableToExcel } from "@/components/ops/export-excel";
 import { CustomerSearchSelect } from "@/components/ops/customer-search-select";
 import { DeadlineBadge, EmptyState, StatusBadge, TablePagination, TableShell, clampTablePage } from "@/components/ops/ui";
+import { WorkOrderTableSkeleton } from "@/components/ops/skeletons/work-order-skeleton";
 import type { Customer, Filters, Role, Technician, WorkOrderListItem } from "@/components/ops/types";
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -183,6 +184,7 @@ export function OrdersScreen({
   role,
   canCreate,
   isCreating,
+  loading = false,
   onFilter,
   onPageChange,
   onCreate,
@@ -200,6 +202,7 @@ export function OrdersScreen({
   role: Role;
   canCreate: boolean;
   isCreating: boolean;
+  loading?: boolean;
   canExport?: boolean;
   onFilter: (filters: Filters) => void;
   onPageChange: (page: number) => void;
@@ -447,7 +450,9 @@ export function OrdersScreen({
           </div>
         </div>
 
-        {orders.length === 0 ? (
+        {loading ? (
+          <WorkOrderTableSkeleton />
+        ) : orders.length === 0 ? (
           <EmptyState>Không có công việc phù hợp bộ lọc.</EmptyState>
         ) : (
           <div className="table-scroll orders-table-scroll">
